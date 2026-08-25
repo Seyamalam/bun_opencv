@@ -69,6 +69,15 @@ The following methods accept Rust-owned U8 `Mat` values and return a new Rust-ow
 
 Multi-input operations require identical rows, columns, and channels. These methods are working U8 slices, not yet complete OpenCV.js families; masks, scalar operands, optional destinations, and other depth forms remain tracked by the parity ledger.
 
+### Matrix layout operations
+
+- `flip(source, code)` accepts `-1`, `0`, or `1` for both axes, rows, or columns.
+- `transpose(source)` swaps rows and columns.
+- `rotate(source, code)` accepts `0`, `1`, or `2` for 90 degrees clockwise, 180 degrees, or 90 degrees counterclockwise.
+- `repeat(source, rowRepeats, columnRepeats)` tiles a matrix by positive integer counts.
+
+These operations preserve all seven scalar depths and every interleaved channel. They return new Rust-owned matrices and compact non-contiguous regions before rearranging pixels.
+
 ## Errors
 
 The TypeScript boundary throws `OpenCvInputError` for invalid dimensions, byte lengths, and thresholds. Rust rejects the same invalid dimensions and byte lengths if a caller bypasses the TypeScript client.

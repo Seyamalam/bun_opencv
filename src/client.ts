@@ -50,6 +50,14 @@ class WasmOpenCv implements OpenCv {
     return this.#backend.matCountNonZeroU8(source.handleForBackend());
   }
 
+  flip(source: Mat, flipCode: -1 | 0 | 1): Mat {
+    return new Mat(this.#backend.matFlip(source.handleForBackend(), flipCode));
+  }
+
+  rotate(source: Mat, rotateCode: 0 | 1 | 2): Mat {
+    return new Mat(this.#backend.matRotate(source.handleForBackend(), rotateCode));
+  }
+
   grayscale(image: RgbaImage): RgbaImage {
     validateRgbaImage(image);
     const data = this.#backend.grayscaleRgba(image.data, image.width, image.height);
@@ -129,6 +137,12 @@ class WasmOpenCv implements OpenCv {
     return createRgbaImage(targetWidth, targetHeight, data);
   }
 
+  repeat(source: Mat, rowRepeats: number, columnRepeats: number): Mat {
+    validateDimension(rowRepeats, "rowRepeats");
+    validateDimension(columnRepeats, "columnRepeats");
+    return new Mat(this.#backend.matRepeat(source.handleForBackend(), rowRepeats, columnRepeats));
+  }
+
   threshold(image: RgbaImage, threshold: number): RgbaImage {
     validateRgbaImage(image);
     validateThreshold(threshold);
@@ -138,6 +152,10 @@ class WasmOpenCv implements OpenCv {
 
   subtract(left: Mat, right: Mat): Mat {
     return new Mat(this.#backend.matSubtractU8(left.handleForBackend(), right.handleForBackend()));
+  }
+
+  transpose(source: Mat): Mat {
+    return new Mat(this.#backend.matTranspose(source.handleForBackend()));
   }
 
   zerosF32(rows: number, columns: number, channels: number): Mat {

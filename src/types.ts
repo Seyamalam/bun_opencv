@@ -18,6 +18,9 @@ export interface OpenCvBackend {
   matFromI8(data: Int8Array, rows: number, columns: number, channels: number): WasmMatHandle;
   matFromU16(data: Uint16Array, rows: number, columns: number, channels: number): WasmMatHandle;
   matFromU8(data: Uint8Array, rows: number, columns: number, channels: number): WasmMatHandle;
+  matFlip(source: WasmMatHandle, flipCode: number): WasmMatHandle;
+  matRotate(source: WasmMatHandle, rotateCode: number): WasmMatHandle;
+  matRepeat(source: WasmMatHandle, rowRepeats: number, columnRepeats: number): WasmMatHandle;
   matAbsdiffU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matAddU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matBitwiseAndU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
@@ -34,6 +37,7 @@ export interface OpenCvBackend {
   matMaxU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matMinU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matSubtractU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
+  matTranspose(source: WasmMatHandle): WasmMatHandle;
   matZerosF32(rows: number, columns: number, channels: number): WasmMatHandle;
   matZerosF64(rows: number, columns: number, channels: number): WasmMatHandle;
   matZerosI16(rows: number, columns: number, channels: number): WasmMatHandle;
@@ -61,6 +65,7 @@ export interface OpenCv {
   bitwiseXor(left: Mat, right: Mat): Mat;
   compareEqual(left: Mat, right: Mat): Mat;
   countNonZero(source: Mat): number;
+  flip(source: Mat, flipCode: -1 | 0 | 1): Mat;
   grayscale(image: RgbaImage): RgbaImage;
   invert(image: RgbaImage): RgbaImage;
   matFromF32(rows: number, columns: number, channels: number, data: Float32Array): Mat;
@@ -74,8 +79,11 @@ export interface OpenCv {
   max(left: Mat, right: Mat): Mat;
   min(left: Mat, right: Mat): Mat;
   resizeNearest(image: RgbaImage, targetWidth: number, targetHeight: number): RgbaImage;
+  repeat(source: Mat, rowRepeats: number, columnRepeats: number): Mat;
+  rotate(source: Mat, rotateCode: 0 | 1 | 2): Mat;
   threshold(image: RgbaImage, threshold: number): RgbaImage;
   subtract(left: Mat, right: Mat): Mat;
+  transpose(source: Mat): Mat;
   zerosF32(rows: number, columns: number, channels: number): Mat;
   zerosF64(rows: number, columns: number, channels: number): Mat;
   zerosI16(rows: number, columns: number, channels: number): Mat;

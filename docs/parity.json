@@ -100,6 +100,18 @@
     },
     {
       "implementationOrigin": "original",
+      "method": "flip",
+      "module": "core",
+      "notes": "All scalar depths, channels, and flip codes return a new matrix; destination mutation remains.",
+      "patentReview": "required",
+      "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
+      "status": "partial",
+      "upstream": "cv.flip",
+      "upstreamId": "core.function.flip",
+      "wasmExport": "matFlip"
+    },
+    {
+      "implementationOrigin": "original",
       "method": "grayscale",
       "module": "imgproc",
       "notes": "One RGBA-to-gray specialization; the cvtColor family has many remaining codes.",
@@ -160,6 +172,30 @@
     },
     {
       "implementationOrigin": "original",
+      "method": "repeat",
+      "module": "core",
+      "notes": "All scalar depths and channels with positive repeat counts; destination mutation remains.",
+      "patentReview": "required",
+      "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
+      "status": "partial",
+      "upstream": "cv.repeat",
+      "upstreamId": "core.function.repeat",
+      "wasmExport": "matRepeat"
+    },
+    {
+      "implementationOrigin": "original",
+      "method": "rotate",
+      "module": "core",
+      "notes": "All scalar depths, channels, and three rotation codes; destination mutation remains.",
+      "patentReview": "required",
+      "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
+      "status": "partial",
+      "upstream": "cv.rotate",
+      "upstreamId": "core.function.rotate",
+      "wasmExport": "matRotate"
+    },
+    {
+      "implementationOrigin": "original",
       "method": "subtract",
       "module": "core",
       "notes": "Saturating U8 matrix subtraction; scalar, mask, dtype, and output forms remain.",
@@ -181,6 +217,18 @@
       "upstream": "cv.threshold",
       "upstreamId": "imgproc.function.threshold",
       "wasmExport": "thresholdRgba"
+    },
+    {
+      "implementationOrigin": "original",
+      "method": "transpose",
+      "module": "core",
+      "notes": "All scalar depths and channels return a new matrix; destination mutation remains.",
+      "patentReview": "required",
+      "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
+      "status": "partial",
+      "upstream": "cv.transpose",
+      "upstreamId": "core.function.transpose",
+      "wasmExport": "matTranspose"
     },
     {
       "implementationOrigin": "not-started",

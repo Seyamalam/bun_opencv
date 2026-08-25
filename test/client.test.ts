@@ -117,6 +117,23 @@ class CopyingBackend implements OpenCvBackend {
     return new CopyingMatHandle(rows, columns, channels, new Uint8Array(data));
   }
 
+  matFlip(source: WasmMatHandle, flipCode: number): WasmMatHandle {
+    const input = source.toUint8Array();
+    const output = new Uint8Array(input.byteLength);
+    const pixelBytes = source.channels * depthByteWidth(source.depth);
+    for (let row = 0; row < source.rows; row += 1) {
+      for (let column = 0; column < source.columns; column += 1) {
+        const sourceRow = flipCode === 0 || flipCode === -1 ? source.rows - row - 1 : row;
+        const sourceColumn =
+          flipCode === 1 || flipCode === -1 ? source.columns - column - 1 : column;
+        const sourceOffset = (sourceRow * source.columns + sourceColumn) * pixelBytes;
+        const outputOffset = (row * source.columns + column) * pixelBytes;
+        output.set(input.subarray(sourceOffset, sourceOffset + pixelBytes), outputOffset);
+      }
+    }
+    return new CopyingMatHandle(source.rows, source.columns, source.channels, output, source.depth);
+  }
+
   matAbsdiffU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle {
     return binaryU8(left, right, (leftValue, rightValue) => Math.abs(leftValue - rightValue));
   }
@@ -182,6 +199,20 @@ class CopyingBackend implements OpenCvBackend {
     return binaryU8(left, right, (leftValue, rightValue) => Math.max(leftValue - rightValue, 0));
   }
 
+  matTranspose(source: WasmMatHandle): WasmMatHandle {
+    const input = source.toUint8Array();
+    const output = new Uint8Array(input.byteLength);
+    const pixelBytes = source.channels * depthByteWidth(source.depth);
+    for (let row = 0; row < source.columns; row += 1) {
+      for (let column = 0; column < source.rows; column += 1) {
+        const sourceOffset = (column * source.columns + row) * pixelBytes;
+        const outputOffset = (row * source.rows + column) * pixelBytes;
+        output.set(input.subarray(sourceOffset, sourceOffset + pixelBytes), outputOffset);
+      }
+    }
+    return new CopyingMatHandle(source.columns, source.rows, source.channels, output, source.depth);
+  }
+
   matZerosU8(rows: number, columns: number, channels: number): WasmMatHandle {
     return new CopyingMatHandle(rows, columns, channels, new Uint8Array(rows * columns * channels));
   }
@@ -194,6 +225,31 @@ class CopyingBackend implements OpenCvBackend {
       new Uint8Array(rows * columns * channels * Float32Array.BYTES_PER_ELEMENT),
       5,
     );
+  }
+
+  matRotate(source: WasmMatHandle, rotateCode: number): WasmMatHandle {
+    if (rotateCode === 1) {
+      return this.matFlip(source, -1);
+    }
+    const transposed = this.matTranspose(source);
+    return this.matFlip(transposed, rotateCode === 0 ? 1 : 0);
+  }
+
+  matRepeat(source: WasmMatHandle, rowRepeats: number, columnRepeats: number): WasmMatHandle {
+    const input = source.toUint8Array();
+    const rows = source.rows * rowRepeats;
+    const columns = source.columns * columnRepeats;
+    const pixelBytes = source.channels * depthByteWidth(source.depth);
+    const output = new Uint8Array(rows * columns * pixelBytes);
+    for (let row = 0; row < rows; row += 1) {
+      for (let column = 0; column < columns; column += 1) {
+        const sourceOffset =
+          ((row % source.rows) * source.columns + (column % source.columns)) * pixelBytes;
+        const outputOffset = (row * columns + column) * pixelBytes;
+        output.set(input.subarray(sourceOffset, sourceOffset + pixelBytes), outputOffset);
+      }
+    }
+    return new CopyingMatHandle(rows, columns, source.channels, output, source.depth);
   }
 
   matZerosF64(rows: number, columns: number, channels: number): WasmMatHandle {
@@ -397,5 +453,32 @@ describe("OpenCv client", () => {
     for (const matrix of [added, subtracted, difference, equal, inverted, left, right]) {
       matrix.dispose();
     }
+  });
+
+  test("exposes matrix layout operations", () => {
+    expect(client).toHaveProperty("flip");
+    expect(client).toHaveProperty("transpose");
+    expect(client).toHaveProperty("rotate");
+    expect(client).toHaveProperty("repeat");
+
+    const source = client.matFromU8(2, 3, 1, new Uint8Array([1, 2, 3, 4, 5, 6]));
+    const horizontal = client.flip(source, 1);
+    const transposed = client.transpose(source);
+    const clockwise = client.rotate(source, 0);
+    const repeated = client.repeat(source, 2, 1);
+    expect(horizontal.toUint8Array()).toEqual(new Uint8Array([3, 2, 1, 6, 5, 4]));
+    expect(transposed.rows).toBe(3);
+    expect(transposed.columns).toBe(2);
+    expect(transposed.toUint8Array()).toEqual(new Uint8Array([1, 4, 2, 5, 3, 6]));
+    expect(clockwise.rows).toBe(3);
+    expect(clockwise.columns).toBe(2);
+    expect(clockwise.toUint8Array()).toEqual(new Uint8Array([4, 1, 5, 2, 6, 3]));
+    expect(repeated.rows).toBe(4);
+    expect(repeated.toUint8Array()).toEqual(new Uint8Array([1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6]));
+    repeated.dispose();
+    clockwise.dispose();
+    transposed.dispose();
+    horizontal.dispose();
+    source.dispose();
   });
 });

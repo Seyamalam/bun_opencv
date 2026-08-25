@@ -9,6 +9,7 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - Independent inventory of 488 OpenCV.js 4.13.0 callable browser families with a checked 122-family target for 25% parity.
 - Rust-owned matrices for U8, I8, U16, I16, I32, F32, and F64 with typed JavaScript factories and compact ROI exports.
 - Twelve U8 matrix core slices: saturating arithmetic, absolute difference, bitwise operations, minimum, maximum, equality comparison, inclusive range masks, and non-zero reduction.
+- All-depth matrix flip, transpose, rotation, and repeat operations with strided-region handling.
 - Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
 
 ### Planned
