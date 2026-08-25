@@ -7,6 +7,8 @@ use wasm_bindgen::prelude::*;
 mod core_layout;
 mod core_layout_wasm;
 mod core_ops;
+mod core_reductions;
+mod core_reductions_wasm;
 mod core_wasm;
 mod mat;
 
