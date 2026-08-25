@@ -14,11 +14,17 @@ export interface WasmMatHandle {
   readonly rowStride: number;
   free(): void;
   roi(row: number, column: number, rows: number, columns: number): WasmMatHandle;
+  toFloat32Array(): Float32Array;
+  toFloat64Array(): Float64Array;
+  toInt16Array(): Int16Array;
+  toInt32Array(): Int32Array;
+  toInt8Array(): Int8Array;
+  toUint16Array(): Uint16Array;
   toUint8Array(): Uint8Array;
 }
 
-/** Element depth implemented by the current matrix storage. */
-export type MatDepth = "u8";
+/** Scalar element depth stored by a matrix. */
+export type MatDepth = "u8" | "i8" | "u16" | "i16" | "i32" | "f32" | "f64";
 
 /** Rust-owned matrix with explicit lifetime and zero-copy regions of interest. */
 export class Mat {
@@ -42,11 +48,7 @@ export class Mat {
   }
 
   get depth(): MatDepth {
-    const depth = this.#owned().depth;
-    if (depth !== 0) {
-      throw new OpenCvInputError(`unsupported matrix depth code ${depth}`);
-    }
-    return "u8";
+    return depthName(this.#owned().depth);
   }
 
   get isContinuous(): boolean {
@@ -75,6 +77,41 @@ export class Mat {
     return this.#owned().toUint8Array();
   }
 
+  /** Copies signed 8-bit elements into JavaScript memory. */
+  toInt8Array(): Int8Array {
+    return this.#owned().toInt8Array();
+  }
+
+  /** Copies unsigned 16-bit elements into JavaScript memory. */
+  toUint16Array(): Uint16Array {
+    return this.#owned().toUint16Array();
+  }
+
+  /** Copies signed 16-bit elements into JavaScript memory. */
+  toInt16Array(): Int16Array {
+    return this.#owned().toInt16Array();
+  }
+
+  /** Copies signed 32-bit elements into JavaScript memory. */
+  toInt32Array(): Int32Array {
+    return this.#owned().toInt32Array();
+  }
+
+  /** Copies 32-bit floating-point elements into JavaScript memory. */
+  toFloat32Array(): Float32Array {
+    return this.#owned().toFloat32Array();
+  }
+
+  /** Copies 64-bit floating-point elements into JavaScript memory. */
+  toFloat64Array(): Float64Array {
+    return this.#owned().toFloat64Array();
+  }
+
+  /** @internal Returns the live WASM handle for package adapters. */
+  handleForBackend(): WasmMatHandle {
+    return this.#owned();
+  }
+
   /** Releases this WASM handle. Shared regions remain valid until separately disposed. */
   dispose(): void {
     const handle = this.#handle;
@@ -99,6 +136,7 @@ export function validateMatrixInput(
   columns: number,
   channels: number,
   byteLength: number,
+  byteWidth = 1,
 ): void {
   validateMatrixDimension(rows, "rows");
   validateMatrixDimension(columns, "columns");
@@ -106,12 +144,37 @@ export function validateMatrixInput(
     throw new OpenCvInputError(`channels must be an integer from 1 through ${MAX_CHANNELS}`);
   }
 
-  const expected = rows * columns * channels;
+  if (!Number.isSafeInteger(byteWidth) || byteWidth <= 0) {
+    throw new OpenCvInputError("matrix element byte width must be a positive integer");
+  }
+
+  const expected = rows * columns * channels * byteWidth;
   if (!Number.isSafeInteger(expected) || expected > MAX_WASM_BYTE_LENGTH) {
     throw new OpenCvInputError("matrix dimensions exceed the WASM buffer limit");
   }
   if (byteLength !== expected) {
     throw new OpenCvInputError(`matrix buffer has ${byteLength} bytes; expected ${expected} bytes`);
+  }
+}
+
+function depthName(depth: number): MatDepth {
+  switch (depth) {
+    case 0:
+      return "u8";
+    case 1:
+      return "i8";
+    case 2:
+      return "u16";
+    case 3:
+      return "i16";
+    case 4:
+      return "i32";
+    case 5:
+      return "f32";
+    case 6:
+      return "f64";
+    default:
+      throw new OpenCvInputError(`unsupported matrix depth code ${depth}`);
   }
 }
 
