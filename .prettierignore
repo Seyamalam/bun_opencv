@@ -1,0 +1,17 @@
+.agent/
+.agents/
+.claude/
+.codex/
+.continue/
+.cursor/
+.gemini/
+.opencode/
+.pi/
+.roo/
+.windsurf/
+dist/
+target/
+tools/oxlint/anti-slop/
+wasm/
+bun.lock
+Cargo.lock

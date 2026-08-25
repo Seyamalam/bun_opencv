@@ -1,0 +1,34 @@
+name: Operation proposal
+description: Propose a new image operation with a testable contract
+title: "operation: "
+labels: [enhancement, parity]
+body:
+  - type: input
+    id: operation
+    attributes:
+      label: OpenCV operation
+      placeholder: cv::GaussianBlur
+    validations:
+      required: true
+
+  - type: textarea
+    id: contract
+    attributes:
+      label: Proposed package contract
+      description: Specify input channels, output channels, rounding, border behavior, and alpha handling.
+    validations:
+      required: true
+
+  - type: textarea
+    id: use
+    attributes:
+      label: Browser use case
+      description: Explain what this unlocks and the expected image sizes.
+    validations:
+      required: true
+
+  - type: textarea
+    id: fixtures
+    attributes:
+      label: Reference fixtures
+      description: Describe how results can be compared with a pinned OpenCV version.

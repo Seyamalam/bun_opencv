@@ -1,0 +1,24 @@
+[package]
+name = "bun-opencv-wasm"
+version.workspace = true
+edition.workspace = true
+license-file = "../../LICENSE"
+rust-version.workspace = true
+publish = false
+description = "Rust and WebAssembly implementation for the bun-opencv npm package"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+console_error_panic_hook = "0.1.7"
+wasm-bindgen = "0.2.127"
+
+[lints]
+workspace = true
+
+# wasm-pack 0.15 bundles a wasm-opt build that cannot validate the bulk-memory
+# instructions emitted by current stable Rust. Rust still applies the workspace
+# release profile's size optimization and link-time optimization.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

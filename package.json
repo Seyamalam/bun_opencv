@@ -1,0 +1,87 @@
+{
+  "name": "bun-opencv",
+  "version": "0.1.0",
+  "description": "Browser image processing primitives written in Rust and exposed through WebAssembly and TypeScript.",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "browser": "./dist/index.js",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./parity": {
+      "types": "./dist/operations.d.ts",
+      "import": "./dist/operations.js",
+      "default": "./dist/operations.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "imports": {
+    "#wasm": "./wasm/bun_opencv_wasm.js"
+  },
+  "files": [
+    "dist",
+    "wasm",
+    "CHANGELOG.md",
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "docs",
+    "LICENSE",
+    "README.md",
+    "ROADMAP.md",
+    "SECURITY.md",
+    "THIRD_PARTY_NOTICES.md",
+    "TODO.md"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "browser",
+    "computer-vision",
+    "image-processing",
+    "opencv",
+    "rust",
+    "typescript",
+    "wasm",
+    "webassembly"
+  ],
+  "license": "MIT",
+  "packageManager": "bun@1.4.0",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "bun scripts/build.ts",
+    "build:ts": "tsc -p tsconfig.build.json",
+    "build:wasm": "wasm-pack build crates/opencv-wasm --target web --out-dir ../../wasm --out-name bun_opencv_wasm --release",
+    "check": "bun scripts/check.ts",
+    "docs:check": "bun scripts/check-docs.ts",
+    "fmt": "prettier --write .",
+    "fmt:check": "prettier --check .",
+    "lint": "oxlint . --type-aware --deny-warnings",
+    "parity:check": "bun scripts/check-parity.ts",
+    "parity:write": "bun scripts/write-parity.ts",
+    "prepack": "bun run check && bun run build",
+    "prepublishOnly": "bun run release:check",
+    "release:check": "bun scripts/check-release.ts",
+    "test": "bun test",
+    "test:rust": "cargo test --workspace --all-targets",
+    "test:wasm": "bun scripts/smoke-wasm.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "version:check": "bun scripts/check-version.ts"
+  },
+  "devDependencies": {
+    "@oxlint/plugins": "1.80.0",
+    "@types/bun": "1.4.0",
+    "oxlint": "1.80.0",
+    "oxlint-tsgolint": "7.0.2001",
+    "prettier": "3.9.6",
+    "typescript": "7.0.2",
+    "wasm-pack": "0.15.0"
+  },
+  "trustedDependencies": [
+    "wasm-pack"
+  ]
+}

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>bun-opencv browser smoke test</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "#wasm": "/wasm/bun_opencv_wasm.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <main>
+      <h1>bun-opencv browser smoke test</h1>
+      <output id="result">Running...</output>
+    </main>
+    <script type="module">
+      import { createRgbaImage, initOpenCv } from "/dist/index.js";
+
+      const result = document.querySelector("#result");
+      if (!(result instanceof HTMLOutputElement)) {
+        throw new Error("Smoke test output is missing");
+      }
+
+      try {
+        const cv = await initOpenCv();
+        const image = createRgbaImage(1, 1, new Uint8Array([255, 0, 0, 17]));
+        const output = cv.grayscale(image);
+        const actual = output.data.join(",");
+        const expected = "77,77,77,17";
+        if (actual !== expected) {
+          throw new Error(`Expected ${expected}; received ${actual}`);
+        }
+
+        const matrix = cv.matFromU8(2, 4, 1, new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]));
+        const region = matrix.roi(0, 1, 2, 2);
+        matrix.dispose();
+        const regionBytes = region.toUint8Array().join(",");
+        region.dispose();
+        if (regionBytes !== "2,3,6,7") {
+          throw new Error(`Expected matrix region 2,3,6,7; received ${regionBytes}`);
+        }
+
+        result.value = `PASS grayscale=${actual} roi=${regionBytes}`;
+        document.body.dataset.status = "passed";
+      } catch (error) {
+        result.value = `FAIL ${String(error)}`;
+        document.body.dataset.status = "failed";
+        throw error;
+      }
+    </script>
+  </body>
+</html>

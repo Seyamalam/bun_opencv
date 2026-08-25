@@ -1,0 +1,15 @@
+.github/
+crates/
+docs/
+parity/
+scripts/
+test/
+tools/
+.oxlintrc.json
+.prettierignore
+.prettierrc.json
+Cargo.lock
+Cargo.toml
+clippy.toml
+rustfmt.toml
+tsconfig*.json
