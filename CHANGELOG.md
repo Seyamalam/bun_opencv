@@ -10,6 +10,7 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - Rust-owned matrices for U8, I8, U16, I16, I32, F32, and F64 with typed JavaScript factories and compact ROI exports.
 - Twelve U8 matrix core slices: saturating arithmetic, absolute difference, bitwise operations, minimum, maximum, equality comparison, inclusive range masks, and non-zero reduction.
 - All-depth matrix flip, transpose, rotation, and repeat operations with strided-region handling.
+- All-depth count, sum, mean, extrema-location, and trace reductions with explicit NaN rules.
 - Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
 
 ### Planned

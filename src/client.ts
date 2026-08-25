@@ -4,8 +4,9 @@ import {
   validateRgbaImage,
   validateThreshold,
 } from "./image.js";
+import { OpenCvInputError } from "./error.js";
 import { Mat, validateMatrixDimension, validateMatrixInput } from "./mat.js";
-import type { OpenCv, OpenCvBackend, RgbaImage } from "./types.js";
+import type { MinMaxLocation, OpenCv, OpenCvBackend, RgbaImage, Scalar } from "./types.js";
 
 class WasmOpenCv implements OpenCv {
   readonly #backend: OpenCvBackend;
@@ -47,7 +48,7 @@ class WasmOpenCv implements OpenCv {
   }
 
   countNonZero(source: Mat): number {
-    return this.#backend.matCountNonZeroU8(source.handleForBackend());
+    return this.#backend.matCountNonZero(source.handleForBackend());
   }
 
   flip(source: Mat, flipCode: -1 | 0 | 1): Mat {
@@ -119,8 +120,16 @@ class WasmOpenCv implements OpenCv {
     return new Mat(this.#backend.matMaxU8(left.handleForBackend(), right.handleForBackend()));
   }
 
+  mean(source: Mat): Scalar {
+    return scalarFromArray(this.#backend.matMean(source.handleForBackend()));
+  }
+
   min(left: Mat, right: Mat): Mat {
     return new Mat(this.#backend.matMinU8(left.handleForBackend(), right.handleForBackend()));
+  }
+
+  minMaxLoc(source: Mat): MinMaxLocation {
+    return minMaxLocationFromArray(this.#backend.matMinMaxLoc(source.handleForBackend()));
   }
 
   resizeNearest(image: RgbaImage, targetWidth: number, targetHeight: number): RgbaImage {
@@ -154,8 +163,16 @@ class WasmOpenCv implements OpenCv {
     return new Mat(this.#backend.matSubtractU8(left.handleForBackend(), right.handleForBackend()));
   }
 
+  sum(source: Mat): Scalar {
+    return scalarFromArray(this.#backend.matSum(source.handleForBackend()));
+  }
+
   transpose(source: Mat): Mat {
     return new Mat(this.#backend.matTranspose(source.handleForBackend()));
+  }
+
+  trace(source: Mat): number {
+    return this.#backend.matTrace(source.handleForBackend());
   }
 
   zerosF32(rows: number, columns: number, channels: number): Mat {
@@ -203,6 +220,46 @@ function validateZeroAllocation(
   byteWidth: number,
 ): void {
   validateMatrixInput(rows, columns, channels, rows * columns * channels * byteWidth, byteWidth);
+}
+
+function scalarFromArray(values: Float64Array): Scalar {
+  if (values.length !== 4) {
+    throw new OpenCvInputError(`WASM scalar has ${values.length} lanes; expected 4`);
+  }
+  const lane0 = values[0];
+  const lane1 = values[1];
+  const lane2 = values[2];
+  const lane3 = values[3];
+  if (lane0 === undefined || lane1 === undefined || lane2 === undefined || lane3 === undefined) {
+    throw new OpenCvInputError("WASM scalar is missing a lane");
+  }
+  return [lane0, lane1, lane2, lane3];
+}
+
+function minMaxLocationFromArray(values: Float64Array): MinMaxLocation {
+  if (values.length !== 6) {
+    throw new OpenCvInputError(`WASM minMaxLoc result has ${values.length} lanes; expected 6`);
+  }
+  const minVal = requiredFloat(values, 0);
+  const maxVal = requiredFloat(values, 1);
+  const minX = requiredFloat(values, 2);
+  const minY = requiredFloat(values, 3);
+  const maxX = requiredFloat(values, 4);
+  const maxY = requiredFloat(values, 5);
+  return {
+    maxLoc: { x: maxX, y: maxY },
+    maxVal,
+    minLoc: { x: minX, y: minY },
+    minVal,
+  };
+}
+
+function requiredFloat(values: Float64Array, index: number): number {
+  const value = values[index];
+  if (value === undefined) {
+    throw new OpenCvInputError(`WASM result is missing lane ${index}`);
+  }
+  return value;
 }
 
 /** Creates a client from a compatible backend. Most callers should use `initOpenCv`. */

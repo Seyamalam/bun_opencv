@@ -7,6 +7,23 @@ export interface RgbaImage {
   readonly width: number;
 }
 
+/** Four-channel scalar result used by OpenCV reductions. */
+export type Scalar = readonly [number, number, number, number];
+
+/** Zero-based matrix coordinate. */
+export interface Point {
+  readonly x: number;
+  readonly y: number;
+}
+
+/** Extrema and first row-major locations returned by `minMaxLoc`. */
+export interface MinMaxLocation {
+  readonly maxLoc: Point;
+  readonly maxVal: number;
+  readonly minLoc: Point;
+  readonly minVal: number;
+}
+
 /** Low-level contract implemented by the generated WebAssembly module. */
 export interface OpenCvBackend {
   grayscaleRgba(data: Uint8Array, width: number, height: number): Uint8Array;
@@ -28,16 +45,20 @@ export interface OpenCvBackend {
   matBitwiseOrU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matBitwiseXorU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matCompareEqU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
-  matCountNonZeroU8(source: WasmMatHandle): number;
+  matCountNonZero(source: WasmMatHandle): number;
   matInRangeU8(
     source: WasmMatHandle,
     lowerBound: WasmMatHandle,
     upperBound: WasmMatHandle,
   ): WasmMatHandle;
   matMaxU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
+  matMean(source: WasmMatHandle): Float64Array;
+  matMinMaxLoc(source: WasmMatHandle): Float64Array;
   matMinU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matSubtractU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
+  matSum(source: WasmMatHandle): Float64Array;
   matTranspose(source: WasmMatHandle): WasmMatHandle;
+  matTrace(source: WasmMatHandle): number;
   matZerosF32(rows: number, columns: number, channels: number): WasmMatHandle;
   matZerosF64(rows: number, columns: number, channels: number): WasmMatHandle;
   matZerosI16(rows: number, columns: number, channels: number): WasmMatHandle;
@@ -77,13 +98,17 @@ export interface OpenCv {
   matFromU8(rows: number, columns: number, channels: number, data: Uint8Array): Mat;
   inRange(source: Mat, lowerBound: Mat, upperBound: Mat): Mat;
   max(left: Mat, right: Mat): Mat;
+  mean(source: Mat): Scalar;
+  minMaxLoc(source: Mat): MinMaxLocation;
   min(left: Mat, right: Mat): Mat;
   resizeNearest(image: RgbaImage, targetWidth: number, targetHeight: number): RgbaImage;
   repeat(source: Mat, rowRepeats: number, columnRepeats: number): Mat;
   rotate(source: Mat, rotateCode: 0 | 1 | 2): Mat;
   threshold(image: RgbaImage, threshold: number): RgbaImage;
   subtract(left: Mat, right: Mat): Mat;
+  sum(source: Mat): Scalar;
   transpose(source: Mat): Mat;
+  trace(source: Mat): number;
   zerosF32(rows: number, columns: number, channels: number): Mat;
   zerosF64(rows: number, columns: number, channels: number): Mat;
   zerosI16(rows: number, columns: number, channels: number): Mat;

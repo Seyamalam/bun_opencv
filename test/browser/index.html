@@ -44,7 +44,20 @@
           throw new Error(`Expected matrix region 2,3,6,7; received ${regionBytes}`);
         }
 
-        result.value = `PASS grayscale=${actual} roi=${regionBytes}`;
+        const signed = cv.matFromI16(2, 2, 1, new Int16Array([-2, 7, 30000, -5]));
+        const signedTotal = cv.sum(signed).join(",");
+        const flipped = cv.flip(signed, 1);
+        const flippedValues = flipped.toInt16Array().join(",");
+        flipped.dispose();
+        signed.dispose();
+        if (signedTotal !== "30000,0,0,0") {
+          throw new Error(`Expected signed sum 30000,0,0,0; received ${signedTotal}`);
+        }
+        if (flippedValues !== "7,-2,-5,30000") {
+          throw new Error(`Expected signed flip 7,-2,-5,30000; received ${flippedValues}`);
+        }
+
+        result.value = `PASS grayscale=${actual} roi=${regionBytes} sum=${signedTotal} flip=${flippedValues}`;
         document.body.dataset.status = "passed";
       } catch (error) {
         result.value = `FAIL ${String(error)}`;

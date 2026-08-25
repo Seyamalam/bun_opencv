@@ -162,7 +162,7 @@ class CopyingBackend implements OpenCvBackend {
     return binaryU8(left, right, (leftValue, rightValue) => (leftValue === rightValue ? 255 : 0));
   }
 
-  matCountNonZeroU8(source: WasmMatHandle): number {
+  matCountNonZero(source: WasmMatHandle): number {
     return source.toUint8Array().reduce((count, value) => count + Number(value !== 0), 0);
   }
 
@@ -191,12 +191,59 @@ class CopyingBackend implements OpenCvBackend {
     return binaryU8(left, right, Math.max);
   }
 
+  matMean(source: WasmMatHandle): Float64Array {
+    const totals = this.matSum(source);
+    const output = new Float64Array(4);
+    const pixels = source.rows * source.columns;
+    for (let channel = 0; channel < source.channels; channel += 1) {
+      output[channel] = floatAt(totals, channel) / pixels;
+    }
+    return output;
+  }
+
   matMinU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle {
     return binaryU8(left, right, Math.min);
   }
 
+  matMinMaxLoc(source: WasmMatHandle): Float64Array {
+    const data = source.toUint8Array();
+    let minimum = byteAt(data, 0);
+    let maximum = minimum;
+    let minimumIndex = 0;
+    let maximumIndex = 0;
+    for (let index = 1; index < data.length; index += 1) {
+      const value = byteAt(data, index);
+      if (value < minimum) {
+        minimum = value;
+        minimumIndex = index;
+      }
+      if (value > maximum) {
+        maximum = value;
+        maximumIndex = index;
+      }
+    }
+    return new Float64Array([
+      minimum,
+      maximum,
+      minimumIndex % source.columns,
+      Math.floor(minimumIndex / source.columns),
+      maximumIndex % source.columns,
+      Math.floor(maximumIndex / source.columns),
+    ]);
+  }
+
   matSubtractU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle {
     return binaryU8(left, right, (leftValue, rightValue) => Math.max(leftValue - rightValue, 0));
+  }
+
+  matSum(source: WasmMatHandle): Float64Array {
+    const output = new Float64Array(4);
+    const data = source.toUint8Array();
+    for (let index = 0; index < data.length; index += 1) {
+      const channel = index % source.channels;
+      output[channel] = floatAt(output, channel) + byteAt(data, index);
+    }
+    return output;
   }
 
   matTranspose(source: WasmMatHandle): WasmMatHandle {
@@ -225,6 +272,17 @@ class CopyingBackend implements OpenCvBackend {
       new Uint8Array(rows * columns * channels * Float32Array.BYTES_PER_ELEMENT),
       5,
     );
+  }
+
+  matTrace(source: WasmMatHandle): number {
+    const data = source.toUint8Array();
+    const diagonal = Math.min(source.rows, source.columns);
+    let total = 0;
+    for (let position = 0; position < diagonal; position += 1) {
+      const index = (position * source.columns + position) * source.channels;
+      total += byteAt(data, index);
+    }
+    return total;
   }
 
   matRotate(source: WasmMatHandle, rotateCode: number): WasmMatHandle {
@@ -332,6 +390,14 @@ function byteAt(data: Uint8Array, index: number): number {
   const value = data[index];
   if (value === undefined) {
     throw new RangeError(`missing byte at index ${index}`);
+  }
+  return value;
+}
+
+function floatAt(data: Float64Array, index: number): number {
+  const value = data[index];
+  if (value === undefined) {
+    throw new RangeError(`missing float at index ${index}`);
   }
   return value;
 }
@@ -480,5 +546,27 @@ describe("OpenCv client", () => {
     transposed.dispose();
     horizontal.dispose();
     source.dispose();
+  });
+
+  test("exposes typed matrix reductions", () => {
+    expect(client).toHaveProperty("sum");
+    expect(client).toHaveProperty("mean");
+    expect(client).toHaveProperty("minMaxLoc");
+    expect(client).toHaveProperty("trace");
+
+    const source = client.matFromU8(1, 2, 3, new Uint8Array([1, 10, 100, 3, 30, 200]));
+    expect(client.sum(source)).toEqual([4, 40, 300, 0]);
+    expect(client.mean(source)).toEqual([2, 20, 150, 0]);
+    source.dispose();
+
+    const extremaSource = client.matFromU8(2, 3, 1, new Uint8Array([5, 2, 9, 2, 9, 4]));
+    expect(client.minMaxLoc(extremaSource)).toEqual({
+      maxLoc: { x: 2, y: 0 },
+      maxVal: 9,
+      minLoc: { x: 1, y: 0 },
+      minVal: 2,
+    });
+    expect(client.trace(extremaSource)).toBe(14);
+    extremaSource.dispose();
   });
 });

@@ -1,4 +1,4 @@
-import { grayscaleRgba, initSync, matFromU8 } from "#wasm";
+import { grayscaleRgba, initSync, matFlip, matFromI16, matFromU8, matSum } from "#wasm";
 
 const bytes = await Bun.file("wasm/bun_opencv_wasm_bg.wasm").arrayBuffer();
 initSync({ module: bytes });
@@ -21,5 +21,21 @@ if (!regionBytes.every((value, index) => value === expectedRegion[index])) {
 }
 matrix.free();
 region.free();
+
+const signed = matFromI16(new Int16Array([-2, 7, 30_000, -5]), 2, 2, 1);
+const signedTotal = matSum(signed);
+if (signedTotal.length !== 4 || signedTotal[0] !== 30_000) {
+  throw new Error(`WASM signed reduction returned ${signedTotal.join(",")}; expected 30000,0,0,0`);
+}
+const flipped = matFlip(signed, 1);
+const flippedValues = flipped.toInt16Array();
+const expectedFlipped = new Int16Array([7, -2, -5, 30_000]);
+if (!flippedValues.every((value, index) => value === expectedFlipped[index])) {
+  throw new Error(
+    `WASM signed flip returned ${flippedValues.join(",")}; expected ${expectedFlipped.join(",")}`,
+  );
+}
+flipped.free();
+signed.free();
 
 process.stdout.write("WASM smoke test passed\n");

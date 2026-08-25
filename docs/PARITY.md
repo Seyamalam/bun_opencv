@@ -25,7 +25,7 @@ Desktop modules that the official OpenCV.js build disables are outside this pari
 
 ## Working partial families
 
-Nineteen families have useful original Rust/WASM slices. None yet satisfies the full-family definition, so full parity remains 0 of 488.
+Twenty-two families have useful original Rust/WASM slices. None yet satisfies the full-family definition, so full parity remains 0 of 488.
 
 | Package methods                                       | OpenCV.js families                                                    | Current limit                                |
 | ----------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------- |
@@ -33,6 +33,7 @@ Nineteen families have useful original Rust/WASM slices. None yet satisfies the 
 | `bitwiseAnd`, `bitwiseOr`, `bitwiseXor`, `bitwiseNot` | `cv.bitwise_and`, `cv.bitwise_or`, `cv.bitwise_xor`, `cv.bitwise_not` | U8 matrices without scalar or mask forms     |
 | `compareEqual`, `inRange`, `countNonZero`             | `cv.compare`, `cv.inRange`, `cv.countNonZero`                         | Selected U8 forms                            |
 | `flip`, `repeat`, `rotate`, `transpose`               | `cv.flip`, `cv.repeat`, `cv.rotate`, `cv.transpose`                   | All depths; caller destinations remain       |
+| `mean`, `minMaxLoc`, `trace`                          | `cv.mean`, `cv.minMaxLoc`, `cv.trace`                                 | Masks or multi-channel trace remain          |
 | `grayscale`, `resizeNearest`, `threshold`             | `cv.cvtColor`, `cv.resize`, `cv.threshold`                            | One RGBA or luma-derived specialization each |
 
 ## Tracked planned sample

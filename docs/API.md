@@ -78,6 +78,16 @@ Multi-input operations require identical rows, columns, and channels. These meth
 
 These operations preserve all seven scalar depths and every interleaved channel. They return new Rust-owned matrices and compact non-contiguous regions before rearranging pixels.
 
+### Matrix reductions
+
+- `countNonZero(source)` supports every scalar depth and requires one channel.
+- `sum(source)` returns a four-number scalar and supports up to four channels. It is an extra convenience beyond the pinned 488-family browser ledger.
+- `mean(source)` returns a four-number scalar and supports up to four channels.
+- `minMaxLoc(source)` returns minimum and maximum values with their first row-major coordinates and requires one channel.
+- `trace(source)` returns the channel-zero diagonal sum.
+
+Reducers compact non-contiguous regions before decoding values. Floating-point sums, means, and traces propagate NaN. `minMaxLoc` skips NaN and throws when every value is NaN.
+
 ## Errors
 
 The TypeScript boundary throws `OpenCvInputError` for invalid dimensions, byte lengths, and thresholds. Rust rejects the same invalid dimensions and byte lengths if a caller bypasses the TypeScript client.

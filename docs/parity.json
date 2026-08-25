@@ -90,13 +90,13 @@
       "implementationOrigin": "original",
       "method": "countNonZero",
       "module": "core",
-      "notes": "Single-channel U8 input; the remaining supported scalar depths are missing.",
+      "notes": "All scalar depths and non-contiguous single-channel regions; differential fixtures remain.",
       "patentReview": "required",
       "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
       "status": "partial",
       "upstream": "cv.countNonZero",
       "upstreamId": "core.function.count-non-zero",
-      "wasmExport": "matCountNonZeroU8"
+      "wasmExport": "matCountNonZero"
     },
     {
       "implementationOrigin": "original",
@@ -148,6 +148,18 @@
     },
     {
       "implementationOrigin": "original",
+      "method": "mean",
+      "module": "core",
+      "notes": "All scalar depths and up to four channels; the optional mask form remains.",
+      "patentReview": "required",
+      "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
+      "status": "partial",
+      "upstream": "cv.mean",
+      "upstreamId": "core.function.mean",
+      "wasmExport": "matMean"
+    },
+    {
+      "implementationOrigin": "original",
       "method": "min",
       "module": "core",
       "notes": "U8 matrix-to-matrix minimum; scalar operands and other depths remain missing.",
@@ -157,6 +169,18 @@
       "upstream": "cv.min",
       "upstreamId": "core.function.min",
       "wasmExport": "matMinU8"
+    },
+    {
+      "implementationOrigin": "original",
+      "method": "minMaxLoc",
+      "module": "core",
+      "notes": "All scalar depths for single-channel matrices; the optional mask form remains.",
+      "patentReview": "required",
+      "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
+      "status": "partial",
+      "upstream": "cv.minMaxLoc",
+      "upstreamId": "core.function.min-max-loc",
+      "wasmExport": "matMinMaxLoc"
     },
     {
       "implementationOrigin": "original",
@@ -229,6 +253,18 @@
       "upstream": "cv.transpose",
       "upstreamId": "core.function.transpose",
       "wasmExport": "matTranspose"
+    },
+    {
+      "implementationOrigin": "original",
+      "method": "trace",
+      "module": "core",
+      "notes": "All scalar depths with channel-zero scalar output; full multi-channel Scalar behavior remains.",
+      "patentReview": "required",
+      "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
+      "status": "partial",
+      "upstream": "cv.trace",
+      "upstreamId": "core.function.trace",
+      "wasmExport": "matTrace"
     },
     {
       "implementationOrigin": "not-started",
