@@ -33,7 +33,7 @@ The current Rust compiler emits bulk-memory instructions that the optimizer bund
 
 ## Matrix and compute design
 
-The Rust `Mat` owns its allocation through `Arc<[u8]>`. A region of interest clones the allocation handle and stores its own offset, dimensions, and row stride. Region creation does not copy pixels. Copying occurs only when data enters WASM or a caller requests `toUint8Array()`.
+The Rust `Mat` owns raw scalar bytes through `Arc<[u8]>` and records one of the seven OpenCV scalar depths from U8 through F64. A region of interest clones the allocation handle and stores its own offset, dimensions, and byte stride. Region creation does not copy pixels. Copying occurs only when data enters WASM or a caller requests a compact typed-array export.
 
 The TypeScript `Mat` owns one wasm-bindgen handle and requires `dispose()`. It does not use finalization as the lifetime mechanism. This keeps release timing deterministic and lets a region survive disposal of its parent handle.
 
@@ -50,4 +50,4 @@ CPU scalar Rust remains the correctness implementation. SIMD kernels will use WA
 
 ## Compatibility accounting
 
-`parity/manifest.ts` is the source of truth. `bun run parity:write` updates `docs/parity.json`. `bun run parity:check` then compares implemented entries with TypeScript operation metadata, Rust exports, this documentation set, and the generated JSON. This check catches documentation drift. It does not prove numeric equivalence with OpenCV. Golden fixtures and differential tests are tracked in the [roadmap](../ROADMAP.md).
+`parity/upstream-inventory.ts` owns the 488-family denominator. `parity/manifest.ts` records planned, partial, and fully implemented package work against unique inventory IDs. `bun run parity:write` updates `docs/parity.json`. `bun run parity:check` compares supported entries with TypeScript metadata, every Rust source export, the README, and the generated JSON. This catches accounting drift. It does not prove numeric equivalence with OpenCV. Golden fixtures and differential tests remain required before a family becomes fully implemented.

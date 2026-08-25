@@ -56,6 +56,19 @@ Calculates luma with the grayscale formula. Pixels whose luma is greater than or
 
 Resizes an RGBA image with nearest-neighbor sampling. Both target dimensions must be positive 32-bit integers.
 
+### U8 matrix operations
+
+The following methods accept Rust-owned U8 `Mat` values and return a new Rust-owned `Mat` unless noted otherwise:
+
+- `add(left, right)` and `subtract(left, right)` use unsigned saturation.
+- `absdiff(left, right)`, `min(left, right)`, and `max(left, right)` operate element by element.
+- `bitwiseAnd(left, right)`, `bitwiseOr(left, right)`, `bitwiseXor(left, right)`, and `bitwiseNot(source)` operate on every byte.
+- `compareEqual(left, right)` returns 255 for equal elements and 0 otherwise.
+- `inRange(source, lowerBound, upperBound)` applies inclusive per-channel bounds and returns a one-channel 255/0 mask.
+- `countNonZero(source)` returns the number of non-zero elements and requires one channel.
+
+Multi-input operations require identical rows, columns, and channels. These methods are working U8 slices, not yet complete OpenCV.js families; masks, scalar operands, optional destinations, and other depth forms remain tracked by the parity ledger.
+
 ## Errors
 
 The TypeScript boundary throws `OpenCvInputError` for invalid dimensions, byte lengths, and thresholds. Rust rejects the same invalid dimensions and byte lengths if a caller bypasses the TypeScript client.
@@ -64,11 +77,15 @@ The TypeScript boundary throws `OpenCvInputError` for invalid dimensions, byte l
 
 ### `cv.matFromU8(rows, columns, channels, data)`
 
-Validates metadata once, copies the input into Rust-owned WASM memory, and returns a `Mat`. Version 0.1 supports unsigned 8-bit elements with 1 through 512 interleaved channels.
+Validates metadata once, copies the input into Rust-owned WASM memory, and returns a `Mat` with 1 through 512 interleaved channels.
+
+Typed variants are `matFromI8`, `matFromU16`, `matFromI16`, `matFromI32`, `matFromF32`, and `matFromF64`. Each accepts the corresponding JavaScript typed array. Matrix depth codes follow OpenCV's scalar-depth order from U8 through F64.
 
 ### `cv.zerosU8(rows, columns, channels)`
 
 Allocates a zero-filled matrix directly in Rust-owned WASM memory.
+
+Typed variants are `zerosI8`, `zerosU16`, `zerosI16`, `zerosI32`, `zerosF32`, and `zerosF64`.
 
 ### `matrix.roi(row, column, rows, columns)`
 
@@ -76,7 +93,9 @@ Returns a matrix that shares its parent's Rust allocation. Creating a region doe
 
 ### `matrix.toUint8Array()`
 
-Copies logical bytes into compact JavaScript memory. Strided regions omit bytes outside the region.
+Copies logical bytes into compact JavaScript memory. For a U8 matrix those bytes are elements. For every other depth this method returns the compact raw byte representation. Strided regions omit bytes outside the region.
+
+Typed element copies are available through `toInt8Array`, `toUint16Array`, `toInt16Array`, `toInt32Array`, `toFloat32Array`, and `toFloat64Array`. Calling a typed accessor that does not match the matrix depth throws.
 
 ### `matrix.dispose()`
 

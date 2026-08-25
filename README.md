@@ -52,7 +52,7 @@ try {
 }
 ```
 
-Regions share Rust storage without copying pixels. The current operations still accept `RgbaImage`; moving the first operation slice onto `Mat` is next.
+Regions share Rust storage without copying pixels. The core arithmetic, bitwise, comparison, range, and reduction slices accept `Mat` directly; the original RGBA convenience operations remain available.
 
 ## Current API
 
@@ -65,27 +65,37 @@ Read [the API reference](docs/API.md) for input contracts and conversion helpers
 
 ## Parity
 
-The table comes from the checked parity ledger. `bun run parity:check` fails when an implemented TypeScript method, Rust export, README row, or generated JSON record disagrees.
+The independent browser inventory contains 488 callable families, so the 25% milestone is 122 fully compatible families. A family earns full credit only after every selected browser overload, supported matrix form, output mutation, error case, and differential fixture passes. A useful U8 specialization is recorded as partial and earns no full-parity credit.
 
-| Module  | Package method    | OpenCV.js target                       | Status      |
-| ------- | ----------------- | -------------------------------------- | ----------- |
-| core    | `invert`          | `cv.bitwise_not`                       | Implemented |
-| imgproc | `grayscale`       | `cv.cvtColor` with `COLOR_RGBA2GRAY`   | Implemented |
-| imgproc | `resizeNearest`   | `cv.resize` with `INTER_NEAREST`       | Implemented |
-| imgproc | `threshold`       | `cv.threshold` with `THRESH_BINARY`    | Implemented |
-| imgproc | `cvtColor`        | General `cv.cvtColor` conversion codes | Planned     |
-| imgproc | `gaussianBlur`    | `cv.GaussianBlur`                      | Planned     |
-| imgproc | `canny`           | `cv.Canny`                             | Planned     |
-| imgproc | `findContours`    | `cv.findContours`                      | Planned     |
-| imgproc | `warpPerspective` | `cv.warpPerspective`                   | Planned     |
+| Module  | Package method    | OpenCV.js family     | Status  | Current scope                         |
+| ------- | ----------------- | -------------------- | ------- | ------------------------------------- |
+| core    | `absdiff`         | `cv.absdiff`         | Partial | Matching U8 matrices                  |
+| core    | `add`             | `cv.add`             | Partial | Saturating U8 matrix operands         |
+| core    | `bitwiseAnd`      | `cv.bitwise_and`     | Partial | U8 matrix operands, no mask           |
+| core    | `bitwiseNot`      | `cv.bitwise_not`     | Partial | U8 matrix, no mask                    |
+| core    | `bitwiseOr`       | `cv.bitwise_or`      | Partial | U8 matrix operands, no mask           |
+| core    | `bitwiseXor`      | `cv.bitwise_xor`     | Partial | U8 matrix operands, no mask           |
+| core    | `compareEqual`    | `cv.compare`         | Partial | U8 equality mode                      |
+| core    | `countNonZero`    | `cv.countNonZero`    | Partial | Single-channel U8                     |
+| core    | `inRange`         | `cv.inRange`         | Partial | U8 matrix bounds                      |
+| core    | `max`             | `cv.max`             | Partial | U8 matrix operands                    |
+| core    | `min`             | `cv.min`             | Partial | U8 matrix operands                    |
+| core    | `subtract`        | `cv.subtract`        | Partial | Saturating U8 matrix operands         |
+| imgproc | `grayscale`       | `cv.cvtColor`        | Partial | RGBA-to-gray specialization           |
+| imgproc | `resizeNearest`   | `cv.resize`          | Partial | RGBA nearest-neighbor specialization  |
+| imgproc | `threshold`       | `cv.threshold`       | Partial | Luma-derived U8 binary specialization |
+| imgproc | `gaussianBlur`    | `cv.GaussianBlur`    | Planned | Not started                           |
+| imgproc | `canny`           | `cv.Canny`           | Planned | Not started                           |
+| imgproc | `findContours`    | `cv.findContours`    | Planned | Not started                           |
+| imgproc | `warpPerspective` | `cv.warpPerspective` | Planned | Not started                           |
 
-Tracked progress is 4 of 9 operations. That is not 44% of OpenCV.js. The next parity task independently inventories the complete pinned OpenCV.js binding set so every missing function, class, overload, enum, and constant is counted without copying its organized configuration. The target modules are `core`, `imgproc`, `objdetect`, `video`, `dnn`, `features2d`, `photo`, and `calib3d`.
+Current full parity is **0 of 488 (0%)**. There are **15 partial families** with working Rust/WASM slices. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
 
-Read [the complete parity contract](docs/PARITY.md) for the baseline, exclusions, and definition of done.
+Read [the inventory](docs/INVENTORY.md) and [complete parity contract](docs/PARITY.md) for the denominator, exclusions, and definition of done.
 
 ## What we build next
 
-The Rust `Mat` and memory module now owns unsigned 8-bit storage, channels, dimensions, row stride, regions of interest, WASM allocation, and deterministic disposal. The next implementation work adds the remaining element depths, reusable outputs, and operations that accept `Mat` directly.
+The Rust `Mat` owns U8, I8, U16, I16, I32, F32, and F64 storage, plus channels, dimensions, byte strides, zero-copy regions, WASM allocation, and deterministic disposal. The next foundation adds caller-provided mutable outputs so exact OpenCV.js destination semantics do not force intermediate allocations.
 
 After that foundation, the first vertical slice is general color conversion, all resize interpolation modes in the OpenCV.js baseline, convolution, Gaussian blur, Sobel gradients, and Canny. Each operation needs upstream differential fixtures and real-browser benchmarks before its parity status changes to implemented.
 
@@ -112,6 +122,7 @@ Generated JavaScript and declarations go to `dist/`. The generated WASM loader a
 - [Architecture](docs/ARCHITECTURE.md)
 - [API reference](docs/API.md)
 - [OpenCV parity](docs/PARITY.md)
+- [OpenCV.js browser inventory](docs/INVENTORY.md)
 - [Performance contract](docs/PERFORMANCE.md)
 - [Source-independent compatibility policy](docs/COMPATIBILITY_POLICY.md)
 - [Licensing research](docs/LICENSING_RESEARCH.md)

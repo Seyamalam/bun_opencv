@@ -5,14 +5,14 @@ import type { ParityEntry } from "../parity/manifest.js";
 const reviews = [
   ["package name trademark review", clearance.packageNameReviewed],
   ["legal review", clearance.legalReviewCompleted],
-  ["implemented-operation patent review", clearance.implementedOperationsPatentReviewed],
+  ["shipped-operation patent review", clearance.implementedOperationsPatentReviewed],
   ["source-independent implementation confirmation", clearance.noOpenCvMaterialCopied],
 ] as const;
 
 const blockedReviews = reviews.filter((review) => !review[1]).map((review) => review[0]);
 
 function requiresPatentReview(entry: ParityEntry): boolean {
-  return entry.status === "implemented" && entry.patentReview !== "reviewed";
+  return entry.status !== "planned" && entry.patentReview !== "reviewed";
 }
 
 const blockedOperations = PARITY_MANIFEST.entries

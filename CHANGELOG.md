@@ -4,10 +4,17 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 
 ## [Unreleased]
 
+### Added
+
+- Independent inventory of 488 OpenCV.js 4.13.0 callable browser families with a checked 122-family target for 25% parity.
+- Rust-owned matrices for U8, I8, U16, I16, I32, F32, and F64 with typed JavaScript factories and compact ROI exports.
+- Twelve U8 matrix core slices: saturating arithmetic, absolute difference, bitwise operations, minimum, maximum, equality comparison, inclusive range masks, and non-zero reduction.
+- Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
+
 ### Planned
 
-- Define full parity against a pinned OpenCV.js browser-binding inventory.
-- Build the typed `Mat`, differential test, and browser benchmark foundations.
+- Build differential-test and browser-benchmark foundations against the pinned baseline.
+- Complete the remaining overloads and depth forms for every partial core family.
 - Add browser differential tests against trusted image fixtures.
 - Reduce buffer copies after benchmark data justifies an ownership model.
 

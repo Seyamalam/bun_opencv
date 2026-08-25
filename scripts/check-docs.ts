@@ -13,6 +13,7 @@ const requiredDocuments = [
   "docs/API.md",
   "docs/ARCHITECTURE.md",
   "docs/COMPATIBILITY_POLICY.md",
+  "docs/INVENTORY.md",
   "docs/LICENSING_RESEARCH.md",
   "docs/PARITY.md",
   "docs/PERFORMANCE.md",

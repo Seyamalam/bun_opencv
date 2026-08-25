@@ -15,12 +15,12 @@ The roadmap gives release order. This file lists concrete work that can be picke
 ## Correctness
 
 - [x] Pin OpenCV.js 4.13.0 as the compatibility reference.
-- [ ] Independently author the complete browser binding inventory without copying its organized configuration.
+- [x] Independently author the 488-family browser binding inventory without copying its organized configuration.
 - [x] Add unsigned 8-bit Rust `Mat` storage with channels, dimensions, stride, and zero-copy regions of interest.
 - [x] Add deterministic TypeScript disposal for WASM matrix handles.
-- [ ] Add signed integer and floating-point matrix depths.
+- [x] Add signed integer and floating-point matrix depths.
 - [ ] Add reusable output buffers and in-WASM operation pipelines.
-- [ ] Add differential fixtures for all four implemented operations.
+- [ ] Add differential fixtures for all 15 partial operation families.
 - [ ] Pin the exact OpenCV reference version used to create fixtures.
 - [ ] Decide whether grayscale should match OpenCV's integer rounding byte for byte.
 - [ ] Add fuzz or property tests for dimensions, buffer lengths, and resize mappings.

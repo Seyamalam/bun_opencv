@@ -1,14 +1,17 @@
-export type ParityStatus = "implemented" | "planned";
+import type { UpstreamModule } from "./upstream-inventory.js";
+
+export type ParityStatus = "implemented" | "partial" | "planned";
 
 export interface ParityEntry {
   readonly implementationOrigin: "not-started" | "original";
   readonly method: string;
-  readonly module: "core" | "imgproc";
+  readonly module: UpstreamModule;
   readonly notes: string;
   readonly patentReview: "required" | "reviewed";
   readonly sources: readonly string[];
   readonly status: ParityStatus;
   readonly upstream: string;
+  readonly upstreamId: string;
   readonly wasmExport?: string;
 }
 
@@ -18,8 +21,15 @@ export interface ParityManifest {
   readonly entries: readonly ParityEntry[];
   readonly inventoryPolicy: string;
   readonly packageVersion: string;
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 2;
 }
+
+const CORE_ARRAY_SOURCE = "https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html";
+const IMGPROC_COLOR_SOURCE =
+  "https://docs.opencv.org/4.13.0/d8/d01/group__imgproc__color__conversions.html";
+const IMGPROC_TRANSFORM_SOURCE =
+  "https://docs.opencv.org/4.13.0/da/d54/group__imgproc__transform.html";
+const IMGPROC_MISC_SOURCE = "https://docs.opencv.org/4.13.0/d7/d1b/group__imgproc__misc.html";
 
 export const PARITY_MANIFEST = {
   baseline: "OpenCV.js 4.13.0 public browser bindings",
@@ -27,57 +37,184 @@ export const PARITY_MANIFEST = {
   entries: [
     {
       implementationOrigin: "original",
+      method: "absdiff",
+      module: "core",
+      notes: "U8 matrices with matching dimensions and channels; other depths remain missing.",
+      patentReview: "required",
+      sources: [CORE_ARRAY_SOURCE],
+      status: "partial",
+      upstream: "cv.absdiff",
+      upstreamId: "core.function.absdiff",
+      wasmExport: "matAbsdiffU8",
+    },
+    {
+      implementationOrigin: "original",
+      method: "add",
+      module: "core",
+      notes:
+        "Saturating U8 matrix-to-matrix addition; scalar, mask, dtype, and output forms remain.",
+      patentReview: "required",
+      sources: [CORE_ARRAY_SOURCE],
+      status: "partial",
+      upstream: "cv.add",
+      upstreamId: "core.function.add",
+      wasmExport: "matAddU8",
+    },
+    {
+      implementationOrigin: "original",
+      method: "bitwiseAnd",
+      module: "core",
+      notes: "U8 matrix-to-matrix AND without masks or scalar operands.",
+      patentReview: "required",
+      sources: [CORE_ARRAY_SOURCE],
+      status: "partial",
+      upstream: "cv.bitwise_and",
+      upstreamId: "core.function.bitwise-and",
+      wasmExport: "matBitwiseAndU8",
+    },
+    {
+      implementationOrigin: "original",
+      method: "bitwiseNot",
+      module: "core",
+      notes: "U8 matrix inversion without a mask or caller-provided destination.",
+      patentReview: "required",
+      sources: [CORE_ARRAY_SOURCE],
+      status: "partial",
+      upstream: "cv.bitwise_not",
+      upstreamId: "core.function.bitwise-not",
+      wasmExport: "matBitwiseNotU8",
+    },
+    {
+      implementationOrigin: "original",
+      method: "bitwiseOr",
+      module: "core",
+      notes: "U8 matrix-to-matrix OR without masks or scalar operands.",
+      patentReview: "required",
+      sources: [CORE_ARRAY_SOURCE],
+      status: "partial",
+      upstream: "cv.bitwise_or",
+      upstreamId: "core.function.bitwise-or",
+      wasmExport: "matBitwiseOrU8",
+    },
+    {
+      implementationOrigin: "original",
+      method: "bitwiseXor",
+      module: "core",
+      notes: "U8 matrix-to-matrix XOR without masks or scalar operands.",
+      patentReview: "required",
+      sources: [CORE_ARRAY_SOURCE],
+      status: "partial",
+      upstream: "cv.bitwise_xor",
+      upstreamId: "core.function.bitwise-xor",
+      wasmExport: "matBitwiseXorU8",
+    },
+    {
+      implementationOrigin: "original",
+      method: "compareEqual",
+      module: "core",
+      notes: "U8 equality comparison; the remaining comparison modes and scalar form are missing.",
+      patentReview: "required",
+      sources: [CORE_ARRAY_SOURCE],
+      status: "partial",
+      upstream: "cv.compare",
+      upstreamId: "core.function.compare",
+      wasmExport: "matCompareEqU8",
+    },
+    {
+      implementationOrigin: "original",
+      method: "countNonZero",
+      module: "core",
+      notes: "Single-channel U8 input; the remaining supported scalar depths are missing.",
+      patentReview: "required",
+      sources: [CORE_ARRAY_SOURCE],
+      status: "partial",
+      upstream: "cv.countNonZero",
+      upstreamId: "core.function.count-non-zero",
+      wasmExport: "matCountNonZeroU8",
+    },
+    {
+      implementationOrigin: "original",
       method: "grayscale",
       module: "imgproc",
-      notes: "Converts RGBA pixels with fixed-point BT.601 luma weights and preserves alpha.",
+      notes: "One RGBA-to-gray specialization; the cvtColor family has many remaining codes.",
       patentReview: "required",
-      sources: ["https://docs.opencv.org/4.13.0/d8/d01/group__imgproc__color__conversions.html"],
-      status: "implemented",
-      upstream: "cv::cvtColor with COLOR_RGBA2GRAY",
+      sources: [IMGPROC_COLOR_SOURCE],
+      status: "partial",
+      upstream: "cv.cvtColor",
+      upstreamId: "imgproc.function.cvt-color",
       wasmExport: "grayscaleRgba",
     },
     {
       implementationOrigin: "original",
-      method: "invert",
+      method: "inRange",
       module: "core",
-      notes: "Inverts RGB channels and preserves alpha.",
+      notes: "Inclusive U8 matrix bounds; scalar bounds and other depths remain missing.",
       patentReview: "required",
-      sources: ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
-      status: "implemented",
-      upstream: "cv::bitwise_not",
-      wasmExport: "invertRgba",
+      sources: [CORE_ARRAY_SOURCE],
+      status: "partial",
+      upstream: "cv.inRange",
+      upstreamId: "core.function.in-range",
+      wasmExport: "matInRangeU8",
+    },
+    {
+      implementationOrigin: "original",
+      method: "max",
+      module: "core",
+      notes: "U8 matrix-to-matrix maximum; scalar operands and other depths remain missing.",
+      patentReview: "required",
+      sources: [CORE_ARRAY_SOURCE],
+      status: "partial",
+      upstream: "cv.max",
+      upstreamId: "core.function.max",
+      wasmExport: "matMaxU8",
+    },
+    {
+      implementationOrigin: "original",
+      method: "min",
+      module: "core",
+      notes: "U8 matrix-to-matrix minimum; scalar operands and other depths remain missing.",
+      patentReview: "required",
+      sources: [CORE_ARRAY_SOURCE],
+      status: "partial",
+      upstream: "cv.min",
+      upstreamId: "core.function.min",
+      wasmExport: "matMinU8",
     },
     {
       implementationOrigin: "original",
       method: "resizeNearest",
       module: "imgproc",
-      notes: "Resizes RGBA pixels with nearest-neighbor sampling.",
+      notes: "RGBA nearest-neighbor resizing; other matrix types and interpolation modes remain.",
       patentReview: "required",
-      sources: ["https://docs.opencv.org/4.13.0/da/d54/group__imgproc__transform.html"],
-      status: "implemented",
-      upstream: "cv::resize with INTER_NEAREST",
+      sources: [IMGPROC_TRANSFORM_SOURCE],
+      status: "partial",
+      upstream: "cv.resize",
+      upstreamId: "imgproc.function.resize",
       wasmExport: "resizeNearestRgba",
+    },
+    {
+      implementationOrigin: "original",
+      method: "subtract",
+      module: "core",
+      notes: "Saturating U8 matrix subtraction; scalar, mask, dtype, and output forms remain.",
+      patentReview: "required",
+      sources: [CORE_ARRAY_SOURCE],
+      status: "partial",
+      upstream: "cv.subtract",
+      upstreamId: "core.function.subtract",
+      wasmExport: "matSubtractU8",
     },
     {
       implementationOrigin: "original",
       method: "threshold",
       module: "imgproc",
-      notes: "Applies an inclusive binary threshold to luma and preserves alpha.",
+      notes: "One luma-derived U8 binary mode; other threshold types and matrix forms remain.",
       patentReview: "required",
-      sources: ["https://docs.opencv.org/4.13.0/d7/d1b/group__imgproc__misc.html"],
-      status: "implemented",
-      upstream: "cv::threshold with THRESH_BINARY",
+      sources: [IMGPROC_MISC_SOURCE],
+      status: "partial",
+      upstream: "cv.threshold",
+      upstreamId: "imgproc.function.threshold",
       wasmExport: "thresholdRgba",
-    },
-    {
-      implementationOrigin: "not-started",
-      method: "cvtColor",
-      module: "imgproc",
-      notes: "General color conversion codes are not implemented.",
-      patentReview: "required",
-      sources: ["https://docs.opencv.org/4.13.0/d8/d01/group__imgproc__color__conversions.html"],
-      status: "planned",
-      upstream: "cv::cvtColor",
     },
     {
       implementationOrigin: "not-started",
@@ -87,7 +224,8 @@ export const PARITY_MANIFEST = {
       patentReview: "required",
       sources: ["https://docs.opencv.org/4.13.0/d4/d86/group__imgproc__filter.html"],
       status: "planned",
-      upstream: "cv::GaussianBlur",
+      upstream: "cv.GaussianBlur",
+      upstreamId: "imgproc.function.gaussian-blur",
     },
     {
       implementationOrigin: "not-started",
@@ -97,7 +235,8 @@ export const PARITY_MANIFEST = {
       patentReview: "required",
       sources: ["https://docs.opencv.org/4.13.0/dd/d1a/group__imgproc__feature.html"],
       status: "planned",
-      upstream: "cv::Canny",
+      upstream: "cv.Canny",
+      upstreamId: "imgproc.function.canny",
     },
     {
       implementationOrigin: "not-started",
@@ -107,7 +246,8 @@ export const PARITY_MANIFEST = {
       patentReview: "required",
       sources: ["https://docs.opencv.org/4.13.0/d3/dc0/group__imgproc__shape.html"],
       status: "planned",
-      upstream: "cv::findContours",
+      upstream: "cv.findContours",
+      upstreamId: "imgproc.function.find-contours",
     },
     {
       implementationOrigin: "not-started",
@@ -115,12 +255,13 @@ export const PARITY_MANIFEST = {
       module: "imgproc",
       notes: "Perspective transforms are not implemented.",
       patentReview: "required",
-      sources: ["https://docs.opencv.org/4.13.0/da/d54/group__imgproc__transform.html"],
+      sources: [IMGPROC_TRANSFORM_SOURCE],
       status: "planned",
-      upstream: "cv::warpPerspective",
+      upstream: "cv.warpPerspective",
+      upstreamId: "imgproc.function.warp-perspective",
     },
   ],
   inventoryPolicy: "Independently authored from public documentation and runtime behavior",
   packageVersion: "0.1.0",
-  schemaVersion: 1,
+  schemaVersion: 2,
 } as const satisfies ParityManifest;

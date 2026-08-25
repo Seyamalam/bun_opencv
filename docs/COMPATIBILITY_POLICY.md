@@ -19,7 +19,7 @@ Every parity entry records:
 - the closest OpenCV.js operation;
 - known numerical differences.
 
-An operation cannot become `implemented` without original-authorship confirmation and at least one specification source. npm publication remains blocked until every implemented operation has patent review.
+An operation cannot become `partial` or `implemented` without original-authorship confirmation and at least one specification source. npm publication remains blocked until every shipped operation has patent review.
 
 ## If copied material enters the repository
 

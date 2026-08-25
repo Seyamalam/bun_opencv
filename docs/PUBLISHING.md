@@ -2,7 +2,7 @@
 
 Only maintainers with npm package access should publish a release. The GitHub workflow expects npm trusted publishing through OpenID Connect. If the npm package has not been connected to the repository, configure that relationship before pushing a release tag.
 
-`npm publish` runs `bun run release:check`. The check currently blocks publication because the working package name, legal review, and per-operation patent review are unresolved. Update [release-clearance.json](release-clearance.json) only after recording the corresponding review. Every implemented parity entry must also carry `patentReview: "reviewed"`.
+`npm publish` runs `bun run release:check`. The check currently blocks publication because the working package name, legal review, and per-operation patent review are unresolved. Update [release-clearance.json](release-clearance.json) only after recording the corresponding review. Every partial or implemented parity entry must also carry `patentReview: "reviewed"`.
 
 ## First release
 
