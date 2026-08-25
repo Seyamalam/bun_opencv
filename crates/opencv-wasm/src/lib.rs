@@ -4,6 +4,7 @@ use std::{error::Error, fmt};
 
 use wasm_bindgen::prelude::*;
 
+mod core_ops;
 mod mat;
 
 pub use mat::{Mat, MatDepth, mat_from_u8, mat_zeros_u8};
