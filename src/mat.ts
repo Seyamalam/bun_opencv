@@ -12,6 +12,7 @@ export interface WasmMatHandle {
   readonly isContinuous: boolean;
   readonly rows: number;
   readonly rowStride: number;
+  copyFromBytes(data: Uint8Array): void;
   free(): void;
   roi(row: number, column: number, rows: number, columns: number): WasmMatHandle;
   toFloat32Array(): Float32Array;
@@ -70,6 +71,16 @@ export class Mat {
     validateMatrixDimension(rows, "rows");
     validateMatrixDimension(columns, "columns");
     return new Mat(this.#owned().roi(row, column, rows, columns));
+  }
+
+  /** Replaces the matrix's logical bytes, including a strided region of interest. */
+  copyFromBytes(data: Uint8Array): void {
+    if (data.byteLength !== this.byteLength) {
+      throw new OpenCvInputError(
+        `matrix buffer has ${data.byteLength} bytes; expected ${this.byteLength} bytes`,
+      );
+    }
+    this.#owned().copyFromBytes(data);
   }
 
   /** Copies logical matrix bytes into JavaScript memory. */

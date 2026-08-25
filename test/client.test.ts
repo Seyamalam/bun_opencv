@@ -22,6 +22,13 @@ class CopyingMatHandle implements WasmMatHandle {
 
   free(): void {}
 
+  copyFromBytes(data: Uint8Array): void {
+    if (data.byteLength !== this.byteLength) {
+      throw new OpenCvInputError("matrix buffer length mismatch");
+    }
+    this.data.set(data);
+  }
+
   roi(row: number, column: number, rows: number, columns: number): WasmMatHandle {
     const byteWidth = depthByteWidth(this.depth);
     const output = new Uint8Array(rows * columns * this.channels * byteWidth);
@@ -568,5 +575,13 @@ describe("OpenCv client", () => {
     });
     expect(client.trace(extremaSource)).toBe(14);
     extremaSource.dispose();
+  });
+
+  test("mutates shared matrix destinations", () => {
+    const matrix = client.matFromU8(2, 3, 1, new Uint8Array([1, 2, 3, 4, 5, 6]));
+    matrix.copyFromBytes(new Uint8Array([6, 5, 4, 3, 2, 1]));
+    expect(matrix.toUint8Array()).toEqual(new Uint8Array([6, 5, 4, 3, 2, 1]));
+    expect(() => matrix.copyFromBytes(new Uint8Array([1]))).toThrow(OpenCvInputError);
+    matrix.dispose();
   });
 });
