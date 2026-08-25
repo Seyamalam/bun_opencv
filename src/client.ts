@@ -14,6 +14,42 @@ class WasmOpenCv implements OpenCv {
     this.#backend = backend;
   }
 
+  absdiff(left: Mat, right: Mat): Mat {
+    return new Mat(this.#backend.matAbsdiffU8(left.handleForBackend(), right.handleForBackend()));
+  }
+
+  add(left: Mat, right: Mat): Mat {
+    return new Mat(this.#backend.matAddU8(left.handleForBackend(), right.handleForBackend()));
+  }
+
+  bitwiseAnd(left: Mat, right: Mat): Mat {
+    return new Mat(
+      this.#backend.matBitwiseAndU8(left.handleForBackend(), right.handleForBackend()),
+    );
+  }
+
+  bitwiseNot(source: Mat): Mat {
+    return new Mat(this.#backend.matBitwiseNotU8(source.handleForBackend()));
+  }
+
+  bitwiseOr(left: Mat, right: Mat): Mat {
+    return new Mat(this.#backend.matBitwiseOrU8(left.handleForBackend(), right.handleForBackend()));
+  }
+
+  bitwiseXor(left: Mat, right: Mat): Mat {
+    return new Mat(
+      this.#backend.matBitwiseXorU8(left.handleForBackend(), right.handleForBackend()),
+    );
+  }
+
+  compareEqual(left: Mat, right: Mat): Mat {
+    return new Mat(this.#backend.matCompareEqU8(left.handleForBackend(), right.handleForBackend()));
+  }
+
+  countNonZero(source: Mat): number {
+    return this.#backend.matCountNonZeroU8(source.handleForBackend());
+  }
+
   grayscale(image: RgbaImage): RgbaImage {
     validateRgbaImage(image);
     const data = this.#backend.grayscaleRgba(image.data, image.width, image.height);
@@ -61,6 +97,24 @@ class WasmOpenCv implements OpenCv {
     return new Mat(this.#backend.matFromU8(data, rows, columns, channels));
   }
 
+  inRange(source: Mat, lowerBound: Mat, upperBound: Mat): Mat {
+    return new Mat(
+      this.#backend.matInRangeU8(
+        source.handleForBackend(),
+        lowerBound.handleForBackend(),
+        upperBound.handleForBackend(),
+      ),
+    );
+  }
+
+  max(left: Mat, right: Mat): Mat {
+    return new Mat(this.#backend.matMaxU8(left.handleForBackend(), right.handleForBackend()));
+  }
+
+  min(left: Mat, right: Mat): Mat {
+    return new Mat(this.#backend.matMinU8(left.handleForBackend(), right.handleForBackend()));
+  }
+
   resizeNearest(image: RgbaImage, targetWidth: number, targetHeight: number): RgbaImage {
     validateRgbaImage(image);
     validateDimension(targetWidth, "targetWidth");
@@ -80,6 +134,10 @@ class WasmOpenCv implements OpenCv {
     validateThreshold(threshold);
     const data = this.#backend.thresholdRgba(image.data, image.width, image.height, threshold);
     return createRgbaImage(image.width, image.height, data);
+  }
+
+  subtract(left: Mat, right: Mat): Mat {
+    return new Mat(this.#backend.matSubtractU8(left.handleForBackend(), right.handleForBackend()));
   }
 
   zerosF32(rows: number, columns: number, channels: number): Mat {

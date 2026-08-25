@@ -117,6 +117,71 @@ class CopyingBackend implements OpenCvBackend {
     return new CopyingMatHandle(rows, columns, channels, new Uint8Array(data));
   }
 
+  matAbsdiffU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle {
+    return binaryU8(left, right, (leftValue, rightValue) => Math.abs(leftValue - rightValue));
+  }
+
+  matAddU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle {
+    return binaryU8(left, right, (leftValue, rightValue) => Math.min(leftValue + rightValue, 255));
+  }
+
+  matBitwiseAndU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle {
+    return binaryU8(left, right, (leftValue, rightValue) => leftValue & rightValue);
+  }
+
+  matBitwiseNotU8(source: WasmMatHandle): WasmMatHandle {
+    return unaryU8(source, (value) => ~value & 255);
+  }
+
+  matBitwiseOrU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle {
+    return binaryU8(left, right, (leftValue, rightValue) => leftValue | rightValue);
+  }
+
+  matBitwiseXorU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle {
+    return binaryU8(left, right, (leftValue, rightValue) => leftValue ^ rightValue);
+  }
+
+  matCompareEqU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle {
+    return binaryU8(left, right, (leftValue, rightValue) => (leftValue === rightValue ? 255 : 0));
+  }
+
+  matCountNonZeroU8(source: WasmMatHandle): number {
+    return source.toUint8Array().reduce((count, value) => count + Number(value !== 0), 0);
+  }
+
+  matInRangeU8(
+    source: WasmMatHandle,
+    lowerBound: WasmMatHandle,
+    upperBound: WasmMatHandle,
+  ): WasmMatHandle {
+    const values = source.toUint8Array();
+    const lower = lowerBound.toUint8Array();
+    const upper = upperBound.toUint8Array();
+    const output = new Uint8Array(source.rows * source.columns);
+    for (let pixel = 0; pixel < output.length; pixel += 1) {
+      let inside = true;
+      for (let channel = 0; channel < source.channels; channel += 1) {
+        const index = pixel * source.channels + channel;
+        const value = byteAt(values, index);
+        inside &&= value >= byteAt(lower, index) && value <= byteAt(upper, index);
+      }
+      output[pixel] = inside ? 255 : 0;
+    }
+    return new CopyingMatHandle(source.rows, source.columns, 1, output);
+  }
+
+  matMaxU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle {
+    return binaryU8(left, right, Math.max);
+  }
+
+  matMinU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle {
+    return binaryU8(left, right, Math.min);
+  }
+
+  matSubtractU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle {
+    return binaryU8(left, right, (leftValue, rightValue) => Math.max(leftValue - rightValue, 0));
+  }
+
   matZerosU8(rows: number, columns: number, channels: number): WasmMatHandle {
     return new CopyingMatHandle(rows, columns, channels, new Uint8Array(rows * columns * channels));
   }
@@ -196,6 +261,34 @@ class CopyingBackend implements OpenCvBackend {
   }
 }
 
+function binaryU8(
+  left: WasmMatHandle,
+  right: WasmMatHandle,
+  operation: (leftValue: number, rightValue: number) => number,
+): WasmMatHandle {
+  const leftData = left.toUint8Array();
+  const rightData = right.toUint8Array();
+  const output = leftData.map((value, index) => operation(value, byteAt(rightData, index)));
+  return new CopyingMatHandle(left.rows, left.columns, left.channels, output);
+}
+
+function byteAt(data: Uint8Array, index: number): number {
+  const value = data[index];
+  if (value === undefined) {
+    throw new RangeError(`missing byte at index ${index}`);
+  }
+  return value;
+}
+
+function unaryU8(source: WasmMatHandle, operation: (value: number) => number): WasmMatHandle {
+  return new CopyingMatHandle(
+    source.rows,
+    source.columns,
+    source.channels,
+    source.toUint8Array().map(operation),
+  );
+}
+
 describe("createRgbaImage", () => {
   test("copies caller-owned data", () => {
     const input = new Uint8Array([1, 2, 3, 4]);
@@ -270,5 +363,39 @@ describe("OpenCv client", () => {
     expect(floating.depth).toBe("f32");
     expect(floating.toFloat32Array()).toEqual(new Float32Array(4));
     floating.dispose();
+  });
+
+  test("exposes matrix-based core operations", () => {
+    expect(client).toHaveProperty("add");
+    expect(client).toHaveProperty("subtract");
+    expect(client).toHaveProperty("absdiff");
+    expect(client).toHaveProperty("bitwiseAnd");
+    expect(client).toHaveProperty("bitwiseOr");
+    expect(client).toHaveProperty("bitwiseXor");
+    expect(client).toHaveProperty("bitwiseNot");
+    expect(client).toHaveProperty("min");
+    expect(client).toHaveProperty("max");
+    expect(client).toHaveProperty("compareEqual");
+    expect(client).toHaveProperty("inRange");
+    expect(client).toHaveProperty("countNonZero");
+
+    const left = client.matFromU8(1, 3, 1, new Uint8Array([250, 2, 3]));
+    const right = client.matFromU8(1, 3, 1, new Uint8Array([10, 5, 3]));
+    const added = client.add(left, right);
+    const subtracted = client.subtract(left, right);
+    const difference = client.absdiff(left, right);
+    const equal = client.compareEqual(left, right);
+    const inverted = client.bitwiseNot(left);
+
+    expect(added.toUint8Array()).toEqual(new Uint8Array([255, 7, 6]));
+    expect(subtracted.toUint8Array()).toEqual(new Uint8Array([240, 0, 0]));
+    expect(difference.toUint8Array()).toEqual(new Uint8Array([240, 3, 0]));
+    expect(equal.toUint8Array()).toEqual(new Uint8Array([0, 0, 255]));
+    expect(inverted.toUint8Array()).toEqual(new Uint8Array([5, 253, 252]));
+    expect(client.countNonZero(left)).toBe(3);
+
+    for (const matrix of [added, subtracted, difference, equal, inverted, left, right]) {
+      matrix.dispose();
+    }
   });
 });
