@@ -1,6 +1,8 @@
-use std::{error::Error, fmt, sync::Arc};
+use std::{error::Error, fmt};
 
 use wasm_bindgen::prelude::*;
+
+use crate::mutable_storage::{MutableStorage, MutableStorageError};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum MatError {
@@ -48,6 +50,19 @@ impl fmt::Display for MatError {
 }
 
 impl Error for MatError {}
+
+impl From<MutableStorageError> for MatError {
+    fn from(error: MutableStorageError) -> Self {
+        match error {
+            MutableStorageError::EmptyDimensions => Self::EmptyDimensions,
+            MutableStorageError::SizeOverflow => Self::BufferSizeOverflow,
+            MutableStorageError::IncorrectBufferLength { expected, actual } => {
+                Self::IncorrectBufferLength { expected, actual }
+            }
+            MutableStorageError::RegionOutOfBounds => Self::RegionOutOfBounds,
+        }
+    }
+}
 
 /// Element storage depth for a matrix.
 #[wasm_bindgen]
@@ -118,13 +133,11 @@ impl_mat_element!(f64, F64, 8);
 #[wasm_bindgen]
 #[derive(Debug, Clone)]
 pub struct Mat {
-    data: Arc<[u8]>,
+    storage: MutableStorage,
     rows: u32,
     columns: u32,
     channels: u16,
     depth: MatDepth,
-    row_stride: usize,
-    offset: usize,
 }
 
 impl Mat {
@@ -174,13 +187,11 @@ impl Mat {
         let length = checked_buffer_length(rows, columns, channels, depth)?;
         let row_stride = checked_row_bytes(columns, channels, depth)?;
         Ok(Self {
-            data: vec![0; length].into(),
+            storage: MutableStorage::from_compact(vec![0; length], rows as usize, row_stride)?,
             rows,
             columns,
             channels,
             depth,
-            row_stride,
-            offset: 0,
         })
     }
 
@@ -199,14 +210,13 @@ impl Mat {
             });
         }
 
+        let row_bytes = checked_row_bytes(columns, channels, depth)?;
         Ok(Self {
-            data: data.into(),
+            storage: MutableStorage::from_compact(data, rows as usize, row_bytes)?,
             rows,
             columns,
             channels,
             depth,
-            row_stride: checked_row_bytes(columns, channels, depth)?,
-            offset: 0,
         })
     }
 
@@ -217,23 +227,14 @@ impl Mat {
             * self.depth.byte_width()
     }
 
-    fn row_bytes(&self) -> usize {
-        self.columns as usize * usize::from(self.channels) * self.depth.byte_width()
+    pub(crate) fn compact_bytes(&self) -> Vec<u8> {
+        self.storage.compact_bytes()
     }
 
-    pub(crate) fn compact_bytes(&self) -> Vec<u8> {
-        if self.is_continuous_storage() {
-            let end = self.offset + self.logical_byte_length();
-            return self.data[self.offset..end].to_vec();
-        }
-
-        let row_bytes = self.row_bytes();
-        let mut output = Vec::with_capacity(self.logical_byte_length());
-        for row in 0..self.rows as usize {
-            let start = self.offset + row * self.row_stride;
-            output.extend_from_slice(&self.data[start..start + row_bytes]);
-        }
-        output
+    pub(crate) fn write_compact_bytes(&self, source: &[u8]) -> Result<(), MatError> {
+        self.storage
+            .write_from_compact(source)
+            .map_err(MatError::from)
     }
 
     fn compact_u8(&self) -> Vec<u8> {
@@ -272,27 +273,32 @@ impl Mat {
             return Err(MatError::RegionOutOfBounds);
         }
 
-        let row_offset = row as usize * self.row_stride;
-        let column_offset = column as usize * usize::from(self.channels) * self.depth.byte_width();
-        let offset = self
-            .offset
-            .checked_add(row_offset)
-            .and_then(|value| value.checked_add(column_offset))
+        let bytes_per_column = usize::from(self.channels)
+            .checked_mul(self.depth.byte_width())
+            .ok_or(MatError::BufferSizeOverflow)?;
+        let byte_column = (column as usize)
+            .checked_mul(bytes_per_column)
+            .ok_or(MatError::BufferSizeOverflow)?;
+        let region_row_bytes = (columns as usize)
+            .checked_mul(bytes_per_column)
             .ok_or(MatError::BufferSizeOverflow)?;
 
         Ok(Self {
-            data: Arc::clone(&self.data),
+            storage: self.storage.region(
+                row as usize,
+                byte_column,
+                rows as usize,
+                region_row_bytes,
+            )?,
             rows,
             columns,
             channels: self.channels,
             depth: self.depth,
-            row_stride: self.row_stride,
-            offset,
         })
     }
 
     fn is_continuous_storage(&self) -> bool {
-        self.rows <= 1 || self.row_stride == self.row_bytes()
+        self.storage.is_continuous()
     }
 }
 
@@ -330,7 +336,7 @@ impl Mat {
     #[must_use]
     #[wasm_bindgen(getter, js_name = rowStride)]
     pub fn row_stride(&self) -> u32 {
-        u32::try_from(self.row_stride).unwrap_or(u32::MAX)
+        u32::try_from(self.storage.row_stride()).unwrap_or(u32::MAX)
     }
 
     /// Returns the logical byte length without padding between rows.
@@ -363,6 +369,19 @@ impl Mat {
     #[wasm_bindgen(js_name = toUint8Array)]
     pub fn to_u8_array(&self) -> Vec<u8> {
         self.compact_u8()
+    }
+
+    /// Replaces this matrix's logical bytes from a compact JavaScript `Uint8Array`.
+    ///
+    /// Writes through regions update their parent and every overlapping region. The method checks
+    /// the complete source length before changing storage, so a rejected write changes no bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the source length differs from this matrix's logical byte length.
+    #[wasm_bindgen(js_name = copyFromBytes)]
+    pub fn copy_from_bytes(&self, source: &[u8]) -> Result<(), JsError> {
+        self.write_compact_bytes(source).map_err(JsError::from)
     }
 
     /// Copies signed 8-bit matrix elements into a compact JavaScript `Int8Array`.
@@ -628,7 +647,6 @@ mod tests {
         let source = Mat::from_u8_slice(&[1, 2, 3, 4, 5, 6, 7, 8], 2, 4, 1).expect("valid matrix");
         let region = source.region(0, 1, 2, 2).expect("valid region");
 
-        assert!(Arc::ptr_eq(&source.data, &region.data));
         assert!(!region.is_continuous_storage());
         assert_eq!(region.compact_u8(), [2, 3, 6, 7]);
     }
@@ -725,5 +743,80 @@ mod tests {
             );
             assert!(matrix.to_u8_array().iter().all(|&byte| byte == 0));
         }
+    }
+
+    #[test]
+    fn destination_write_updates_parent_and_overlapping_regions() {
+        let parent = Mat::from_u8_slice(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], 3, 4, 1)
+            .expect("valid parent matrix");
+        let destination = parent.region(0, 1, 2, 2).expect("valid destination");
+        let overlapping = parent.region(1, 0, 2, 3).expect("valid overlapping region");
+
+        destination
+            .copy_from_bytes(&[20, 21, 22, 23])
+            .expect("matching compact bytes");
+
+        assert_eq!(
+            parent.compact_bytes(),
+            [1, 20, 21, 4, 5, 22, 23, 8, 9, 10, 11, 12]
+        );
+        assert_eq!(overlapping.compact_bytes(), [5, 22, 23, 9, 10, 11]);
+    }
+
+    #[test]
+    fn rejected_destination_write_is_atomic() {
+        let matrix = Mat::from_u8_slice(&[1, 2, 3, 4], 2, 2, 1).expect("valid matrix");
+
+        let error = matrix
+            .write_compact_bytes(&[9, 8, 7])
+            .expect_err("short compact bytes must fail");
+
+        assert_eq!(
+            error,
+            MatError::IncorrectBufferLength {
+                expected: 4,
+                actual: 3,
+            }
+        );
+        assert_eq!(matrix.compact_bytes(), [1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn region_retains_shared_storage_after_parent_is_dropped() {
+        let region = {
+            let parent =
+                Mat::from_u8_slice(&[1, 2, 3, 4, 5, 6], 2, 3, 1).expect("valid parent matrix");
+            parent.region(0, 1, 2, 2).expect("valid region")
+        };
+
+        region
+            .write_compact_bytes(&[20, 30, 50, 60])
+            .expect("matching compact bytes");
+
+        assert_eq!(region.compact_bytes(), [20, 30, 50, 60]);
+    }
+
+    #[test]
+    fn typed_region_reads_destination_bytes_with_parent_stride() {
+        let parent = mat_from_i16(&[-300, -2, 7, 1_024, 32_000, -9], 2, 3, 1)
+            .expect("valid signed 16-bit matrix");
+        let region = parent.region(0, 1, 2, 2).expect("valid typed region");
+        let replacement = [11_i16, 12, 13, 14]
+            .into_iter()
+            .flat_map(i16::to_ne_bytes)
+            .collect::<Vec<_>>();
+
+        region
+            .write_compact_bytes(&replacement)
+            .expect("matching compact bytes");
+
+        assert_eq!(
+            region.compact_i16().expect("matching depth"),
+            [11, 12, 13, 14]
+        );
+        assert_eq!(
+            parent.compact_i16().expect("matching depth"),
+            [-300, 11, 12, 1_024, 13, 14]
+        );
     }
 }

@@ -11,6 +11,7 @@ mod core_reductions;
 mod core_reductions_wasm;
 mod core_wasm;
 mod mat;
+mod mutable_storage;
 
 pub use mat::{Mat, MatDepth, mat_from_u8, mat_zeros_u8};
 
