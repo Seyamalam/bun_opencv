@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>bun-opencv differential test</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "#wasm": "/wasm/bun_opencv_wasm.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <main>
+      <h1>bun-opencv differential test</h1>
+      <output id="result">Running...</output>
+    </main>
+    <script type="module">
+      import { initOpenCv } from "/dist/index.js";
+
+      const result = document.querySelector("#result");
+      if (!(result instanceof HTMLOutputElement)) {
+        throw new Error("Differential output is missing");
+      }
+
+      function sameBytes(actual, expected, operation) {
+        if (actual.length !== expected.length) {
+          throw new Error(
+            `${operation} length differs: package=${actual.length} OpenCV.js=${expected.length}`,
+          );
+        }
+        for (let index = 0; index < actual.length; index += 1) {
+          if (actual[index] !== expected[index]) {
+            throw new Error(
+              `${operation} differs at ${index}: package=${actual[index]} OpenCV.js=${expected[index]}`,
+            );
+          }
+        }
+      }
+
+      function runReference(input) {
+        return new Promise((resolve, reject) => {
+          const worker = new Worker("/test/browser/opencv-reference-worker.js");
+          const timeout = setTimeout(() => {
+            worker.terminate();
+            reject(new Error("OpenCV.js worker timed out after 30 seconds"));
+          }, 30000);
+          worker.addEventListener("message", ({ data }) => {
+            clearTimeout(timeout);
+            worker.terminate();
+            if (data.error !== undefined) {
+              reject(new Error(data.error));
+              return;
+            }
+            resolve(data.outputs);
+          });
+          worker.addEventListener("error", ({ message }) => {
+            clearTimeout(timeout);
+            worker.terminate();
+            reject(new Error(message));
+          });
+          worker.postMessage(input);
+        });
+      }
+
+      try {
+        const packageCv = await initOpenCv();
+        const input = new Uint8Array([1, 2, 3, 4, 5, 6]);
+        const packageSource = packageCv.matFromU8(2, 3, 1, input);
+        const referenceOutputs = await runReference(input);
+
+        const cases = [
+          ["flip", packageCv.flip(packageSource, 1)],
+          ["transpose", packageCv.transpose(packageSource)],
+          ["rotate", packageCv.rotate(packageSource, 0)],
+          ["repeat", packageCv.repeat(packageSource, 2, 1)],
+        ];
+
+        for (const [operation, packageOutput] of cases) {
+          sameBytes(packageOutput.toUint8Array(), referenceOutputs[operation], operation);
+          packageOutput.dispose();
+        }
+
+        packageSource.dispose();
+        result.value = "PASS OpenCV.js 4.13.0 layout differential";
+        document.body.dataset.status = "passed";
+      } catch (error) {
+        result.value = `FAIL ${String(error)}`;
+        document.body.dataset.status = "failed";
+        throw error;
+      }
+    </script>
+  </body>
+</html>
