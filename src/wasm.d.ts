@@ -129,6 +129,7 @@ declare module "#wasm" {
 
   export function grayscaleRgba(data: Uint8Array, width: number, height: number): Uint8Array;
   export function invertRgba(data: Uint8Array, width: number, height: number): Uint8Array;
+  export function matEmpty(): WasmMatHandle;
   export function matFromU8(
     data: Uint8Array,
     rows: number,

@@ -115,6 +115,7 @@ export interface OpenCvBackend {
   getOptimalDFTSize(size: number): number;
   grayscaleRgba(data: Uint8Array, width: number, height: number): Uint8Array;
   invertRgba(data: Uint8Array, width: number, height: number): Uint8Array;
+  matEmpty(): WasmMatHandle;
   matFromF32(data: Float32Array, rows: number, columns: number, channels: number): WasmMatHandle;
   matFromF64(data: Float64Array, rows: number, columns: number, channels: number): WasmMatHandle;
   matFromI16(data: Int16Array, rows: number, columns: number, channels: number): WasmMatHandle;
@@ -412,6 +413,7 @@ export interface OpenCv {
     delta: number,
   ): Point[];
   exp(source: Mat): Mat;
+  emptyMat(): Mat;
   flip(source: Mat, flipCode: -1 | 0 | 1): Mat;
   flip(source: Mat, destination: Mat, flipCode: -1 | 0 | 1): void;
   grayscale(image: RgbaImage): RgbaImage;

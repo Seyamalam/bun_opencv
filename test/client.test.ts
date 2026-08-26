@@ -913,6 +913,10 @@ class CopyingBackend implements OpenCvBackend {
     return new CopyingMatHandle(rows, columns, channels, new Uint8Array(data));
   }
 
+  matEmpty(): WasmMatHandle {
+    return new CopyingMatHandle(0, 0, 1, new Uint8Array());
+  }
+
   matFlip(source: WasmMatHandle, flipCode: number): WasmMatHandle {
     const input = source.toUint8Array();
     const output = new Uint8Array(input.byteLength);
@@ -2007,6 +2011,22 @@ describe("OpenCv client", () => {
     expect(() => matrix.rows).toThrow(OpenCvInputError);
     expect(region.toUint8Array()).toEqual(new Uint8Array([2, 3, 6, 7]));
     region.dispose();
+  });
+
+  test("creates a canonical empty matrix for OutputArray destinations", () => {
+    const matrix = client.emptyMat();
+
+    expect(matrix.rows).toBe(0);
+    expect(matrix.columns).toBe(0);
+    expect(matrix.channels).toBe(1);
+    expect(matrix.depth).toBe("u8");
+    expect(matrix.byteLength).toBe(0);
+    expect(matrix.rowStride).toBe(0);
+    expect(matrix.isContinuous).toBe(true);
+    expect(matrix.toUint8Array()).toEqual(new Uint8Array());
+
+    matrix.dispose();
+    expect(() => matrix.rows).toThrow(OpenCvInputError);
   });
 
   test("allocates zero-filled matrices", () => {

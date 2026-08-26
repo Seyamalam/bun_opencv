@@ -349,6 +349,10 @@ class WasmOpenCv implements OpenCv {
     return new Mat(this.#backend.matExp(source.handleForBackend()));
   }
 
+  emptyMat(): Mat {
+    return new Mat(this.#backend.matEmpty());
+  }
+
   flip(source: Mat, flipCode: -1 | 0 | 1): Mat;
   flip(source: Mat, destination: Mat, flipCode: -1 | 0 | 1): void;
   flip(source: Mat, destinationOrCode: Mat | -1 | 0 | 1, flipCode?: -1 | 0 | 1): Mat | void {
