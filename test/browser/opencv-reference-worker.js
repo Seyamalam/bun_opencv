@@ -3833,6 +3833,107 @@ function auditNumericContracts(reference) {
   return { contracts, dtype, scale, replacement, overlap, empty, mixedDepth, i32Overflow };
 }
 
+function auditContourContracts(reference) {
+  const i32Rectangle = [0, 0, 4, 0, 4, 3, 0, 3];
+  const f32Rectangle = [0.25, -1.5, 4.75, -1.5, 4.75, 2.25, 0.25, 2.25];
+  const createMat = (rows, columns, type, values) =>
+    reference.matFromArray(rows, columns, type, values);
+  const captureBounds = (contour) =>
+    captureCall(() => {
+      const bounds = reference.boundingRect(contour);
+      return [bounds.x, bounds.y, bounds.width, bounds.height];
+    });
+  const auditOperations = (contour) => ({
+    arcOpen: captureCall(() => reference.arcLength(contour, false)),
+    arcClosed: captureCall(() => reference.arcLength(contour, true)),
+    area: captureCall(() => reference.contourArea(contour)),
+    areaOriented: captureCall(() => reference.contourArea(contour, true)),
+    bounds: captureBounds(contour),
+  });
+  const auditMat = (name, rows, columns, type, values) => {
+    const contour = createMat(rows, columns, type, values);
+    const result = { name, operations: auditOperations(contour) };
+    safeDelete(contour);
+    return result;
+  };
+
+  const arityContour = createMat(4, 1, reference.CV_32SC2, i32Rectangle);
+  const arity = {
+    lengths: {
+      arcLength: reference.arcLength.length,
+      contourArea: reference.contourArea.length,
+      boundingRect: reference.boundingRect.length,
+    },
+    arcLength: {
+      zero: captureCall(() => reference.arcLength()),
+      one: captureCall(() => reference.arcLength(arityContour)),
+      two: captureCall(() => reference.arcLength(arityContour, true)),
+      three: captureCall(() => reference.arcLength(arityContour, true, 1)),
+    },
+    contourArea: {
+      zero: captureCall(() => reference.contourArea()),
+      one: captureCall(() => reference.contourArea(arityContour)),
+      two: captureCall(() => reference.contourArea(arityContour, true)),
+      three: captureCall(() => reference.contourArea(arityContour, true, 1)),
+    },
+    boundingRect: {
+      zero: captureCall(() => reference.boundingRect()),
+      one: captureBounds(arityContour),
+      two: captureCall(() => reference.boundingRect(arityContour, 1)),
+    },
+  };
+  safeDelete(arityContour);
+
+  const truthyContour = createMat(4, 1, reference.CV_32SC2, i32Rectangle);
+  const truthiness = [
+    ["false", false],
+    ["true", true],
+    ["zero", 0],
+    ["one", 1],
+    ["empty string", ""],
+    ["non-empty string", "closed"],
+    ["null", null],
+    ["explicit undefined", undefined],
+  ].map(([label, value]) => ({
+    label,
+    input: encodeValue(value),
+    arcLength: captureCall(() => reference.arcLength(truthyContour, value)),
+    contourArea: captureCall(() => reference.contourArea(truthyContour, value)),
+  }));
+  safeDelete(truthyContour);
+
+  const acceptedLayouts = [
+    auditMat("I32 Nx1C2", 4, 1, reference.CV_32SC2, i32Rectangle),
+    auditMat("I32 1xNC2", 1, 4, reference.CV_32SC2, i32Rectangle),
+    auditMat("I32 Nx2C1", 4, 2, reference.CV_32SC1, i32Rectangle),
+    auditMat("F32 Nx1C2", 4, 1, reference.CV_32FC2, f32Rectangle),
+    auditMat("F32 1xNC2", 1, 4, reference.CV_32FC2, f32Rectangle),
+    auditMat("F32 Nx2C1", 4, 2, reference.CV_32FC1, f32Rectangle),
+  ];
+  const rejectedInputs = [
+    auditMat("F64 Nx1C2", 4, 1, reference.CV_64FC2, f32Rectangle),
+    auditMat("U8 Nx1C2", 4, 1, reference.CV_8UC2, i32Rectangle),
+    auditMat("I32 2x2C2", 2, 2, reference.CV_32SC2, i32Rectangle),
+  ];
+
+  const deletedContour = createMat(4, 1, reference.CV_32SC2, i32Rectangle);
+  deletedContour.delete();
+  const deleted = auditOperations(deletedContour);
+
+  const emptyContour = new reference.Mat();
+  const canonicalEmptyBoundingRect = captureBounds(emptyContour);
+  safeDelete(emptyContour);
+
+  return {
+    arity,
+    truthiness,
+    acceptedLayouts,
+    rejectedInputs,
+    deleted,
+    canonicalEmptyBoundingRect,
+  };
+}
+
 function auditSetterCases(createDetector, setter, getter, cases) {
   return cases.map(([label, value]) => {
     const detector = createDetector();
@@ -4548,6 +4649,10 @@ self.addEventListener("message", async ({ data: input }) => {
       self.postMessage({ outputs: { numericAudit: auditNumericContracts(reference) } });
       return;
     }
+    if (request === "contour-contracts") {
+      self.postMessage({ outputs: { contourAudit: auditContourContracts(reference) } });
+      return;
+    }
     const source = reference.matFromArray(2, 3, reference.CV_8UC1, sourceInput);
     const outputs = {};
     const operations = [
@@ -4726,6 +4831,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.floatMathAudit = auditFloatMath(reference);
     outputs.coordinateAudit = auditCoordinateConversions(reference);
     outputs.numericAudit = auditNumericContracts(reference);
+    outputs.contourAudit = auditContourContracts(reference);
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });

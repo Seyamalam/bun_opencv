@@ -3652,6 +3652,107 @@
         return { contracts, dtype, scale, replacement, overlap, empty, mixedDepth, i32Overflow };
       }
 
+      function auditPackageContourContracts(packageCv) {
+        const i32Rectangle = [0, 0, 4, 0, 4, 3, 0, 3];
+        const f32Rectangle = [0.25, -1.5, 4.75, -1.5, 4.75, 2.25, 0.25, 2.25];
+        const createMat = (rows, columns, depth, channels, values) =>
+          makePackageSeedMat(packageCv, rows, columns, depth, channels, values);
+        const captureBounds = (contour) =>
+          captureCall(() => {
+            const bounds = packageCv.boundingRect(contour);
+            return [bounds.x, bounds.y, bounds.width, bounds.height];
+          });
+        const auditOperations = (contour) => ({
+          arcOpen: captureCall(() => packageCv.arcLength(contour, false)),
+          arcClosed: captureCall(() => packageCv.arcLength(contour, true)),
+          area: captureCall(() => packageCv.contourArea(contour)),
+          areaOriented: captureCall(() => packageCv.contourArea(contour, true)),
+          bounds: captureBounds(contour),
+        });
+        const auditMat = (name, rows, columns, depth, channels, values) => {
+          const contour = createMat(rows, columns, depth, channels, values);
+          const operations = auditOperations(contour);
+          disposePackageMat(contour);
+          return { name, operations };
+        };
+
+        const arityContour = createMat(4, 1, "i32", 2, i32Rectangle);
+        const arity = {
+          lengths: {
+            arcLength: packageCv.arcLength.length,
+            contourArea: packageCv.contourArea.length,
+            boundingRect: packageCv.boundingRect.length,
+          },
+          arcLength: {
+            zero: captureCall(() => packageCv.arcLength()),
+            one: captureCall(() => packageCv.arcLength(arityContour)),
+            two: captureCall(() => packageCv.arcLength(arityContour, true)),
+            three: captureCall(() => packageCv.arcLength(arityContour, true, 1)),
+          },
+          contourArea: {
+            zero: captureCall(() => packageCv.contourArea()),
+            one: captureCall(() => packageCv.contourArea(arityContour)),
+            two: captureCall(() => packageCv.contourArea(arityContour, true)),
+            three: captureCall(() => packageCv.contourArea(arityContour, true, 1)),
+          },
+          boundingRect: {
+            zero: captureCall(() => packageCv.boundingRect()),
+            one: captureBounds(arityContour),
+            two: captureCall(() => packageCv.boundingRect(arityContour, 1)),
+          },
+        };
+        disposePackageMat(arityContour);
+
+        const truthyContour = createMat(4, 1, "i32", 2, i32Rectangle);
+        const truthiness = [
+          ["false", false],
+          ["true", true],
+          ["zero", 0],
+          ["one", 1],
+          ["empty string", ""],
+          ["non-empty string", "closed"],
+          ["null", null],
+          ["explicit undefined", undefined],
+        ].map(([label, value]) => ({
+          label,
+          input: encodeValue(value),
+          arcLength: captureCall(() => packageCv.arcLength(truthyContour, value)),
+          contourArea: captureCall(() => packageCv.contourArea(truthyContour, value)),
+        }));
+        disposePackageMat(truthyContour);
+
+        const acceptedLayouts = [
+          auditMat("I32 Nx1C2", 4, 1, "i32", 2, i32Rectangle),
+          auditMat("I32 1xNC2", 1, 4, "i32", 2, i32Rectangle),
+          auditMat("I32 Nx2C1", 4, 2, "i32", 1, i32Rectangle),
+          auditMat("F32 Nx1C2", 4, 1, "f32", 2, f32Rectangle),
+          auditMat("F32 1xNC2", 1, 4, "f32", 2, f32Rectangle),
+          auditMat("F32 Nx2C1", 4, 2, "f32", 1, f32Rectangle),
+        ];
+        const rejectedInputs = [
+          auditMat("F64 Nx1C2", 4, 1, "f64", 2, f32Rectangle),
+          auditMat("U8 Nx1C2", 4, 1, "u8", 2, i32Rectangle),
+          auditMat("I32 2x2C2", 2, 2, "i32", 2, i32Rectangle),
+        ];
+
+        const deletedContour = createMat(4, 1, "i32", 2, i32Rectangle);
+        deletedContour.dispose();
+        const deleted = auditOperations(deletedContour);
+
+        const emptyContour = packageCv.emptyMat();
+        const canonicalEmptyBoundingRect = captureBounds(emptyContour);
+        disposePackageMat(emptyContour);
+
+        return {
+          arity,
+          truthiness,
+          acceptedLayouts,
+          rejectedInputs,
+          deleted,
+          canonicalEmptyBoundingRect,
+        };
+      }
+
       function propertyDescriptorSummary(owner, property) {
         const descriptor = Object.getOwnPropertyDescriptor(owner, property);
         if (descriptor === undefined) return { present: false };
@@ -4919,6 +5020,17 @@
         );
       }
 
+      function normalizeContourAudit(value) {
+        if (Array.isArray(value)) return value.map((entry) => normalizeContourAudit(entry));
+        if (typeof value !== "object" || value === null) return value;
+        if (value.threw === true) return { threw: true };
+        return Object.fromEntries(
+          Object.entries(value)
+            .filter(([key]) => key !== "error")
+            .map(([key, entry]) => [key, normalizeContourAudit(entry)]),
+        );
+      }
+
       function runReference(input, referenceRequest) {
         return new Promise((resolve, reject) => {
           const worker = new Worker("/test/browser/opencv-reference-worker.js");
@@ -4963,7 +5075,9 @@
                 ? "rotate"
                 : searchParameters.has("reference-count-non-zero")
                   ? "count-non-zero"
-                  : undefined;
+                  : searchParameters.has("reference-contours")
+                    ? "contour-contracts"
+                    : undefined;
         const referenceOutputs = await runReference(input, referenceRequest);
         if (searchParameters.has("reference-transpose")) {
           packageSource.dispose();
@@ -5000,6 +5114,13 @@
           result.textContent = JSON.stringify(referenceOutputs.countNonZeroAudit, null, 2);
           break differential;
         }
+        if (searchParameters.has("reference-contours")) {
+          packageSource.dispose();
+          globalThis.contourReferenceAudit = referenceOutputs.contourAudit;
+          result.style.whiteSpace = "pre-wrap";
+          result.textContent = JSON.stringify(referenceOutputs.contourAudit, null, 2);
+          break differential;
+        }
         const packageFloatMathAudit = auditPackageFloatMath(packageCv);
         const floatMathDifference = findDifference(
           normalizeFloatMathAudit(packageFloatMathAudit),
@@ -5026,6 +5147,15 @@
         );
         if (numericDifference !== undefined) {
           throw new Error(numericDifference);
+        }
+        const packageContourAudit = auditPackageContourContracts(packageCv);
+        const contourDifference = findDifference(
+          normalizeContourAudit(packageContourAudit),
+          normalizeContourAudit(referenceOutputs.contourAudit),
+          "contour contract audit",
+        );
+        if (contourDifference !== undefined) {
+          throw new Error(contourDifference);
         }
         const packageFlipAudit = auditPackageFlip(packageCv);
         const flipDifference = findDifference(
