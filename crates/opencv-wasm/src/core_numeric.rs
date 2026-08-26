@@ -104,8 +104,10 @@ fn matches(a: &Mat, b: &Mat) -> bool {
         && a.depth() == b.depth()
 }
 fn output_depth(input: MatDepth, dtype: i32) -> Result<MatDepth, NumericError> {
-    match dtype {
-        -1 => Ok(input),
+    if dtype < 0 {
+        return Ok(input);
+    }
+    match dtype & 7 {
         0 => Ok(MatDepth::U8),
         1 => Ok(MatDepth::I8),
         2 => Ok(MatDepth::U16),
@@ -113,7 +115,7 @@ fn output_depth(input: MatDepth, dtype: i32) -> Result<MatDepth, NumericError> {
         4 => Ok(MatDepth::I32),
         5 => Ok(MatDepth::F32),
         6 => Ok(MatDepth::F64),
-        other => Err(NumericError::InvalidOutputDepth(other)),
+        _ => Err(NumericError::InvalidOutputDepth(dtype)),
     }
 }
 fn binary(a: &Mat, b: &Mat, scale: f64, op: Binary) -> Result<Mat, NumericError> {
@@ -132,13 +134,7 @@ fn binary_with_depth(
     let values = decode(&a.compact_bytes(), a.depth())
         .into_iter()
         .zip(decode(&b.compact_bytes(), b.depth()))
-        .map(|(x, y)| match op {
-            Binary::Multiply => x * y * scale,
-            Binary::Divide if y == 0.0 && !matches!(a.depth(), MatDepth::F32 | MatDepth::F64) => {
-                0.0
-            }
-            Binary::Divide => x * scale / y,
-        });
+        .map(|(x, y)| binary_value(x, y, scale, a.depth(), op));
     from_values(a, depth, values)
 }
 fn binary_into(
@@ -153,8 +149,35 @@ fn binary_into(
         return Err(NumericError::InputMetadata);
     }
     let depth = output_depth(a.depth(), dtype)?;
+    if depth == a.depth()
+        && dst.try_write_shared_binary_scalars(
+            a,
+            b,
+            depth.byte_width(),
+            |left, right, output| {
+                let value = binary_value(
+                    decode_scalar(left, depth),
+                    decode_scalar(right, depth),
+                    scale,
+                    depth,
+                    op,
+                );
+                encode_scalar(value, depth, output);
+            },
+        )?
+    {
+        return Ok(());
+    }
     let out = binary_with_depth(a, b, scale, depth, op)?;
     write_result(dst, &out)
+}
+
+fn binary_value(x: f64, y: f64, scale: f64, depth: MatDepth, op: Binary) -> f64 {
+    match op {
+        Binary::Multiply => x * y * scale,
+        Binary::Divide if y == 0.0 && !matches!(depth, MatDepth::F32 | MatDepth::F64) => 0.0,
+        Binary::Divide => x * scale / y,
+    }
 }
 fn weighted(a: &Mat, alpha: f64, b: &Mat, beta: f64, gamma: f64) -> Result<Mat, NumericError> {
     weighted_with_depth(a, alpha, b, beta, gamma, a.depth())
@@ -225,16 +248,25 @@ fn write_result(destination: &Mat, output: &Mat) -> Result<(), NumericError> {
 fn decode(bytes: &[u8], depth: MatDepth) -> Vec<f64> {
     bytes
         .chunks_exact(depth.byte_width())
-        .map(|c| match depth {
-            MatDepth::U8 => f64::from(c[0]),
-            MatDepth::I8 => f64::from(i8::from_ne_bytes([c[0]])),
-            MatDepth::U16 => f64::from(u16::from_ne_bytes(c.try_into().expect("width"))),
-            MatDepth::I16 => f64::from(i16::from_ne_bytes(c.try_into().expect("width"))),
-            MatDepth::I32 => f64::from(i32::from_ne_bytes(c.try_into().expect("width"))),
-            MatDepth::F32 => f64::from(f32::from_ne_bytes(c.try_into().expect("width"))),
-            MatDepth::F64 => f64::from_ne_bytes(c.try_into().expect("width")),
-        })
+        .map(|bytes| decode_scalar(bytes, depth))
         .collect()
+}
+
+fn decode_scalar(bytes: &[u8], depth: MatDepth) -> f64 {
+    match depth {
+        MatDepth::U8 => f64::from(bytes[0]),
+        MatDepth::I8 => f64::from(i8::from_ne_bytes([bytes[0]])),
+        MatDepth::U16 => f64::from(u16::from_ne_bytes(bytes.try_into().expect("width"))),
+        MatDepth::I16 => f64::from(i16::from_ne_bytes(bytes.try_into().expect("width"))),
+        MatDepth::I32 => f64::from(i32::from_ne_bytes(bytes.try_into().expect("width"))),
+        MatDepth::F32 => f64::from(f32::from_ne_bytes(bytes.try_into().expect("width"))),
+        MatDepth::F64 => f64::from_ne_bytes(bytes.try_into().expect("width")),
+    }
+}
+
+fn encode_scalar(value: f64, depth: MatDepth, output: &mut [u8]) {
+    let encoded = encode([value], depth);
+    output.copy_from_slice(&encoded);
 }
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 fn encode(values: impl IntoIterator<Item = f64>, depth: MatDepth) -> Vec<u8> {
@@ -359,5 +391,23 @@ mod tests {
         binary_into(&a, &b, &d, 0.5, 6, Binary::Multiply).unwrap();
         assert_eq!(d.depth(), MatDepth::F64);
         assert_eq!(decode(&d.compact_bytes(), MatDepth::F64), vec![4., -4.]);
+    }
+    #[test]
+    fn dtype_uses_depth_bits_and_any_negative_value_preserves_input() {
+        assert_eq!(output_depth(MatDepth::F32, -2).unwrap(), MatDepth::F32);
+        assert_eq!(output_depth(MatDepth::F32, 14).unwrap(), MatDepth::F64);
+        assert!(output_depth(MatDepth::F32, 255).is_err());
+    }
+    #[test]
+    fn overlapping_destination_reads_inputs_live() {
+        let parent = mat(&[1., 2., 3., 4., 5.], MatDepth::F32, 1, 5);
+        let source = parent.roi(0, 0, 1, 3).unwrap();
+        let destination = parent.roi(0, 1, 1, 3).unwrap();
+        let multiplier = mat(&[3., 3., 3.], MatDepth::F32, 1, 3);
+        binary_into(&source, &multiplier, &destination, 1., -1, Binary::Multiply).unwrap();
+        assert_eq!(
+            decode(&parent.compact_bytes(), MatDepth::F32),
+            vec![1., 3., 9., 27., 5.]
+        );
     }
 }

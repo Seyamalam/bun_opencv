@@ -3614,7 +3614,7 @@ function auditNumericContracts(reference) {
       ["left", "destination", 2, 1, 0],
     ],
   };
-  return Object.fromEntries(
+  const contracts = Object.fromEntries(
     Object.entries(calls).map(([operation, argumentLists]) => [
       operation,
       {
@@ -3628,6 +3628,68 @@ function auditNumericContracts(reference) {
       },
     ]),
   );
+
+  const dtypeInputs = [-1, 0, 1, 2, 3, 4, 5, 6, 7, 14, -2, 255, Number.NaN, Infinity];
+  const dtype = dtypeInputs.map((value) => {
+    const audit = auditNumericCall(reference, "multiply", [
+      "left",
+      "right",
+      "destination",
+      0.5,
+      value,
+    ]);
+    return { value: encodeValue(value), call: audit.call, output: audit.output };
+  });
+
+  const scaleInputs = [undefined, null, true, false, "2", Number.NaN, Infinity, -Infinity];
+  const scale = scaleInputs.map((value) => {
+    const audit = auditNumericCall(reference, "multiply", ["left", "right", "destination", value]);
+    return { value: encodeValue(value), call: audit.call, output: audit.output };
+  });
+
+  const replacement = ["multiply", "divide", "addWeighted", "convertScaleAbs"].map((operation) => {
+    const left = makeSeedMat(reference, 1, 3, reference.CV_32FC1, [2, -4, 8]);
+    const right = makeSeedMat(reference, 1, 3, reference.CV_32FC1, [4, 2, 1]);
+    const destination = makeSeedMat(reference, 2, 1, reference.CV_8UC2, [9, 9, 9, 9]);
+    const operationArguments = {
+      multiply: [left, right, destination],
+      divide: [left, right, destination],
+      addWeighted: [left, 0.5, right, 0.25, 1, destination],
+      convertScaleAbs: [left, destination],
+    }[operation];
+    const audit = auditTypedMatCall(
+      () => reference[operation](...operationArguments),
+      [
+        ["left", left],
+        ["right", right],
+        ["destination", destination],
+      ],
+    );
+    safeDelete(destination);
+    safeDelete(right);
+    safeDelete(left);
+    return { operation, audit };
+  });
+
+  const parent = makeSeedMat(reference, 1, 5, reference.CV_32FC1, [1, 2, 3, 4, 5]);
+  const overlapSource = parent.roi(new reference.Rect(0, 0, 3, 1));
+  const overlapDestination = parent.roi(new reference.Rect(1, 0, 3, 1));
+  const multiplier = makeSeedMat(reference, 1, 3, reference.CV_32FC1, [3, 3, 3]);
+  const overlap = auditTypedMatCall(
+    () => reference.multiply(overlapSource, multiplier, overlapDestination),
+    [
+      ["parent", parent],
+      ["source", overlapSource],
+      ["destination", overlapDestination],
+      ["multiplier", multiplier],
+    ],
+  );
+  safeDelete(multiplier);
+  safeDelete(overlapDestination);
+  safeDelete(overlapSource);
+  safeDelete(parent);
+
+  return { contracts, dtype, scale, replacement, overlap };
 }
 
 function auditSetterCases(createDetector, setter, getter, cases) {
