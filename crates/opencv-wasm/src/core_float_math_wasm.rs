@@ -10,6 +10,7 @@ use wasm_bindgen::prelude::*;
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum FloatMathWasmError {
     FloatingPointDepthRequired(MatDepth),
+    PairedOutputsAlias,
     ShapeMismatch,
     Kernel(FloatMathError),
     Matrix(MatError),
@@ -24,6 +25,9 @@ impl fmt::Display for FloatMathWasmError {
             ),
             Self::ShapeMismatch => {
                 f.write_str("matrix rows, columns, channels, and depth must match")
+            }
+            Self::PairedOutputsAlias => {
+                f.write_str("coordinate conversion outputs must not share matrix storage")
             }
             Self::Kernel(error) => error.fmt(f),
             Self::Matrix(error) => error.fmt(f),
@@ -53,6 +57,58 @@ struct BinaryKernels {
     compact_f64: BinaryKernel,
     scalar_f32: BinaryScalarKernel,
     scalar_f64: BinaryScalarKernel,
+}
+
+#[derive(Clone, Copy)]
+enum PairOperation {
+    CartToPolar { degrees: bool },
+    PolarToCart { degrees: bool },
+}
+
+#[derive(Clone, Copy)]
+enum LivePairOutput {
+    First,
+    Second,
+}
+
+impl PairOperation {
+    fn compact(
+        self,
+        depth: MatDepth,
+        first: &[u8],
+        second: &[u8],
+    ) -> Result<(Vec<u8>, Vec<u8>), FloatMathError> {
+        match (self, depth) {
+            (Self::CartToPolar { degrees }, MatDepth::F32) => {
+                core_float_math::cart_to_polar_f32(first, second, degrees)
+            }
+            (Self::CartToPolar { degrees }, MatDepth::F64) => {
+                core_float_math::cart_to_polar_f64(first, second, degrees)
+            }
+            (Self::PolarToCart { degrees }, MatDepth::F32) => {
+                core_float_math::polar_to_cart_f32(first, second, degrees)
+            }
+            (Self::PolarToCart { degrees }, MatDepth::F64) => {
+                core_float_math::polar_to_cart_f64(first, second, degrees)
+            }
+            _ => unreachable!("coordinate conversion depth is validated before dispatch"),
+        }
+    }
+
+    fn scalar(
+        self,
+        depth: MatDepth,
+        first: &[u8],
+        second: &[u8],
+        first_output: &mut [u8],
+        second_output: &mut [u8],
+    ) {
+        let (first_bytes, second_bytes) = self
+            .compact(depth, first, second)
+            .expect("validated scalar buffers have matching floating-point widths");
+        first_output.copy_from_slice(&first_bytes);
+        second_output.copy_from_slice(&second_bytes);
+    }
 }
 
 /// Computes the natural exponential element-wise.
@@ -193,11 +249,7 @@ pub fn mat_cart_to_polar(
     angle: &Mat,
     degrees: bool,
 ) -> Result<(), JsError> {
-    pair_into(x, y, magnitude, angle, |depth, a, b| match depth {
-        MatDepth::F32 => core_float_math::cart_to_polar_f32(a, b, degrees),
-        MatDepth::F64 => core_float_math::cart_to_polar_f64(a, b, degrees),
-        _ => unreachable!(),
-    })
+    pair_into(x, y, magnitude, angle, PairOperation::CartToPolar { degrees })
     .map_err(JsError::from)
 }
 
@@ -212,11 +264,13 @@ pub fn mat_polar_to_cart(
     y: &Mat,
     degrees: bool,
 ) -> Result<(), JsError> {
-    pair_into(magnitude, angle, x, y, |depth, a, b| match depth {
-        MatDepth::F32 => core_float_math::polar_to_cart_f32(a, b, degrees),
-        MatDepth::F64 => core_float_math::polar_to_cart_f64(a, b, degrees),
-        _ => unreachable!(),
-    })
+    pair_into(
+        magnitude,
+        angle,
+        x,
+        y,
+        PairOperation::PolarToCart { degrees },
+    )
     .map_err(JsError::from)
 }
 
@@ -500,11 +554,14 @@ fn pair_into(
     right: &Mat,
     first: &Mat,
     second: &Mat,
-    kernel: impl FnOnce(MatDepth, &[u8], &[u8]) -> Result<(Vec<u8>, Vec<u8>), FloatMathError>,
+    operation: PairOperation,
 ) -> Result<(), FloatMathWasmError> {
     let depth = float_depth(left)?;
     if !matches(left, right) {
         return Err(FloatMathWasmError::ShapeMismatch);
+    }
+    if std::ptr::eq(first, second) || first.shares_allocation_with(second) {
+        return Err(FloatMathWasmError::PairedOutputsAlias);
     }
     if left.rows() == 0 || left.columns() == 0 {
         first.write_empty_layout(
@@ -523,7 +580,29 @@ fn pair_into(
         )?;
         return Ok(());
     }
-    let (first_bytes, second_bytes) = kernel(depth, &left.compact_bytes(), &right.compact_bytes())?;
+    let first_live = matches(left, first)
+        && (first.shares_allocation_with(left) || first.shares_allocation_with(right));
+    let second_live = matches(left, second)
+        && (second.shares_allocation_with(left) || second.shares_allocation_with(right));
+    let live_output = match (first_live, second_live) {
+        (true, false) => Some(LivePairOutput::First),
+        (false, true) => Some(LivePairOutput::Second),
+        (false, false) => None,
+        (true, true) => return Err(FloatMathWasmError::PairedOutputsAlias),
+    };
+    if let Some(live_output) = live_output {
+        write_live_pair_output(
+            (left, right),
+            (first, second),
+            depth,
+            operation,
+            live_output,
+        )?;
+        return Ok(());
+    }
+
+    let (first_bytes, second_bytes) =
+        operation.compact(depth, &left.compact_bytes(), &right.compact_bytes())?;
     first.write_output(
         first_bytes,
         left.rows(),
@@ -533,6 +612,57 @@ fn pair_into(
     )?;
     second.write_output(
         second_bytes,
+        left.rows(),
+        left.columns(),
+        left.channels(),
+        depth,
+    )?;
+    Ok(())
+}
+
+fn write_live_pair_output(
+    inputs: (&Mat, &Mat),
+    outputs: (&Mat, &Mat),
+    depth: MatDepth,
+    operation: PairOperation,
+    live_output: LivePairOutput,
+) -> Result<(), FloatMathWasmError> {
+    let (left, right) = inputs;
+    let (first, second) = outputs;
+    let scalar_width = depth.byte_width();
+    let mut deferred = Vec::with_capacity(left.compact_bytes().len());
+    let mut deferred_scalar = vec![0; scalar_width];
+    let (live, deferred_destination) = match live_output {
+        LivePairOutput::First => (first, second),
+        LivePairOutput::Second => (second, first),
+    };
+    let wrote_shared = live.try_write_shared_binary_scalars(
+        left,
+        right,
+        scalar_width,
+        |first_input, second_input, live_scalar| {
+            match live_output {
+                LivePairOutput::First => operation.scalar(
+                    depth,
+                    first_input,
+                    second_input,
+                    live_scalar,
+                    &mut deferred_scalar,
+                ),
+                LivePairOutput::Second => operation.scalar(
+                    depth,
+                    first_input,
+                    second_input,
+                    &mut deferred_scalar,
+                    live_scalar,
+                ),
+            }
+            deferred.extend_from_slice(&deferred_scalar);
+        },
+    )?;
+    debug_assert!(wrote_shared);
+    deferred_destination.write_output(
+        deferred,
         left.rows(),
         left.columns(),
         left.channels(),
@@ -824,10 +954,13 @@ mod tests {
         let angle_parent = f32_mat(&[99.0; 6], 2, 3, 1);
         let mag = mag_parent.roi(0, 0, 2, 2).unwrap();
         let angle = angle_parent.roi(0, 0, 2, 2).unwrap();
-        pair_into(&x, &y, &mag, &angle, |d, a, b| match d {
-            MatDepth::F32 => core_float_math::cart_to_polar_f32(a, b, false),
-            _ => unreachable!(),
-        })
+        pair_into(
+            &x,
+            &y,
+            &mag,
+            &angle,
+            PairOperation::CartToPolar { degrees: false },
+        )
         .unwrap();
         assert_eq!(
             mag_parent.to_f32_array().unwrap(),
@@ -835,10 +968,13 @@ mod tests {
         );
         let out_x = f32_mat(&[0.0; 4], 2, 2, 1);
         let out_y = f32_mat(&[0.0; 4], 2, 2, 1);
-        pair_into(&mag, &angle, &out_x, &out_y, |d, a, b| match d {
-            MatDepth::F32 => core_float_math::polar_to_cart_f32(a, b, false),
-            _ => unreachable!(),
-        })
+        pair_into(
+            &mag,
+            &angle,
+            &out_x,
+            &out_y,
+            PairOperation::PolarToCart { degrees: false },
+        )
         .unwrap();
         for (actual, expected) in out_x
             .to_f32_array()
@@ -864,11 +1000,13 @@ mod tests {
         let magnitude = f64_mat(&[99.0], 1, 1, 1);
         let angle = Mat::from_owned_bytes(vec![99], 1, 1, 1, MatDepth::U8).unwrap();
 
-        pair_into(&x, &y, &magnitude, &angle, |depth, a, b| match depth {
-            MatDepth::F32 => core_float_math::cart_to_polar_f32(a, b, true),
-            MatDepth::F64 => core_float_math::cart_to_polar_f64(a, b, true),
-            _ => unreachable!(),
-        })
+        pair_into(
+            &x,
+            &y,
+            &magnitude,
+            &angle,
+            PairOperation::CartToPolar { degrees: true },
+        )
         .expect("valid Cartesian conversion destinations");
 
         assert_eq!(
@@ -884,6 +1022,43 @@ mod tests {
         let angles = angle.to_f32_array().unwrap();
         assert!((angles[0] - 270.0).abs() < 1e-4);
         assert!((angles[1] - 53.130_104).abs() < 1e-4);
+    }
+    #[test]
+    fn cart_to_polar_reads_overlapping_inputs_live() {
+        let parent = f32_mat(&[2.0, 3.0, 4.0, 99.0], 1, 4, 1);
+        let x = parent.roi(0, 0, 1, 3).unwrap();
+        let y = f32_mat(&[0.0, 0.0, 0.0], 1, 3, 1);
+        let magnitude = parent.roi(0, 1, 1, 3).unwrap();
+        let angle = f32_mat(&[99.0, 99.0, 99.0], 1, 3, 1);
+
+        pair_into(
+            &x,
+            &y,
+            &magnitude,
+            &angle,
+            PairOperation::CartToPolar { degrees: false },
+        )
+        .expect("valid overlapping Cartesian conversion");
+
+        assert_eq!(parent.to_f32_array().unwrap(), [2.0, 2.0, 2.0, 2.0]);
+        assert_eq!(angle.to_f32_array().unwrap(), [0.0, 0.0, 0.0]);
+    }
+    #[test]
+    fn coordinate_conversion_rejects_a_shared_output_header() {
+        let x = f32_mat(&[3.0, 0.0], 1, 2, 1);
+        let y = f32_mat(&[4.0, -2.0], 1, 2, 1);
+        let output = crate::mat::mat_empty();
+
+        let result = pair_into(
+            &x,
+            &y,
+            &output,
+            &output,
+            PairOperation::CartToPolar { degrees: false },
+        );
+
+        assert!(result.is_err());
+        assert_eq!((output.rows(), output.columns()), (0, 0));
     }
     #[test]
     fn rejects_integer_depth_and_metadata_mismatch() {

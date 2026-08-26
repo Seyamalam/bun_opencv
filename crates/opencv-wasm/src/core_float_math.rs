@@ -298,16 +298,19 @@ pub(crate) fn cart_to_polar_f32(
 /// Converts matching Cartesian F64 coordinates to magnitude and angle.
 ///
 /// Angles use radians unless `angle_in_degrees` is true. `atan2` supplies the signed angle range.
+#[allow(clippy::cast_possible_truncation)]
 pub(crate) fn cart_to_polar_f64(
     x: &[u8],
     y: &[u8],
     angle_in_degrees: bool,
 ) -> Result<(Vec<u8>, Vec<u8>), FloatMathError> {
     transform_pairs_f64(x, y, |x_value, y_value| {
-        let angle = normalize_polar_angle_f64(y_value.atan2(x_value));
+        let x_value = x_value as f32;
+        let y_value = y_value as f32;
+        let angle = normalize_polar_angle_f32(y_value.atan2(x_value));
         (
-            (x_value * x_value + y_value * y_value).sqrt(),
-            convert_angle_f64(angle, angle_in_degrees),
+            f64::from((x_value * x_value + y_value * y_value).sqrt()),
+            f64::from(convert_angle_f32(angle, angle_in_degrees)),
         )
     })
 }
@@ -330,15 +333,21 @@ pub(crate) fn polar_to_cart_f32(
 /// Converts matching F64 magnitude and angle inputs to Cartesian coordinates.
 ///
 /// Angles use radians unless `angle_in_degrees` is true. Negative magnitudes retain their sign.
+#[allow(clippy::cast_possible_truncation)]
 pub(crate) fn polar_to_cart_f64(
     magnitude: &[u8],
     angle: &[u8],
     angle_in_degrees: bool,
 ) -> Result<(Vec<u8>, Vec<u8>), FloatMathError> {
     transform_pairs_f64(magnitude, angle, |magnitude_value, angle_value| {
-        let radians = convert_to_radians_f64(angle_value, angle_in_degrees);
+        let magnitude_value = magnitude_value as f32;
+        let angle_value = angle_value as f32;
+        let radians = convert_to_radians_f32(angle_value, angle_in_degrees);
         let (sine, cosine) = radians.sin_cos();
-        (magnitude_value * cosine, magnitude_value * sine)
+        (
+            f64::from(magnitude_value * cosine),
+            f64::from(magnitude_value * sine),
+        )
     })
 }
 
@@ -356,25 +365,7 @@ fn normalize_polar_angle_f32(angle: f32) -> f32 {
     }
 }
 
-fn normalize_polar_angle_f64(angle: f64) -> f64 {
-    if angle < 0.0 {
-        angle + std::f64::consts::TAU
-    } else if angle == 0.0 {
-        0.0
-    } else {
-        angle
-    }
-}
-
-fn convert_angle_f64(angle: f64, degrees: bool) -> f64 {
-    if degrees { angle.to_degrees() } else { angle }
-}
-
 fn convert_to_radians_f32(angle: f32, degrees: bool) -> f32 {
-    if degrees { angle.to_radians() } else { angle }
-}
-
-fn convert_to_radians_f64(angle: f64, degrees: bool) -> f64 {
     if degrees { angle.to_radians() } else { angle }
 }
 
@@ -519,7 +510,8 @@ mod tests {
         assert_eq!(actual.len(), expected.len());
         for (actual, expected) in actual.iter().zip(expected) {
             assert!(
-                (actual - expected).abs() <= tolerance,
+                actual.to_bits() == expected.to_bits()
+                    || (actual - expected).abs() <= tolerance,
                 "expected {expected}, got {actual}"
             );
         }
@@ -529,7 +521,8 @@ mod tests {
         assert_eq!(actual.len(), expected.len());
         for (actual, expected) in actual.iter().zip(expected) {
             assert!(
-                (actual - expected).abs() <= tolerance,
+                actual.to_bits() == expected.to_bits()
+                    || (actual - expected).abs() <= tolerance,
                 "expected {expected}, got {actual}"
             );
         }
@@ -687,7 +680,7 @@ mod tests {
         let (magnitude, angle) =
             cart_to_polar_f64(&f64_bytes(&[0.0]), &f64_bytes(&[2.0]), false).unwrap();
         assert_eq!(decode_f64(&magnitude).unwrap(), [2.0]);
-        close_f64(&decode_f64(&angle).unwrap(), &[FRAC_PI_2], 1e-14);
+        close_f64(&decode_f64(&angle).unwrap(), &[FRAC_PI_2], 1e-6);
     }
 
     #[test]
@@ -698,8 +691,44 @@ mod tests {
         close_f32(&decode_f32(&y).unwrap(), &[1.732_050_8, 0.0], 1e-5);
         let (x, y) =
             polar_to_cart_f64(&f64_bytes(&[2.0]), &f64_bytes(&[FRAC_PI_3]), false).unwrap();
-        close_f64(&decode_f64(&x).unwrap(), &[1.0], 1e-14);
-        close_f64(&decode_f64(&y).unwrap(), &[1.732_050_807_568_877_2], 1e-14);
+        close_f64(&decode_f64(&x).unwrap(), &[1.0], 1e-6);
+        close_f64(&decode_f64(&y).unwrap(), &[1.732_050_807_568_877_2], 1e-6);
+    }
+
+    #[test]
+    fn f64_coordinate_conversions_follow_the_pinned_f32_precision_path() {
+        let (magnitude, angle) = cart_to_polar_f64(
+            &f64_bytes(&[1.000_000_000_1, std::f64::consts::PI, 1e200, 1e-200]),
+            &f64_bytes(&[1.000_000_000_2, std::f64::consts::E, 0.0, 1e-200]),
+            false,
+        )
+        .unwrap();
+        assert_eq!(
+            decode_f64(&magnitude).unwrap(),
+            [1.414_213_538_169_860_8, 4.154_354_572_296_143, f64::INFINITY, 0.0]
+        );
+        close_f64(
+            &decode_f64(&angle).unwrap(),
+            &[0.785_398_185_253_143_3, 0.713_284_492_492_675_8, 0.0, 0.0],
+            1e-15,
+        );
+
+        let (x, y) = polar_to_cart_f64(
+            &f64_bytes(&[1.000_000_000_1, std::f64::consts::PI, 1e200, 1e-200]),
+            &f64_bytes(&[0.123_456_789_012_3, -0.75, 7.0, 1e-10]),
+            false,
+        )
+        .unwrap();
+        close_f64(
+            &decode_f64(&x).unwrap(),
+            &[0.992_388_963_699_340_8, 2.298_668_861_389_16, f64::INFINITY, 0.0],
+            1e-6,
+        );
+        close_f64(
+            &decode_f64(&y).unwrap(),
+            &[0.123_143_427_073_955_54, -2.141_431_808_471_679_7, f64::INFINITY, 0.0],
+            1e-6,
+        );
     }
 
     #[test]

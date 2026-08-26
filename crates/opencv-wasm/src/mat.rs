@@ -675,6 +675,20 @@ impl Mat {
         Ok(true)
     }
 
+    pub(crate) fn shares_allocation_with(&self, other: &Self) -> bool {
+        let self_header = self.header.borrow();
+        let other_header = other.header.borrow();
+        match (
+            self_header.storage.as_ref(),
+            other_header.storage.as_ref(),
+        ) {
+            (Some(self_storage), Some(other_storage)) => {
+                self_storage.shares_allocation_with(other_storage)
+            }
+            _ => false,
+        }
+    }
+
     fn compact_u8(&self) -> Vec<u8> {
         self.compact_bytes()
     }
