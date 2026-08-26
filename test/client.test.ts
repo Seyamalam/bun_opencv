@@ -34,7 +34,7 @@ import type {
 
 class CopyingMatHandle implements WasmMatHandle {
   readonly byteLength: number;
-  readonly isContinuous = true;
+  readonly isContinuous: boolean;
   readonly rowStride: number;
 
   constructor(
@@ -46,6 +46,7 @@ class CopyingMatHandle implements WasmMatHandle {
   ) {
     const byteWidth = depthByteWidth(depth);
     this.byteLength = rows * columns * channels * byteWidth;
+    this.isContinuous = rows > 0 && columns > 0;
     this.rowStride = columns * channels * byteWidth;
   }
 
@@ -2024,7 +2025,7 @@ describe("OpenCv client", () => {
     expect(matrix.depth).toBe("u8");
     expect(matrix.byteLength).toBe(0);
     expect(matrix.rowStride).toBe(0);
-    expect(matrix.isContinuous).toBe(true);
+    expect(matrix.isContinuous).toBe(false);
     expect(matrix.toUint8Array()).toEqual(new Uint8Array());
 
     matrix.dispose();

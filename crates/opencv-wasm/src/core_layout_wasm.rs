@@ -394,6 +394,7 @@ mod tests {
                 (0, 0, 1)
             );
             assert_eq!(output.depth(), MatDepth::U8);
+            assert!(!output.is_continuous());
             assert!(output.to_u8_array().is_empty());
         }
     }

@@ -424,7 +424,7 @@ impl Mat {
             .borrow()
             .storage
             .as_ref()
-            .is_none_or(MutableStorage::is_continuous)
+            .is_some_and(MutableStorage::is_continuous)
     }
 }
 
@@ -792,7 +792,7 @@ mod tests {
         assert_eq!(matrix.depth(), MatDepth::U8);
         assert_eq!(matrix.row_stride(), 0);
         assert_eq!(matrix.byte_length(), 0);
-        assert!(matrix.is_continuous());
+        assert!(!matrix.is_continuous());
         assert!(matrix.to_u8_array().is_empty());
         assert!(matches!(
             Mat::zeros_u8(0, 1, 1),
