@@ -201,6 +201,50 @@ impl MutableStorage {
         Ok(())
     }
 
+    pub(crate) fn write_repeat_from_shared(
+        &self,
+        source: &Self,
+        pixel_bytes: usize,
+        row_repeats: usize,
+        column_repeats: usize,
+    ) -> Result<(), MutableStorageError> {
+        let expected_rows = source
+            .rows
+            .checked_mul(row_repeats)
+            .ok_or(MutableStorageError::SizeOverflow)?;
+        let expected_row_bytes = source
+            .row_bytes
+            .checked_mul(column_repeats)
+            .ok_or(MutableStorageError::SizeOverflow)?;
+        if !self.shares_allocation_with(source)
+            || self.rows != expected_rows
+            || self.row_bytes != expected_row_bytes
+            || pixel_bytes == 0
+            || source.row_bytes % pixel_bytes != 0
+        {
+            return Err(MutableStorageError::IncorrectBufferLength {
+                expected: expected_row_bytes,
+                actual: self.row_bytes,
+            });
+        }
+
+        let source_columns = source.row_bytes / pixel_bytes;
+        let destination_columns = self.row_bytes / pixel_bytes;
+        let mut data = self.data.borrow_mut();
+        let mut pixel = vec![0; pixel_bytes];
+        for destination_row in 0..self.rows {
+            let source_row = source.offset + destination_row % source.rows * source.row_stride;
+            let destination_row_start = self.offset + destination_row * self.row_stride;
+            for destination_column in 0..destination_columns {
+                let source_start = source_row + destination_column % source_columns * pixel_bytes;
+                pixel.copy_from_slice(&data[source_start..source_start + pixel_bytes]);
+                let destination_start = destination_row_start + destination_column * pixel_bytes;
+                data[destination_start..destination_start + pixel_bytes].copy_from_slice(&pixel);
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) fn from_compact(
         data: Vec<u8>,
         rows: usize,

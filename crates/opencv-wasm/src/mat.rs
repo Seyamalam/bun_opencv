@@ -418,6 +418,55 @@ impl Mat {
         Ok(true)
     }
 
+    pub(crate) fn try_write_shared_repeat(
+        &self,
+        source: &Self,
+        row_repeats: u32,
+        column_repeats: u32,
+    ) -> Result<bool, MatError> {
+        let source_header = source.header.borrow();
+        let destination_header = self.header.borrow();
+        let expected_rows = source_header
+            .rows
+            .checked_mul(row_repeats)
+            .ok_or(MatError::BufferSizeOverflow)?;
+        let expected_columns = source_header
+            .columns
+            .checked_mul(column_repeats)
+            .ok_or(MatError::BufferSizeOverflow)?;
+        let compatible = destination_header.rows == expected_rows
+            && destination_header.columns == expected_columns
+            && destination_header.channels == source_header.channels
+            && destination_header.depth == source_header.depth;
+        if !compatible {
+            return Ok(false);
+        }
+
+        let Some(source_storage) = source_header.storage.as_ref() else {
+            return Ok(false);
+        };
+        let Some(destination_storage) = destination_header.storage.as_ref() else {
+            return Ok(false);
+        };
+        if !source_storage.shares_allocation_with(destination_storage) {
+            return Ok(false);
+        }
+
+        let pixel_bytes = usize::from(source_header.channels)
+            .checked_mul(source_header.depth.byte_width())
+            .ok_or(MatError::BufferSizeOverflow)?;
+        let row_repeats = usize::try_from(row_repeats).map_err(|_| MatError::BufferSizeOverflow)?;
+        let column_repeats =
+            usize::try_from(column_repeats).map_err(|_| MatError::BufferSizeOverflow)?;
+        destination_storage.write_repeat_from_shared(
+            source_storage,
+            pixel_bytes,
+            row_repeats,
+            column_repeats,
+        )?;
+        Ok(true)
+    }
+
     fn compact_u8(&self) -> Vec<u8> {
         self.compact_bytes()
     }

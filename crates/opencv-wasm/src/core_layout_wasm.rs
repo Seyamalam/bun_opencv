@@ -219,6 +219,12 @@ fn repeat_into_mat(
         destination.write_empty_output();
         return Ok(());
     }
+    let row_repeat_count = u32::try_from(row_repeats).expect("positive repeat count fits u32");
+    let column_repeat_count =
+        u32::try_from(column_repeats).expect("positive repeat count fits u32");
+    if destination.try_write_shared_repeat(source, row_repeat_count, column_repeat_count)? {
+        return Ok(());
+    }
     apply_layout_into(source, destination, |matrix| {
         repeat_bytes(matrix, row_repeats, column_repeats)
     })
@@ -499,6 +505,78 @@ mod tests {
             ));
             assert_eq!(matrix.to_u8_array(), [1, 2, 3, 4]);
         }
+    }
+
+    #[test]
+    fn repeat_matches_opencv_live_traversal_for_overlapping_regions() {
+        let horizontal_parent = u8_matrix((1..=6).collect(), 1, 6, 1);
+        let horizontal_source = horizontal_parent
+            .roi(0, 0, 1, 2)
+            .expect("valid horizontal source region");
+        let horizontal_destination = horizontal_parent
+            .roi(0, 1, 1, 4)
+            .expect("valid horizontal destination region");
+
+        repeat_into_mat(&horizontal_source, &horizontal_destination, 1, 2)
+            .expect("repeat horizontal overlap");
+
+        assert_eq!(horizontal_parent.to_u8_array(), [1, 1, 1, 1, 1, 6]);
+        assert_eq!(horizontal_destination.to_u8_array(), [1, 1, 1, 1]);
+
+        let vertical_parent = u8_matrix((1..=10).collect(), 5, 2, 1);
+        let vertical_source = vertical_parent
+            .roi(0, 0, 2, 2)
+            .expect("valid vertical source region");
+        let vertical_destination = vertical_parent
+            .roi(1, 0, 4, 2)
+            .expect("valid vertical destination region");
+
+        repeat_into_mat(&vertical_source, &vertical_destination, 2, 1)
+            .expect("repeat vertical overlap");
+
+        assert_eq!(
+            vertical_parent.to_u8_array(),
+            [1, 2, 1, 2, 1, 2, 1, 2, 1, 2]
+        );
+        assert_eq!(vertical_destination.to_u8_array(), [1, 2, 1, 2, 1, 2, 1, 2]);
+
+        let combined_parent = u8_matrix((1..=30).collect(), 5, 6, 1);
+        let combined_source = combined_parent
+            .roi(0, 0, 2, 2)
+            .expect("valid combined source region");
+        let combined_destination = combined_parent
+            .roi(1, 1, 4, 4)
+            .expect("valid combined destination region");
+
+        repeat_into_mat(&combined_source, &combined_destination, 2, 2)
+            .expect("repeat combined overlap");
+
+        assert_eq!(
+            combined_destination.to_u8_array(),
+            [1, 2, 1, 2, 7, 1, 7, 1, 1, 2, 1, 2, 7, 1, 7, 1]
+        );
+    }
+
+    #[test]
+    fn repeat_shared_traversal_moves_multibyte_multichannel_pixels_atomically() {
+        let values = [1.0_f64, -1.0, 2.0, -2.0, 3.0, -3.0, 4.0, -4.0, 5.0, -5.0];
+        let parent = Mat::from_owned_bytes(
+            values.into_iter().flat_map(f64::to_ne_bytes).collect(),
+            1,
+            5,
+            2,
+            MatDepth::F64,
+        )
+        .expect("valid F64C2 parent");
+        let source = parent.roi(0, 0, 1, 2).expect("valid F64C2 source");
+        let destination = parent.roi(0, 1, 1, 4).expect("valid F64C2 destination");
+
+        repeat_into_mat(&source, &destination, 1, 2).expect("repeat F64C2 overlap");
+
+        assert_eq!(
+            destination.to_f64_array().expect("F64 output"),
+            [1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0]
+        );
     }
 
     #[test]
