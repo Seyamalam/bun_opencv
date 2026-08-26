@@ -1608,9 +1608,11 @@
           throw new Error(detectorEnumDifference);
         }
 
+        const packageTranspose = packageCv.emptyMat();
+        packageCv.transpose(packageSource, packageTranspose);
         const cases = [
           ["flip", packageCv.flip(packageSource, 1)],
-          ["transpose", packageCv.transpose(packageSource)],
+          ["transpose", packageTranspose],
           ["rotate", packageCv.rotate(packageSource, 0)],
           ["repeat", packageCv.repeat(packageSource, 2, 1)],
         ];

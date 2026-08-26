@@ -849,13 +849,12 @@ class WasmOpenCv implements OpenCv {
     return scalarFromArray(this.#backend.matSum(source.handleForBackend()));
   }
 
-  transpose(source: Mat): Mat;
-  transpose(source: Mat, destination: Mat): void;
-  transpose(source: Mat, destination?: Mat): Mat | void {
-    if (destination !== undefined) {
-      this.#backend.matTransposeInto(source.handleForBackend(), destination.handleForBackend());
-      return;
-    }
+  transpose(source: Mat, destination: Mat): void {
+    requireExactArity(arguments.length, 2, "transpose");
+    this.#backend.matTransposeInto(source.handleForBackend(), destination.handleForBackend());
+  }
+
+  transposeAlloc(source: Mat): Mat {
     return new Mat(this.#backend.matTranspose(source.handleForBackend()));
   }
 

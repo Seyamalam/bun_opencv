@@ -2306,7 +2306,7 @@ describe("OpenCv client", () => {
 
     const source = client.matFromU8(2, 3, 1, new Uint8Array([1, 2, 3, 4, 5, 6]));
     const horizontal = client.flip(source, 1);
-    const transposed = client.transpose(source);
+    const transposed = client.transposeAlloc(source);
     const clockwise = client.rotate(source, 0);
     const repeated = client.repeat(source, 2, 1);
     const flippedDestination = client.zerosU8(2, 3, 1);
@@ -2314,7 +2314,7 @@ describe("OpenCv client", () => {
     const rotatedDestination = client.zerosU8(3, 2, 1);
     const repeatedDestination = client.zerosU8(4, 3, 1);
     client.flip(source, flippedDestination, 1);
-    client.transpose(source, transposedDestination);
+    expect(client.transpose(source, transposedDestination)).toBeUndefined();
     client.rotate(source, rotatedDestination, 0);
     client.repeat(source, 2, 1, repeatedDestination);
     expect(horizontal.toUint8Array()).toEqual(new Uint8Array([3, 2, 1, 6, 5, 4]));
@@ -2340,6 +2340,30 @@ describe("OpenCv client", () => {
     clockwise.dispose();
     transposed.dispose();
     horizontal.dispose();
+    source.dispose();
+  });
+
+  test("matches the exact two-argument transpose call contract", () => {
+    const source = client.matFromU8(2, 1, 1, new Uint8Array([1, 2]));
+    const destination = client.zerosU8(1, 2, 1);
+
+    expect(client.transpose.length).toBe(2);
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing missing arguments from plain JavaScript.
+      client.transpose();
+    }).toThrow(new BindingError("function transpose called with 0 arguments, expected 2 args!"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a missing destination from plain JavaScript.
+      client.transpose(source);
+    }).toThrow(new BindingError("function transpose called with 1 arguments, expected 2 args!"));
+    expect(client.transpose(source, destination)).toBeUndefined();
+    expect(destination.toUint8Array()).toEqual(new Uint8Array([1, 2]));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing an extra argument from plain JavaScript.
+      client.transpose(source, destination, 1);
+    }).toThrow(new BindingError("function transpose called with 3 arguments, expected 2 args!"));
+
+    destination.dispose();
     source.dispose();
   });
 

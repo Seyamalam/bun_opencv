@@ -491,8 +491,8 @@ export interface OpenCv {
   split(source: Mat): Mat[];
   sqrt(source: Mat): Mat;
   sum(source: Mat): Scalar;
-  transpose(source: Mat): Mat;
   transpose(source: Mat, destination: Mat): void;
+  transposeAlloc(source: Mat): Mat;
   trace(source: Mat): number;
   transform(source: Mat, coefficients: Mat): Mat;
   transform(source: Mat, coefficients: Mat, destination: Mat): void;
