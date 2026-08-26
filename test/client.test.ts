@@ -1216,20 +1216,40 @@ class CopyingBackend implements OpenCvBackend {
     return mapFloatHandle(source, Math.exp);
   }
 
+  matExpInto(source: WasmMatHandle, destination: WasmMatHandle): void {
+    destination.copyFromBytes(this.matExp(source).toUint8Array());
+  }
+
   matLog(source: WasmMatHandle): WasmMatHandle {
     return mapFloatHandle(source, Math.log);
+  }
+
+  matLogInto(source: WasmMatHandle, destination: WasmMatHandle): void {
+    destination.copyFromBytes(this.matLog(source).toUint8Array());
   }
 
   matSqrt(source: WasmMatHandle): WasmMatHandle {
     return mapFloatHandle(source, Math.sqrt);
   }
 
+  matSqrtInto(source: WasmMatHandle, destination: WasmMatHandle): void {
+    destination.copyFromBytes(this.matSqrt(source).toUint8Array());
+  }
+
   matPow(source: WasmMatHandle, exponent: number): WasmMatHandle {
     return mapFloatHandle(source, (value) => value ** exponent);
   }
 
+  matPowInto(source: WasmMatHandle, exponent: number, destination: WasmMatHandle): void {
+    destination.copyFromBytes(this.matPow(source, exponent).toUint8Array());
+  }
+
   matMagnitude(x: WasmMatHandle, y: WasmMatHandle): WasmMatHandle {
     return zipFloatHandles(x, y, Math.hypot);
+  }
+
+  matMagnitudeInto(x: WasmMatHandle, y: WasmMatHandle, destination: WasmMatHandle): void {
+    destination.copyFromBytes(this.matMagnitude(x, y).toUint8Array());
   }
 
   matCartToPolar(
@@ -2645,11 +2665,11 @@ describe("OpenCv client", () => {
   test("runs floating-point math and cartesian conversions", () => {
     const x = client.matFromF32(1, 2, 1, new Float32Array([3, 0]));
     const y = client.matFromF32(1, 2, 1, new Float32Array([4, 2]));
-    const exponential = client.exp(x);
-    const logarithm = client.log(exponential);
-    const squareRoot = client.sqrt(y);
-    const squared = client.pow(x, 2);
-    const vectorLength = client.magnitude(x, y);
+    const exponential = client.expAlloc(x);
+    const logarithm = client.logAlloc(exponential);
+    const squareRoot = client.sqrtAlloc(y);
+    const squared = client.powAlloc(x, 2);
+    const vectorLength = client.magnitudeAlloc(x, y);
     expect(Array.from(exponential.toFloat32Array())).toEqual([Math.fround(Math.exp(3)), 1]);
     expect(Array.from(logarithm.toFloat32Array())[0]).toBeCloseTo(3, 5);
     expect(Array.from(squareRoot.toFloat32Array())).toEqual([2, Math.fround(Math.sqrt(2))]);
@@ -2679,6 +2699,96 @@ describe("OpenCv client", () => {
       x,
     ])
       matrix.dispose();
+  });
+
+  test("matches float-math destination call contracts", () => {
+    const source = client.matFromF32(1, 2, 1, new Float32Array([1, 4]));
+    const other = client.matFromF32(1, 2, 1, new Float32Array([2, 3]));
+    const destination = client.zerosF32(1, 2, 1);
+
+    expect(client.exp.length).toBe(2);
+    expect(client.log.length).toBe(2);
+    expect(client.sqrt.length).toBe(2);
+    expect(client.pow.length).toBe(3);
+    expect(client.magnitude.length).toBe(3);
+
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing missing arguments from plain JavaScript.
+      client.exp();
+    }).toThrow(new BindingError("function exp called with 0 arguments, expected 2 args!"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a missing destination.
+      client.log(source);
+    }).toThrow(new BindingError("function log called with 1 arguments, expected 2 args!"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing an extra argument.
+      client.sqrt(source, destination, destination);
+    }).toThrow(new BindingError("function sqrt called with 3 arguments, expected 2 args!"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing missing arguments from plain JavaScript.
+      client.pow();
+    }).toThrow(new BindingError("function pow called with 0 arguments, expected 3 args!"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a missing destination.
+      client.pow(source, 2);
+    }).toThrow(new BindingError("function pow called with 2 arguments, expected 3 args!"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing an extra argument.
+      client.pow(source, 2, destination, destination);
+    }).toThrow(new BindingError("function pow called with 4 arguments, expected 3 args!"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing missing arguments from plain JavaScript.
+      client.magnitude();
+    }).toThrow(new BindingError("function magnitude called with 0 arguments, expected 3 args!"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a missing destination.
+      client.magnitude(source, other);
+    }).toThrow(new BindingError("function magnitude called with 2 arguments, expected 3 args!"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing an extra argument.
+      client.magnitude(source, other, destination, destination);
+    }).toThrow(new BindingError("function magnitude called with 4 arguments, expected 3 args!"));
+
+    expect(client.exp(source, destination)).toBeUndefined();
+    expect(client.log(source, destination)).toBeUndefined();
+    expect(client.sqrt(source, destination)).toBeUndefined();
+    expect(client.pow(source, 2, destination)).toBeUndefined();
+    expect(client.magnitude(source, other, destination)).toBeUndefined();
+    expect(() => {
+      // @ts-expect-error Runtime parity requires boolean-to-double conversion.
+      client.pow(source, true, destination);
+    }).not.toThrow();
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing Embind double rejection.
+      client.pow(source, "2", destination);
+    }).toThrow(new TypeError('Cannot convert "2" to double'));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a null Mat.
+      client.exp(null, destination);
+    }).toThrow(new BindingError("null is not a valid Mat"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing an undefined Mat.
+      client.log(undefined, destination);
+    }).toThrow(new TypeError("Cannot read properties of undefined (reading '$$')"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a structural Mat.
+      client.sqrt({}, destination);
+    }).toThrow(new BindingError('Cannot pass "[object Object]" as a Mat'));
+
+    const deleted = client.matFromF32(1, 1, 1, new Float32Array([1]));
+    deleted.dispose();
+    expect(() => {
+      // @ts-expect-error Source conversion must fail before power conversion.
+      client.pow(deleted, "bad", destination);
+    }).toThrow(new BindingError("Cannot pass deleted object as a pointer of type Mat"));
+    expect(() => {
+      // @ts-expect-error Power conversion must fail before destination conversion.
+      client.pow(source, "bad", null);
+    }).toThrow(new TypeError('Cannot convert "bad" to double'));
+
+    destination.dispose();
+    other.dispose();
+    source.dispose();
   });
 
   test("concatenates matrices in both axes", () => {

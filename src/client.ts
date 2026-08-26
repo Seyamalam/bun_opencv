@@ -349,7 +349,12 @@ class WasmOpenCv implements OpenCv {
     );
   }
 
-  exp(source: Mat): Mat {
+  exp(source: Mat, destination: Mat): void {
+    requireExactArity(arguments.length, 2, "exp");
+    this.#backend.matExpInto(matHandleForBinding(source), matHandleForBinding(destination));
+  }
+
+  expAlloc(source: Mat): Mat {
     return new Mat(this.#backend.matExp(source.handleForBackend()));
   }
 
@@ -528,7 +533,12 @@ class WasmOpenCv implements OpenCv {
     return this.#backend.matIsContourConvex(contour.handleForBackend());
   }
 
-  log(source: Mat): Mat {
+  log(source: Mat, destination: Mat): void {
+    requireExactArity(arguments.length, 2, "log");
+    this.#backend.matLogInto(matHandleForBinding(source), matHandleForBinding(destination));
+  }
+
+  logAlloc(source: Mat): Mat {
     return new Mat(this.#backend.matLog(source.handleForBackend()));
   }
 
@@ -546,7 +556,16 @@ class WasmOpenCv implements OpenCv {
     return new Mat(this.#backend.matLut(source.handleForBackend(), table.handleForBackend()));
   }
 
-  magnitude(x: Mat, y: Mat): Mat {
+  magnitude(x: Mat, y: Mat, destination: Mat): void {
+    requireExactArity(arguments.length, 3, "magnitude");
+    this.#backend.matMagnitudeInto(
+      matHandleForBinding(x),
+      matHandleForBinding(y),
+      matHandleForBinding(destination),
+    );
+  }
+
+  magnitudeAlloc(x: Mat, y: Mat): Mat {
     return new Mat(this.#backend.matMagnitude(x.handleForBackend(), y.handleForBackend()));
   }
 
@@ -732,11 +751,16 @@ class WasmOpenCv implements OpenCv {
     );
   }
 
-  pow(source: Mat, exponent: number): Mat {
-    if (!Number.isFinite(exponent)) {
-      throw new OpenCvInputError("exponent must be finite");
-    }
-    return new Mat(this.#backend.matPow(source.handleForBackend(), exponent));
+  pow(source: Mat, exponent: number, destination: Mat): void {
+    requireExactArity(arguments.length, 3, "pow");
+    const sourceHandle = matHandleForBinding(source);
+    const power = toWasmF64(exponent);
+    const destinationHandle = matHandleForBinding(destination);
+    this.#backend.matPowInto(sourceHandle, power, destinationHandle);
+  }
+
+  powAlloc(source: Mat, exponent: number): Mat {
+    return new Mat(this.#backend.matPow(source.handleForBackend(), toWasmF64(exponent)));
   }
 
   randn(destination: Mat, mean: Scalar, standardDeviation: Scalar): void {
@@ -845,7 +869,12 @@ class WasmOpenCv implements OpenCv {
     return this.#backend.matSplit(source.handleForBackend()).map((handle) => new Mat(handle));
   }
 
-  sqrt(source: Mat): Mat {
+  sqrt(source: Mat, destination: Mat): void {
+    requireExactArity(arguments.length, 2, "sqrt");
+    this.#backend.matSqrtInto(matHandleForBinding(source), matHandleForBinding(destination));
+  }
+
+  sqrtAlloc(source: Mat): Mat {
     return new Mat(this.#backend.matSqrt(source.handleForBackend()));
   }
 
@@ -1097,6 +1126,16 @@ function toWasmI32(value: EmbindScalarInput): number {
     );
   }
   return value | 0;
+}
+
+function toWasmF64(value: EmbindScalarInput): number {
+  if (value === true) return 1;
+  if (value === false) return 0;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- This is the JS-to-Embind scalar parser boundary.
+  if (typeof value !== "number") {
+    throw new TypeError(`Cannot convert "${String(value)}" to double`);
+  }
+  return value;
 }
 
 function matHandleForBinding(value: Mat): ReturnType<Mat["handleForBackend"]> {

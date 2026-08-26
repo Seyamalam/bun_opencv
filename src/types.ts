@@ -243,10 +243,15 @@ export interface OpenCvBackend {
     fourth: WasmMatHandle,
   ): WasmMatHandle;
   matExp(source: WasmMatHandle): WasmMatHandle;
+  matExpInto(source: WasmMatHandle, destination: WasmMatHandle): void;
   matLog(source: WasmMatHandle): WasmMatHandle;
+  matLogInto(source: WasmMatHandle, destination: WasmMatHandle): void;
   matSqrt(source: WasmMatHandle): WasmMatHandle;
+  matSqrtInto(source: WasmMatHandle, destination: WasmMatHandle): void;
   matPow(source: WasmMatHandle, exponent: number): WasmMatHandle;
+  matPowInto(source: WasmMatHandle, exponent: number, destination: WasmMatHandle): void;
   matMagnitude(x: WasmMatHandle, y: WasmMatHandle): WasmMatHandle;
+  matMagnitudeInto(x: WasmMatHandle, y: WasmMatHandle, destination: WasmMatHandle): void;
   matCartToPolar(
     x: WasmMatHandle,
     y: WasmMatHandle,
@@ -415,7 +420,8 @@ export interface OpenCv {
     arcEnd: number,
     delta: number,
   ): Point[];
-  exp(source: Mat): Mat;
+  exp(source: Mat, destination: Mat): void;
+  expAlloc(source: Mat): Mat;
   emptyMat(): Mat;
   flip(source: Mat, destination: Mat, flipCode: number): void;
   flipAlloc(source: Mat, flipCode: number): Mat;
@@ -442,10 +448,12 @@ export interface OpenCv {
   invertAffineTransform(transform: Mat): Mat;
   isContourConvex(contour: Mat): boolean;
   invert(source: Mat, destination: Mat, method?: DecompositionMethod): number;
-  log(source: Mat): Mat;
+  log(source: Mat, destination: Mat): void;
+  logAlloc(source: Mat): Mat;
   lut(source: Mat, table: Mat): Mat;
   lut(source: Mat, table: Mat, destination: Mat): void;
-  magnitude(x: Mat, y: Mat): Mat;
+  magnitude(x: Mat, y: Mat, destination: Mat): void;
+  magnitudeAlloc(x: Mat, y: Mat): Mat;
   max(left: Mat, right: Mat): Mat;
   mean(source: Mat): Scalar;
   meanStdDev(source: Mat, means: Mat, standardDeviations: Mat, mask?: Mat): void;
@@ -471,7 +479,8 @@ export interface OpenCv {
   pointPolygonTest(contour: Mat, point: Point, measureDistance: boolean): number;
   perspectiveTransform(source: Mat, coefficients: Mat): Mat;
   perspectiveTransform(source: Mat, coefficients: Mat, destination: Mat): void;
-  pow(source: Mat, exponent: number): Mat;
+  pow(source: Mat, exponent: number, destination: Mat): void;
+  powAlloc(source: Mat, exponent: number): Mat;
   randn(destination: Mat, mean: Scalar, standardDeviation: Scalar): void;
   randu(destination: Mat, lower: Scalar, upper: Scalar): void;
   resizeNearest(image: RgbaImage, targetWidth: number, targetHeight: number): RgbaImage;
@@ -492,7 +501,8 @@ export interface OpenCv {
   threshold(image: RgbaImage, threshold: number): RgbaImage;
   subtract(left: Mat, right: Mat): Mat;
   split(source: Mat): Mat[];
-  sqrt(source: Mat): Mat;
+  sqrt(source: Mat, destination: Mat): void;
+  sqrtAlloc(source: Mat): Mat;
   sum(source: Mat): Scalar;
   transpose(source: Mat, destination: Mat): void;
   transposeAlloc(source: Mat): Mat;
