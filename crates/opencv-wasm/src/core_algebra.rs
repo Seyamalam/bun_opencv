@@ -29,9 +29,9 @@ impl fmt::Display for AlgebraError {
             Self::NonFiniteInput => {
                 formatter.write_str("matrix algebra requires finite scalar values")
             }
-            Self::NumericalFailure => formatter.write_str(
-                "matrix factorization produced a non-finite intermediate value",
-            ),
+            Self::NumericalFailure => {
+                formatter.write_str("matrix factorization produced a non-finite intermediate value")
+            }
             Self::UnderdeterminedSystem { rows, columns } => write!(
                 formatter,
                 "QR solve requires rows greater than or equal to columns; received {rows}x{columns}"
@@ -176,8 +176,9 @@ pub(crate) fn solve_qr(
     let mut transformed_rhs = right_hand_sides.to_vec();
 
     for column in 0..columns {
-        let column_norm = (column..rows)
-            .fold(0.0_f64, |norm, row| norm.hypot(factored[row * columns + column]));
+        let column_norm = (column..rows).fold(0.0_f64, |norm, row| {
+            norm.hypot(factored[row * columns + column])
+        });
         if column_norm <= tolerance {
             return Ok(None);
         }
@@ -205,9 +206,7 @@ pub(crate) fn solve_qr(
         for target_column in column..columns {
             let projection = (column..rows)
                 .enumerate()
-                .map(|(offset, row)| {
-                    reflector[offset] * factored[row * columns + target_column]
-                })
+                .map(|(offset, row)| reflector[offset] * factored[row * columns + target_column])
                 .sum::<f64>();
             for (offset, row) in (column..rows).enumerate() {
                 let target = row * columns + target_column;
@@ -283,9 +282,7 @@ pub(crate) fn solve_cholesky(
     let tolerance = scale * f64::EPSILON * dimension_as_f64(order);
     for row in 0..order {
         for column in 0..row {
-            if (coefficients[row * order + column]
-                - coefficients[column * order + row])
-                .abs()
+            if (coefficients[row * order + column] - coefficients[column * order + row]).abs()
                 > tolerance
             {
                 return Ok(None);
@@ -361,7 +358,9 @@ impl LuFactorization {
         if !relative_epsilon.is_finite() || relative_epsilon < 0.0 {
             return Err(AlgebraError::InvalidTolerance);
         }
-        let scale = values.iter().fold(0.0_f64, |largest, value| largest.max(value.abs()));
+        let scale = values
+            .iter()
+            .fold(0.0_f64, |largest, value| largest.max(value.abs()));
         if scale == 0.0 {
             return Ok(None);
         }
@@ -447,11 +446,7 @@ fn dimension_as_f64(value: usize) -> f64 {
     value as f64
 }
 
-fn validate_shape(
-    actual: usize,
-    rows: usize,
-    columns: usize,
-) -> Result<(), AlgebraError> {
+fn validate_shape(actual: usize, rows: usize, columns: usize) -> Result<(), AlgebraError> {
     if rows == 0 || columns == 0 {
         return Err(AlgebraError::EmptyMatrix);
     }
@@ -470,32 +465,29 @@ mod tests {
 
     #[test]
     fn determinant_uses_partial_pivoting() {
-        let matrix = [
-            0.0, 2.0, 1.0,
-            1.0, 0.0, 3.0,
-            4.0, 5.0, 6.0,
-        ];
+        let matrix = [0.0, 2.0, 1.0, 1.0, 0.0, 3.0, 4.0, 5.0, 6.0];
 
         assert_eq!(determinant(&matrix, 3), Ok(17.0));
     }
 
     #[test]
     fn inverse_solves_each_identity_column() {
-        let inverse = invert(&[4.0, 7.0, 2.0, 6.0], 2).expect("valid shape").expect("invertible");
+        let inverse = invert(&[4.0, 7.0, 2.0, 6.0], 2)
+            .expect("valid shape")
+            .expect("invertible");
         let expected = [0.6, -0.7, -0.2, 0.4];
 
         for (actual, expected) in inverse.iter().zip(expected) {
-            assert!((actual - expected).abs() <= 1.0e-14, "{actual} != {expected}");
+            assert!(
+                (actual - expected).abs() <= 1.0e-14,
+                "{actual} != {expected}"
+            );
         }
     }
 
     #[test]
     fn solve_lu_handles_multiple_right_hand_sides() {
-        let coefficients = [
-            3.0, 1.0, -1.0,
-            2.0, 4.0, 1.0,
-            -1.0, 2.0, 5.0,
-        ];
+        let coefficients = [3.0, 1.0, -1.0, 2.0, 4.0, 1.0, -1.0, 2.0, 5.0];
         let right_hand_sides = [1.0, 4.0, 19.0, 26.0, 30.0, 36.0];
 
         let solution = solve_lu(&coefficients, 3, &right_hand_sides, 2)
@@ -503,7 +495,10 @@ mod tests {
             .expect("nonsingular");
         let expected = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
         for (actual, expected) in solution.iter().zip(expected) {
-            assert!((actual - expected).abs() <= 1.0e-13, "{actual} != {expected}");
+            assert!(
+                (actual - expected).abs() <= 1.0e-13,
+                "{actual} != {expected}"
+            );
         }
     }
 
@@ -529,7 +524,10 @@ mod tests {
             .expect("positive definite");
         let expected = [1.0, 0.5, 1.0, 0.0];
         for (actual, expected) in solution.iter().zip(expected) {
-            assert!((actual - expected).abs() <= 1.0e-14, "{actual} != {expected}");
+            assert!(
+                (actual - expected).abs() <= 1.0e-14,
+                "{actual} != {expected}"
+            );
         }
     }
 

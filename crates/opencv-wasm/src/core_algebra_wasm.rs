@@ -40,9 +40,8 @@ impl fmt::Display for AlgebraWasmError {
             Self::InvertDestinationMismatch => formatter.write_str(
                 "inverse destination must match the source rows and columns and have one channel",
             ),
-            Self::SolveShapeMismatch => formatter.write_str(
-                "solve requires B.rows = A.rows and X shape A.columns-by-B.columns",
-            ),
+            Self::SolveShapeMismatch => formatter
+                .write_str("solve requires B.rows = A.rows and X shape A.columns-by-B.columns"),
             Self::DecompositionRequiresSquare => {
                 formatter.write_str("selected decomposition requires a square coefficient matrix")
             }
@@ -90,11 +89,7 @@ pub fn mat_determinant(source: &Mat) -> Result<f64, JsError> {
 /// # Errors
 /// Returns an error for invalid shapes, channels, destination depth, method, or non-finite input.
 #[wasm_bindgen(js_name = matInvertInto)]
-pub fn mat_invert_into(
-    source: &Mat,
-    destination: &Mat,
-    method: u32,
-) -> Result<f64, JsError> {
+pub fn mat_invert_into(source: &Mat, destination: &Mat, method: u32) -> Result<f64, JsError> {
     invert_adapter(source, destination, method).map_err(JsError::from)
 }
 
@@ -126,11 +121,7 @@ fn determinant_adapter(source: &Mat) -> Result<f64, AlgebraWasmError> {
     )?)
 }
 
-fn invert_adapter(
-    source: &Mat,
-    destination: &Mat,
-    method: u32,
-) -> Result<f64, AlgebraWasmError> {
+fn invert_adapter(source: &Mat, destination: &Mat, method: u32) -> Result<f64, AlgebraWasmError> {
     validate_single_channel(source)?;
     validate_square(source)?;
     validate_floating_destination(destination)?;
@@ -330,12 +321,42 @@ mod tests {
     fn determinant_decodes_every_scalar_depth() {
         let matrices = [
             matrix(vec![1, 2, 3, 4], 2, 2, MatDepth::U8),
-            matrix(scalar_bytes(&[1_i8, 2, 3, 4], |v| v.to_ne_bytes().to_vec()), 2, 2, MatDepth::I8),
-            matrix(scalar_bytes(&[1_u16, 2, 3, 4], |v| v.to_ne_bytes().to_vec()), 2, 2, MatDepth::U16),
-            matrix(scalar_bytes(&[1_i16, 2, 3, 4], |v| v.to_ne_bytes().to_vec()), 2, 2, MatDepth::I16),
-            matrix(scalar_bytes(&[1_i32, 2, 3, 4], |v| v.to_ne_bytes().to_vec()), 2, 2, MatDepth::I32),
-            matrix(scalar_bytes(&[1_f32, 2.0, 3.0, 4.0], |v| v.to_ne_bytes().to_vec()), 2, 2, MatDepth::F32),
-            matrix(scalar_bytes(&[1_f64, 2.0, 3.0, 4.0], |v| v.to_ne_bytes().to_vec()), 2, 2, MatDepth::F64),
+            matrix(
+                scalar_bytes(&[1_i8, 2, 3, 4], |v| v.to_ne_bytes().to_vec()),
+                2,
+                2,
+                MatDepth::I8,
+            ),
+            matrix(
+                scalar_bytes(&[1_u16, 2, 3, 4], |v| v.to_ne_bytes().to_vec()),
+                2,
+                2,
+                MatDepth::U16,
+            ),
+            matrix(
+                scalar_bytes(&[1_i16, 2, 3, 4], |v| v.to_ne_bytes().to_vec()),
+                2,
+                2,
+                MatDepth::I16,
+            ),
+            matrix(
+                scalar_bytes(&[1_i32, 2, 3, 4], |v| v.to_ne_bytes().to_vec()),
+                2,
+                2,
+                MatDepth::I32,
+            ),
+            matrix(
+                scalar_bytes(&[1_f32, 2.0, 3.0, 4.0], |v| v.to_ne_bytes().to_vec()),
+                2,
+                2,
+                MatDepth::F32,
+            ),
+            matrix(
+                scalar_bytes(&[1_f64, 2.0, 3.0, 4.0], |v| v.to_ne_bytes().to_vec()),
+                2,
+                2,
+                MatDepth::F64,
+            ),
         ];
 
         for source in matrices {
@@ -408,10 +429,9 @@ mod tests {
     #[test]
     fn strided_sources_and_in_place_inverse_use_compact_snapshots() {
         let parent = matrix(
-            scalar_bytes(
-                &[99.0_f64, 4.0, 7.0, 99.0, 99.0, 2.0, 6.0, 99.0],
-                |v| v.to_ne_bytes().to_vec(),
-            ),
+            scalar_bytes(&[99.0_f64, 4.0, 7.0, 99.0, 99.0, 2.0, 6.0, 99.0], |v| {
+                v.to_ne_bytes().to_vec()
+            }),
             2,
             4,
             MatDepth::F64,
