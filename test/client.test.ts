@@ -2238,6 +2238,24 @@ describe("OpenCv client", () => {
     contour.dispose();
   });
 
+  test("matches contour measurement call contracts", () => {
+    const contour = client.matFromI32(4, 1, 2, new Int32Array([0, 0, 4, 0, 4, 3, 0, 3]));
+
+    expect(client.arcLength.length).toBe(2);
+    expect(client.contourArea.length).toBe(0);
+    expect(client.boundingRect.length).toBe(1);
+    // @ts-expect-error Runtime parity uses JavaScript boolean coercion.
+    expect(client.arcLength(contour, "closed")).toBe(14);
+    // @ts-expect-error Runtime parity uses JavaScript boolean coercion.
+    expect(client.contourArea(contour, 0)).toBe(12);
+    // @ts-expect-error Runtime parity rejects missing arguments.
+    expect(() => client.arcLength(contour)).toThrow(BindingError);
+    // @ts-expect-error Runtime parity rejects extra arguments.
+    expect(() => client.boundingRect(contour, 1)).toThrow(BindingError);
+
+    contour.dispose();
+  });
+
   test("creates image-processing helpers with structured point results", () => {
     const kernel = client.getStructuringElement(1, { width: 3, height: 3 }, { x: 1, y: 1 });
     expect(kernel.toUint8Array()).toEqual(new Uint8Array([0, 1, 0, 1, 1, 1, 0, 1, 0]));

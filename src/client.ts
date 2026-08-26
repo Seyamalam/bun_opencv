@@ -71,7 +71,8 @@ class WasmOpenCv implements OpenCv {
   }
 
   arcLength(contour: Mat, closed: boolean): number {
-    return this.#backend.matArcLength(contour.handleForBackend(), closed);
+    requireExactArity(arguments.length, 2, "arcLength");
+    return this.#backend.matArcLength(matHandleForBinding(contour), coerceBoolean(closed));
   }
 
   addWeighted(
@@ -132,7 +133,8 @@ class WasmOpenCv implements OpenCv {
   }
 
   boundingRect(contour: Mat): Rect {
-    return rectangleFromArray(this.#backend.matBoundingRect(contour.handleForBackend()));
+    requireExactArity(arguments.length, 1, "boundingRect");
+    return rectangleFromArray(this.#backend.matBoundingRect(matHandleForBinding(contour)));
   }
 
   clipLine(rectangle: Rect, start: Point, end: Point): readonly [Point, Point] | undefined {
@@ -176,8 +178,10 @@ class WasmOpenCv implements OpenCv {
     return this.#backend.matCountNonZero(matHandleForBinding(source));
   }
 
-  contourArea(contour: Mat, oriented = false): number {
-    return this.#backend.matContourArea(contour.handleForBackend(), oriented);
+  contourArea(...arguments_: [contour: Mat, oriented?: boolean]): number {
+    requireOverloadArity(arguments_.length, 1, 2, "contourArea");
+    const [contour, oriented = false] = arguments_;
+    return this.#backend.matContourArea(matHandleForBinding(contour), coerceBoolean(oriented));
   }
 
   createHanningWindow(size: Size, depth: HanningWindowDepth): Mat {
