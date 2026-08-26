@@ -149,6 +149,8 @@ const AUDITED_BINDING_FORMS: Readonly<Record<string, AuditedBindingForm>> = Obje
   "imgproc.function.arc-length": { overloadCount: 1, runtimeArity: 2 },
   "imgproc.function.bounding-rect": { overloadCount: 1, runtimeArity: 1 },
   "imgproc.function.contour-area": { overloadCount: 2, runtimeArity: 0 },
+  "imgproc.function.is-contour-convex": { overloadCount: 1, runtimeArity: 1 },
+  "imgproc.function.point-polygon-test": { overloadCount: 1, runtimeArity: 3 },
 });
 
 const MODULE_SURFACES = {
