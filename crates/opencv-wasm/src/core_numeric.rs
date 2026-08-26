@@ -36,6 +36,13 @@ enum Binary {
     Divide,
 }
 
+#[derive(Clone, Copy)]
+enum I32Conversion {
+    Saturate,
+    Wrap,
+    OverflowSentinel,
+}
+
 #[wasm_bindgen(js_name = matMultiply)]
 pub fn mat_multiply(a: &Mat, b: &Mat, scale: f64) -> Result<Mat, JsError> {
     binary(a, b, scale, Binary::Multiply).map_err(Into::into)
@@ -69,6 +76,7 @@ pub fn mat_add_weighted(
     weighted(a, alpha, b, beta, gamma).map_err(Into::into)
 }
 #[wasm_bindgen(js_name = matAddWeightedInto)]
+#[allow(clippy::too_many_arguments)] // Mirrors the OpenCV.js destination overload.
 pub fn mat_add_weighted_into(
     a: &Mat,
     alpha: f64,
@@ -144,7 +152,11 @@ fn binary_from_compatible(
         .into_iter()
         .zip(decode(&b.compact_bytes(), b.depth()))
         .map(|(x, y)| binary_value(x, y, scale, a.depth(), op));
-    from_values(a, depth, values)
+    let conversion = match op {
+        Binary::Multiply => I32Conversion::Wrap,
+        Binary::Divide => I32Conversion::OverflowSentinel,
+    };
+    from_values_with_i32(a, depth, values, conversion)
 }
 fn binary_into(
     a: &Mat,
@@ -171,7 +183,11 @@ fn binary_into(
                     depth,
                     op,
                 );
-                encode_scalar(value, depth, output);
+                let conversion = match op {
+                    Binary::Multiply => I32Conversion::Wrap,
+                    Binary::Divide => I32Conversion::OverflowSentinel,
+                };
+                encode_scalar_with_i32(value, depth, output, conversion);
             },
         )?
     {
@@ -219,8 +235,9 @@ fn weighted_from_compatible(
         .into_iter()
         .zip(decode(&b.compact_bytes(), b.depth()))
         .map(|(x, y)| x * alpha + y * beta + gamma);
-    from_values(a, depth, values)
+    from_values_with_i32(a, depth, values, I32Conversion::OverflowSentinel)
 }
+#[allow(clippy::too_many_arguments)]
 fn weighted_into(
     a: &Mat,
     alpha: f64,
@@ -247,7 +264,7 @@ fn weighted_into(
                     beta,
                     gamma,
                 );
-                encode_scalar(value, depth, output);
+                encode_scalar_with_i32(value, depth, output, I32Conversion::OverflowSentinel);
             },
         )?
     {
@@ -292,12 +309,20 @@ fn from_values(
     depth: MatDepth,
     values: impl IntoIterator<Item = f64>,
 ) -> Result<Mat, NumericError> {
+    from_values_with_i32(src, depth, values, I32Conversion::Saturate)
+}
+fn from_values_with_i32(
+    src: &Mat,
+    depth: MatDepth,
+    values: impl IntoIterator<Item = f64>,
+    i32_conversion: I32Conversion,
+) -> Result<Mat, NumericError> {
     if src.rows() == 0 || src.columns() == 0 {
         return Mat::empty_with_layout(src.rows(), src.columns(), src.channels(), depth, true)
             .map_err(Into::into);
     }
     Mat::from_owned_bytes(
-        encode(values, depth),
+        encode_with_i32(values, depth, i32_conversion),
         src.rows(),
         src.columns(),
         src.channels(),
@@ -350,8 +375,25 @@ fn encode_scalar(value: f64, depth: MatDepth, output: &mut [u8]) {
     let encoded = encode([value], depth);
     output.copy_from_slice(&encoded);
 }
+fn encode_scalar_with_i32(
+    value: f64,
+    depth: MatDepth,
+    output: &mut [u8],
+    conversion: I32Conversion,
+) {
+    let encoded = encode_with_i32([value], depth, conversion);
+    output.copy_from_slice(&encoded);
+}
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 fn encode(values: impl IntoIterator<Item = f64>, depth: MatDepth) -> Vec<u8> {
+    encode_with_i32(values, depth, I32Conversion::Saturate)
+}
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn encode_with_i32(
+    values: impl IntoIterator<Item = f64>,
+    depth: MatDepth,
+    i32_conversion: I32Conversion,
+) -> Vec<u8> {
     let mut out = Vec::new();
     for v in values {
         match depth {
@@ -365,14 +407,40 @@ fn encode(values: impl IntoIterator<Item = f64>, depth: MatDepth) -> Vec<u8> {
             MatDepth::I16 => out.extend_from_slice(
                 &(sat(v, f64::from(i16::MIN), f64::from(i16::MAX)) as i16).to_ne_bytes(),
             ),
-            MatDepth::I32 => out.extend_from_slice(
-                &(sat(v, f64::from(i32::MIN), f64::from(i32::MAX)) as i32).to_ne_bytes(),
-            ),
+            MatDepth::I32 => {
+                let value = match i32_conversion {
+                    I32Conversion::Saturate => {
+                        sat(v, f64::from(i32::MIN), f64::from(i32::MAX)) as i32
+                    }
+                    I32Conversion::Wrap => wrap_i32(v),
+                    I32Conversion::OverflowSentinel => sentinel_i32(v),
+                };
+                out.extend_from_slice(&value.to_ne_bytes());
+            }
             MatDepth::F32 => out.extend_from_slice(&(v as f32).to_ne_bytes()),
             MatDepth::F64 => out.extend_from_slice(&v.to_ne_bytes()),
         }
     }
     out
+}
+
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn wrap_i32(value: f64) -> i32 {
+    if !value.is_finite() {
+        return i32::MIN;
+    }
+    let wrapped = value.round_ties_even().rem_euclid(4_294_967_296.0) as u32;
+    i32::from_ne_bytes(wrapped.to_ne_bytes())
+}
+
+#[allow(clippy::cast_possible_truncation)]
+fn sentinel_i32(value: f64) -> i32 {
+    let rounded = value.round_ties_even();
+    if !rounded.is_finite() || rounded >= f64::from(i32::MAX) || rounded < f64::from(i32::MIN) {
+        i32::MIN
+    } else {
+        rounded as i32
+    }
 }
 fn sat(v: f64, min: f64, max: f64) -> f64 {
     if v.is_nan() {
@@ -560,6 +628,60 @@ mod tests {
         assert_eq!(
             decode(&destination.compact_bytes(), MatDepth::F32),
             vec![3., 14., 122., 4.]
+        );
+    }
+    #[test]
+    fn i32_numeric_conversion_matches_non_saturating_runtime_paths() {
+        let multiplied = binary(
+            &mat(
+                &[2_147_483_647., 50_000., -2_147_483_648., -50_000.],
+                MatDepth::I32,
+                1,
+                4,
+            ),
+            &mat(&[2., 50_000., -1., 50_000.], MatDepth::I32, 1, 4),
+            1.,
+            Binary::Multiply,
+        )
+        .unwrap();
+        assert_eq!(
+            decode(&multiplied.compact_bytes(), MatDepth::I32),
+            vec![-2., -1_794_967_296., -2_147_483_648., 1_794_967_296.]
+        );
+
+        let divided = binary(
+            &mat(
+                &[2_147_483_647., -2_147_483_648., 7., -7.],
+                MatDepth::I32,
+                1,
+                4,
+            ),
+            &mat(&[1., -1., 2., 2.], MatDepth::I32, 1, 4),
+            1.,
+            Binary::Divide,
+        )
+        .unwrap();
+        assert_eq!(
+            decode(&divided.compact_bytes(), MatDepth::I32),
+            vec![-2_147_483_648., -2_147_483_648., 4., -4.]
+        );
+
+        let blended = weighted(
+            &mat(
+                &[2_147_483_647., -2_147_483_648., 2e9, -2e9],
+                MatDepth::I32,
+                1,
+                4,
+            ),
+            2.,
+            &mat(&[1., -1., 2e9, -2e9], MatDepth::I32, 1, 4),
+            1.,
+            0.,
+        )
+        .unwrap();
+        assert_eq!(
+            decode(&blended.compact_bytes(), MatDepth::I32),
+            vec![-2_147_483_648.; 4]
         );
     }
 }
