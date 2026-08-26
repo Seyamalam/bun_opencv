@@ -678,11 +678,15 @@ function auditCountNonZero(reference) {
     zero: captureCall(() => reference.countNonZero()),
     one: captureCall(() => reference.countNonZero(source)),
     two: captureCall(() => reference.countNonZero(source, 1)),
+    three: captureCall(() => reference.countNonZero(source, 1, 2)),
   };
   const argumentTypes = {
     null: captureCall(() => reference.countNonZero(null)),
     undefined: captureCall(() => reference.countNonZero(undefined)),
     object: captureCall(() => reference.countNonZero({})),
+    number: captureCall(() => reference.countNonZero(1)),
+    boolean: captureCall(() => reference.countNonZero(true)),
+    string: captureCall(() => reference.countNonZero("x")),
   };
   safeDelete(source);
 
@@ -721,14 +725,19 @@ function auditCountNonZero(reference) {
     ["CV_16UC1", reference.CV_16UC1, [0, 1, 65535, 0, 2, 0]],
     ["CV_16SC1", reference.CV_16SC1, [0, -1, 32767, -32768, 0, 2]],
     ["CV_32SC1", reference.CV_32SC1, [0, -1, 2147483647, -2147483648, 0, 2]],
-    ["CV_32FC1", reference.CV_32FC1, [0, -0, 1.5, Number.NaN, Infinity, -Infinity]],
-    ["CV_64FC1", reference.CV_64FC1, [0, -0, 1.5, Number.NaN, Infinity, -Infinity]],
+    [
+      "CV_32FC1",
+      reference.CV_32FC1,
+      [0, -0, 1.401298464324817e-45, Number.NaN, Infinity, -Infinity],
+    ],
+    ["CV_64FC1", reference.CV_64FC1, [0, -0, Number.MIN_VALUE, Number.NaN, Infinity, -Infinity]],
     ["CV_16FC1", reference.CV_16FC1, [0, -0, 1.5, Number.NaN, Infinity, -Infinity]],
   ].map(([name, type, values]) => auditCountNonZeroType(reference, name, type, values));
 
   const multiChannel = [
     ["CV_8UC2", reference.CV_8UC2, [0, 1, 2, 0, 0, 3, 4, 0, 0, 5, 6, 0]],
     ["CV_64FC2", reference.CV_64FC2, [0, 1, 2, 0, 0, 3, 4, 0, 0, 5, 6, 0]],
+    ["CV_8UC3", reference.CV_8UC3, [0, 1, 2, 0, 0, 3, 4, 0, 0, 5, 6, 0, 7, 0, 8, 0, 9, 0]],
   ].map(([name, type, values]) => auditCountNonZeroType(reference, name, type, values));
 
   return {

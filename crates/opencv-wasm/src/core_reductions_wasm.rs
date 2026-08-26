@@ -215,6 +215,7 @@ mod tests {
         let region = parent.roi(1, 1, 2, 2).expect("valid strided ROI");
 
         assert!(!region.is_continuous());
+        assert_eq!(reduce_count_non_zero(&region), Ok(4));
         assert_exact_lanes(reduce_sum(&region), [28.0, 0.0, 0.0, 0.0]);
         assert_exact_lanes(reduce_mean(&region), [7.0, 0.0, 0.0, 0.0]);
     }

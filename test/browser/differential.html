@@ -808,6 +808,111 @@
         };
       }
 
+      function auditPackageCountNonZeroType(packageCv, name, depth, channels, values) {
+        let source;
+        try {
+          source = makePackageSeedMat(packageCv, 2, 3, depth, channels, values);
+          return {
+            name,
+            available: true,
+            before: capturePrimitive(() => summarizePackageTypedMat(source)),
+            call: captureCall(() => packageCv.countNonZero(source)),
+            after: capturePrimitive(() => summarizePackageTypedMat(source)),
+          };
+        } catch (error) {
+          return {
+            name,
+            available: true,
+            setup: captureCall(() => {
+              throw error;
+            }),
+          };
+        } finally {
+          disposePackageMat(source);
+        }
+      }
+
+      function auditPackageCountNonZero(packageCv) {
+        const source = makePackageSeedMat(packageCv, 2, 3, "u8", 1, [0, 1, 2, 0, 3, 0]);
+        const arity = {
+          functionLength: capturePrimitive(() => packageCv.countNonZero.length),
+          zero: captureCall(() => packageCv.countNonZero()),
+          one: captureCall(() => packageCv.countNonZero(source)),
+          two: captureCall(() => packageCv.countNonZero(source, 1)),
+          three: captureCall(() => packageCv.countNonZero(source, 1, 2)),
+        };
+        const argumentTypes = {
+          null: captureCall(() => packageCv.countNonZero(null)),
+          undefined: captureCall(() => packageCv.countNonZero(undefined)),
+          object: captureCall(() => packageCv.countNonZero({})),
+          number: captureCall(() => packageCv.countNonZero(1)),
+          boolean: captureCall(() => packageCv.countNonZero(true)),
+          string: captureCall(() => packageCv.countNonZero("x")),
+        };
+        disposePackageMat(source);
+
+        const empty = packageCv.emptyMat();
+        const emptyAudit = {
+          before: capturePrimitive(() => summarizePackageMat(empty)),
+          call: captureCall(() => packageCv.countNonZero(empty)),
+          after: capturePrimitive(() => summarizePackageMat(empty)),
+        };
+        disposePackageMat(empty);
+
+        const parent = makePackageSeedMat(
+          packageCv,
+          4,
+          5,
+          "i16",
+          1,
+          [0, 1, 0, 2, 0, 3, 0, 0, 4, 0, 0, 5, 0, 0, 6, 7, 0, 8, 0, 9],
+        );
+        const region = parent.roi(1, 1, 2, 3);
+        const roi = {
+          before: capturePrimitive(() => summarizePackageTypedMat(region)),
+          call: captureCall(() => packageCv.countNonZero(region)),
+          after: capturePrimitive(() => summarizePackageTypedMat(region)),
+          parentAfter: capturePrimitive(() => summarizePackageTypedMat(parent)),
+        };
+        disposePackageMat(region);
+        disposePackageMat(parent);
+
+        const deleted = makePackageSeedMat(packageCv, 1, 1, "u8", 1, [1]);
+        deleted.dispose();
+        const deletedAudit = captureCall(() => packageCv.countNonZero(deleted));
+
+        const types = [
+          ["CV_8UC1", "u8", [0, 1, 255, 0, 2, 0]],
+          ["CV_8SC1", "i8", [0, -1, 127, -128, 0, 2]],
+          ["CV_16UC1", "u16", [0, 1, 65535, 0, 2, 0]],
+          ["CV_16SC1", "i16", [0, -1, 32767, -32768, 0, 2]],
+          ["CV_32SC1", "i32", [0, -1, 2147483647, -2147483648, 0, 2]],
+          ["CV_32FC1", "f32", [0, -0, 1.401298464324817e-45, Number.NaN, Infinity, -Infinity]],
+          ["CV_64FC1", "f64", [0, -0, Number.MIN_VALUE, Number.NaN, Infinity, -Infinity]],
+        ].map(([name, depth, values]) =>
+          auditPackageCountNonZeroType(packageCv, name, depth, 1, values),
+        );
+        types.push({ name: "CV_16FC1", available: false });
+
+        const multiChannel = [
+          ["CV_8UC2", "u8", 2, [0, 1, 2, 0, 0, 3, 4, 0, 0, 5, 6, 0]],
+          ["CV_64FC2", "f64", 2, [0, 1, 2, 0, 0, 3, 4, 0, 0, 5, 6, 0]],
+          ["CV_8UC3", "u8", 3, [0, 1, 2, 0, 0, 3, 4, 0, 0, 5, 6, 0, 7, 0, 8, 0, 9, 0]],
+        ].map(([name, depth, channels, values]) =>
+          auditPackageCountNonZeroType(packageCv, name, depth, channels, values),
+        );
+
+        return {
+          arity,
+          argumentTypes,
+          empty: emptyAudit,
+          roi,
+          deleted: deletedAudit,
+          types,
+          multiChannel,
+        };
+      }
+
       function propertyDescriptorSummary(owner, property) {
         const descriptor = Object.getOwnPropertyDescriptor(owner, property);
         if (descriptor === undefined) return { present: false };
@@ -1921,6 +2026,16 @@
         return undefined;
       }
 
+      function normalizeCountNonZeroAudit(audit) {
+        return {
+          ...audit,
+          multiChannel: audit.multiChannel.map((entry) => ({
+            ...entry,
+            call: { threw: entry.call.threw },
+          })),
+        };
+      }
+
       function runReference(input, referenceRequest) {
         return new Promise((resolve, reject) => {
           const worker = new Worker("/test/browser/opencv-reference-worker.js");
@@ -2001,6 +2116,15 @@
         );
         if (transposeDifference !== undefined) {
           throw new Error(transposeDifference);
+        }
+        const packageCountNonZeroAudit = auditPackageCountNonZero(packageCv);
+        const countNonZeroDifference = findDifference(
+          normalizeCountNonZeroAudit(packageCountNonZeroAudit),
+          normalizeCountNonZeroAudit(referenceOutputs.countNonZeroAudit),
+          "countNonZero audit",
+        );
+        if (countNonZeroDifference !== undefined) {
+          throw new Error(countNonZeroDifference);
         }
         if (searchParameters.has("reference-enums")) {
           packageSource.dispose();
