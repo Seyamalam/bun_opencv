@@ -925,8 +925,7 @@ class CopyingBackend implements OpenCvBackend {
     for (let row = 0; row < source.rows; row += 1) {
       for (let column = 0; column < source.columns; column += 1) {
         const sourceRow = flipCode <= 0 ? source.rows - row - 1 : row;
-        const sourceColumn =
-          flipCode !== 0 ? source.columns - column - 1 : column;
+        const sourceColumn = flipCode !== 0 ? source.columns - column - 1 : column;
         const sourceOffset = (sourceRow * source.columns + sourceColumn) * pixelBytes;
         const outputOffset = (row * source.columns + column) * pixelBytes;
         output.set(input.subarray(sourceOffset, sourceOffset + pixelBytes), outputOffset);
