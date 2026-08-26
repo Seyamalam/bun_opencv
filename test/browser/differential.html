@@ -416,6 +416,66 @@
         };
       }
 
+      function auditPackageFlipCode(packageCv, label, value) {
+        const source = makePackageSeedMat(packageCv, 2, 3, "u8", 1, [1, 2, 3, 4, 5, 6]);
+        const destination = packageCv.emptyMat();
+        const result = {
+          label,
+          input: encodeValue(value),
+          audit: auditPackageTransposeCall(
+            () => packageCv.flip(source, destination, value),
+            [
+              ["source", source],
+              ["destination", destination],
+            ],
+          ),
+        };
+        disposePackageMat(destination);
+        disposePackageMat(source);
+        return result;
+      }
+
+      function auditPackageFlip(packageCv) {
+        const source = makePackageSeedMat(packageCv, 2, 3, "u8", 1, [1, 2, 3, 4, 5, 6]);
+        const destination = packageCv.emptyMat();
+        const arity = {
+          functionLength: capturePrimitive(() => packageCv.flip.length),
+          zero: captureCall(() => packageCv.flip()),
+          one: captureCall(() => packageCv.flip(source)),
+          two: captureCall(() => packageCv.flip(source, destination)),
+          three: captureCall(() => packageCv.flip(source, destination, 1)),
+          four: captureCall(() => packageCv.flip(source, destination, 1, 2)),
+          destinationAfter: capturePrimitive(() => summarizePackageMat(destination)),
+        };
+        disposePackageMat(destination);
+        disposePackageMat(source);
+
+        const codes = [
+          ["negative two", -2],
+          ["negative one", -1],
+          ["negative fraction", -1.9],
+          ["negative zero", -0],
+          ["zero", 0],
+          ["positive fraction", 1.9],
+          ["one", 1],
+          ["two", 2],
+          ["i32 maximum", 2_147_483_647],
+          ["i32 maximum plus one", 2_147_483_648],
+          ["i32 minimum", -2_147_483_648],
+          ["i32 minimum minus one", -2_147_483_649],
+          ["NaN", Number.NaN],
+          ["positive infinity", Number.POSITIVE_INFINITY],
+          ["negative infinity", Number.NEGATIVE_INFINITY],
+          ["true", true],
+          ["false", false],
+          ["null", null],
+          ["numeric string", "1"],
+          ["explicit undefined", undefined],
+        ].map(([label, value]) => auditPackageFlipCode(packageCv, label, value));
+
+        return { arity, codes };
+      }
+
       function propertyDescriptorSummary(owner, property) {
         const descriptor = Object.getOwnPropertyDescriptor(owner, property);
         if (descriptor === undefined) return { present: false };
@@ -1563,16 +1623,34 @@
         const input = new Uint8Array([1, 2, 3, 4, 5, 6]);
         const packageSource = packageCv.matFromU8(2, 3, 1, input);
         const searchParameters = new URLSearchParams(globalThis.location.search);
-        const referenceOutputs = await runReference(
-          input,
-          searchParameters.has("reference-transpose") ? "transpose" : undefined,
-        );
+        const referenceRequest = searchParameters.has("reference-transpose")
+          ? "transpose"
+          : searchParameters.has("reference-flip")
+            ? "flip"
+            : undefined;
+        const referenceOutputs = await runReference(input, referenceRequest);
         if (searchParameters.has("reference-transpose")) {
           packageSource.dispose();
           globalThis.transposeReferenceAudit = referenceOutputs.transposeAudit;
           result.style.whiteSpace = "pre-wrap";
           result.textContent = JSON.stringify(referenceOutputs.transposeAudit, null, 2);
           break differential;
+        }
+        if (searchParameters.has("reference-flip")) {
+          packageSource.dispose();
+          globalThis.flipReferenceAudit = referenceOutputs.flipAudit;
+          result.style.whiteSpace = "pre-wrap";
+          result.textContent = JSON.stringify(referenceOutputs.flipAudit, null, 2);
+          break differential;
+        }
+        const packageFlipAudit = auditPackageFlip(packageCv);
+        const flipDifference = findDifference(
+          packageFlipAudit,
+          referenceOutputs.flipAudit,
+          "flip audit",
+        );
+        if (flipDifference !== undefined) {
+          throw new Error(flipDifference);
         }
         const packageTransposeAudit = auditPackageTranspose(packageCv);
         const transposeDifference = findDifference(

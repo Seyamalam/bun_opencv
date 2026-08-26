@@ -251,6 +251,66 @@ function auditTranspose(reference) {
   };
 }
 
+function auditFlipCode(reference, label, value) {
+  const source = makeSeedMat(reference, 2, 3, reference.CV_8UC1, [1, 2, 3, 4, 5, 6]);
+  const destination = new reference.Mat();
+  const result = {
+    label,
+    input: encodeValue(value),
+    audit: auditTransposeCall(
+      () => reference.flip(source, destination, value),
+      [
+        ["source", source],
+        ["destination", destination],
+      ],
+    ),
+  };
+  safeDelete(destination);
+  safeDelete(source);
+  return result;
+}
+
+function auditFlip(reference) {
+  const source = makeSeedMat(reference, 2, 3, reference.CV_8UC1, [1, 2, 3, 4, 5, 6]);
+  const destination = new reference.Mat();
+  const arity = {
+    functionLength: capturePrimitive(() => reference.flip.length),
+    zero: captureCall(() => reference.flip()),
+    one: captureCall(() => reference.flip(source)),
+    two: captureCall(() => reference.flip(source, destination)),
+    three: captureCall(() => reference.flip(source, destination, 1)),
+    four: captureCall(() => reference.flip(source, destination, 1, 2)),
+    destinationAfter: capturePrimitive(() => summarizeMat(destination)),
+  };
+  safeDelete(destination);
+  safeDelete(source);
+
+  const codes = [
+    ["negative two", -2],
+    ["negative one", -1],
+    ["negative fraction", -1.9],
+    ["negative zero", -0],
+    ["zero", 0],
+    ["positive fraction", 1.9],
+    ["one", 1],
+    ["two", 2],
+    ["i32 maximum", 2_147_483_647],
+    ["i32 maximum plus one", 2_147_483_648],
+    ["i32 minimum", -2_147_483_648],
+    ["i32 minimum minus one", -2_147_483_649],
+    ["NaN", Number.NaN],
+    ["positive infinity", Number.POSITIVE_INFINITY],
+    ["negative infinity", Number.NEGATIVE_INFINITY],
+    ["true", true],
+    ["false", false],
+    ["null", null],
+    ["numeric string", "1"],
+    ["explicit undefined", undefined],
+  ].map(([label, value]) => auditFlipCode(reference, label, value));
+
+  return { arity, codes };
+}
+
 function encodeValue(value) {
   if (value === undefined) {
     return { type: "undefined" };
@@ -1411,6 +1471,10 @@ self.addEventListener("message", async ({ data: input }) => {
       self.postMessage({ outputs: { transposeAudit: auditTranspose(reference) } });
       return;
     }
+    if (request === "flip") {
+      self.postMessage({ outputs: { flipAudit: auditFlip(reference) } });
+      return;
+    }
     const source = reference.matFromArray(2, 3, reference.CV_8UC1, sourceInput);
     const outputs = {};
     const operations = [
@@ -1581,6 +1645,7 @@ self.addEventListener("message", async ({ data: input }) => {
       () => new reference.AgastFeatureDetector(),
     );
     outputs.fastPrimitiveAudit = auditThresholdDetector(() => new reference.FastFeatureDetector());
+    outputs.flipAudit = auditFlip(reference);
     outputs.transposeAudit = auditTranspose(reference);
     self.postMessage({ outputs });
   } catch (error) {
