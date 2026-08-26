@@ -114,8 +114,21 @@ pub(crate) fn count_non_zero(
     channels: u16,
     depth: ScalarDepth,
 ) -> Result<u64, ReductionError> {
-    let elements = validate_compact(data, rows, columns, channels, depth)?;
+    if channels == 0 {
+        return Err(ReductionError::EmptyChannels);
+    }
     require_single_channel(channels)?;
+    if rows == 0 || columns == 0 {
+        return if data.is_empty() {
+            Ok(0)
+        } else {
+            Err(ReductionError::IncorrectBufferLength {
+                expected: 0,
+                actual: data.len(),
+            })
+        };
+    }
+    let elements = validate_compact(data, rows, columns, channels, depth)?;
 
     let mut count = 0_u64;
     for index in 0..elements {

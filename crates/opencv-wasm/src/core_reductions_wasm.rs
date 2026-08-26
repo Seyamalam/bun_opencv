@@ -201,6 +201,11 @@ mod tests {
     }
 
     #[test]
+    fn count_adapter_accepts_an_empty_matrix() {
+        assert_eq!(reduce_count_non_zero(&Mat::empty_output()), Ok(0));
+    }
+
+    #[test]
     fn strided_roi_is_compacted_before_reduction() {
         let bytes = [1_u16, 2, 3, 4, 5, 6, 7, 8, 9]
             .into_iter()
