@@ -129,10 +129,10 @@ pub fn mat_sqrt_into(source: &Mat, destination: &Mat) -> Result<(), JsError> {
 /// # Errors
 /// Returns an error unless the source has F32 or F64 depth.
 #[wasm_bindgen(js_name = matPow)]
-pub fn mat_pow(source: &Mat, exponent: f32) -> Result<Mat, JsError> {
+pub fn mat_pow(source: &Mat, exponent: f64) -> Result<Mat, JsError> {
     unary_with(source, |depth, bytes| match depth {
-        MatDepth::F32 => core_float_math::pow_f32(bytes, exponent),
-        MatDepth::F64 => core_float_math::pow_f64(bytes, f64::from(exponent)),
+        MatDepth::F32 => core_float_math::pow_f32(bytes, exponent as f32),
+        MatDepth::F64 => core_float_math::pow_f64(bytes, exponent),
         _ => unreachable!(),
     })
     .map_err(JsError::from)
@@ -648,6 +648,15 @@ mod tests {
         mat_magnitude_into(&x, &y, &y).expect("valid in-place magnitude destination");
 
         assert_eq!(y.to_f64_array().unwrap(), [5.0, 13.0]);
+    }
+    #[test]
+    fn pow_preserves_a_full_f64_exponent() {
+        let source = f64_mat(&[2.0], 1, 1, 1);
+
+        let output = mat_pow(&source, 2.000_000_01).expect("valid F64 power");
+
+        let actual = output.to_f64_array().unwrap()[0];
+        assert!((actual - 4.000_000_027_725_887).abs() <= 1e-15);
     }
     #[test]
     fn pair_outputs_mutate_strided_destinations_and_round_trip() {
