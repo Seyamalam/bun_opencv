@@ -248,6 +248,92 @@ function writeMeanStdDev(
 class CopyingBackend implements OpenCvBackend {
   #randomState = 0;
 
+  clipLine(
+    rectangleX: number,
+    rectangleY: number,
+    rectangleWidth: number,
+    rectangleHeight: number,
+    startX: number,
+    startY: number,
+    endX: number,
+    endY: number,
+  ): Int32Array {
+    const minimumX = rectangleX;
+    const maximumX = rectangleX + rectangleWidth - 1;
+    const minimumY = rectangleY;
+    const maximumY = rectangleY + rectangleHeight - 1;
+    if (startY === endY && startY >= minimumY && startY <= maximumY) {
+      const clippedStart = Math.max(minimumX, Math.min(maximumX, startX));
+      const clippedEnd = Math.max(minimumX, Math.min(maximumX, endX));
+      if (Math.max(startX, endX) < minimumX || Math.min(startX, endX) > maximumX) {
+        return new Int32Array();
+      }
+      return new Int32Array([clippedStart, startY, clippedEnd, endY]);
+    }
+    return new Int32Array();
+  }
+
+  createHanningWindow(columns: number, rows: number, depth: number): WasmMatHandle {
+    const values = Array.from({ length: rows * columns }, (_, index) => {
+      const row = Math.floor(index / columns);
+      const column = index % columns;
+      return cleanTiny(
+        Math.sin((Math.PI * row) / (rows - 1)) * Math.sin((Math.PI * column) / (columns - 1)),
+      );
+    });
+    const typed = depth === 5 ? new Float32Array(values) : new Float64Array(values);
+    return new CopyingMatHandle(rows, columns, 1, copyViewBytes(typed), depth);
+  }
+
+  ellipse2Poly(
+    centerX: number,
+    centerY: number,
+    axisX: number,
+    axisY: number,
+    rotationDegrees: number,
+    arcStart: number,
+    arcEnd: number,
+    delta: number,
+  ): Int32Array {
+    const rotation = (rotationDegrees * Math.PI) / 180;
+    const output: number[] = [];
+    for (let angle = arcStart; angle <= arcEnd; angle += delta) {
+      const radians = (Math.min(angle, arcEnd) * Math.PI) / 180;
+      const x = axisX * Math.cos(radians);
+      const y = axisY * Math.sin(radians);
+      output.push(
+        Math.round(centerX + x * Math.cos(rotation) - y * Math.sin(rotation)),
+        Math.round(centerY + x * Math.sin(rotation) + y * Math.cos(rotation)),
+      );
+      if (angle + delta > arcEnd && angle !== arcEnd) angle = arcEnd - delta;
+    }
+    return new Int32Array(output);
+  }
+
+  getStructuringElement(
+    kind: number,
+    columns: number,
+    rows: number,
+    anchorX: number,
+    anchorY: number,
+  ): WasmMatHandle {
+    const resolvedX = anchorX === -1 ? Math.floor(columns / 2) : anchorX;
+    const resolvedY = anchorY === -1 ? Math.floor(rows / 2) : anchorY;
+    const output = Uint8Array.from({ length: rows * columns }, (_, index) => {
+      if (kind === 0) return 1;
+      const row = Math.floor(index / columns);
+      const column = index % columns;
+      return kind === 1
+        ? Number(row === resolvedY || column === resolvedX)
+        : Number(
+            ((column - resolvedX) / Math.max(resolvedX, 1)) ** 2 +
+              ((row - resolvedY) / Math.max(resolvedY, 1)) ** 2 <=
+              1,
+          );
+    });
+    return new CopyingMatHandle(rows, columns, 1, output);
+  }
+
   grayscaleRgba(data: Uint8Array): Uint8Array {
     return new Uint8Array(data);
   }
@@ -774,6 +860,41 @@ class CopyingBackend implements OpenCvBackend {
     return source.toUint8Array().reduce((count, value) => count + Number(value !== 0), 0);
   }
 
+  matArcLength(contour: WasmMatHandle, closed: boolean): number {
+    const points = contourPoints(contour);
+    const pairCount = closed ? points.length : Math.max(points.length - 1, 0);
+    let total = 0;
+    for (let index = 0; index < pairCount; index += 1) {
+      const start = requiredPoint(points, index);
+      const end = requiredPoint(points, (index + 1) % points.length);
+      total += Math.hypot(end.x - start.x, end.y - start.y);
+    }
+    return total;
+  }
+
+  matBoundingRect(contour: WasmMatHandle): Int32Array {
+    const points = contourPoints(contour);
+    const xs = points.map((point) => point.x);
+    const ys = points.map((point) => point.y);
+    const minimumX = Math.floor(Math.min(...xs));
+    const minimumY = Math.floor(Math.min(...ys));
+    const maximumX = Math.floor(Math.max(...xs));
+    const maximumY = Math.floor(Math.max(...ys));
+    return new Int32Array([minimumX, minimumY, maximumX - minimumX + 1, maximumY - minimumY + 1]);
+  }
+
+  matContourArea(contour: WasmMatHandle, oriented: boolean): number {
+    const points = contourPoints(contour);
+    let twiceArea = 0;
+    for (let index = 0; index < points.length; index += 1) {
+      const current = requiredPoint(points, index);
+      const next = requiredPoint(points, (index + 1) % points.length);
+      twiceArea += current.x * next.y - next.x * current.y;
+    }
+    const area = twiceArea / 2;
+    return oriented ? area : Math.abs(area);
+  }
+
   matDeterminant(source: WasmMatHandle): number {
     const values = source.toFloat64Array();
     return (values[0] ?? 0) * (values[3] ?? 0) - (values[1] ?? 0) * (values[2] ?? 0);
@@ -800,6 +921,78 @@ class CopyingBackend implements OpenCvBackend {
     return new CopyingMatHandle(source.rows, source.columns, 1, output);
   }
 
+  matGetAffineTransform(source: WasmMatHandle, destination: WasmMatHandle): WasmMatHandle {
+    const from = contourPoints(source);
+    const to = contourPoints(destination);
+    const origin = requiredPoint(to, 0);
+    const sourceX = requiredPoint(from, 1).x - requiredPoint(from, 0).x;
+    const sourceY = requiredPoint(from, 2).y - requiredPoint(from, 0).y;
+    const scaleX = (requiredPoint(to, 1).x - origin.x) / sourceX;
+    const scaleY = (requiredPoint(to, 2).y - origin.y) / sourceY;
+    return f64Handle(2, 3, [scaleX, 0, origin.x, 0, scaleY, origin.y]);
+  }
+
+  matGetPerspectiveTransform(source: WasmMatHandle, destination: WasmMatHandle): WasmMatHandle {
+    const affine = this.matGetAffineTransform(source, destination).toFloat64Array();
+    return f64Handle(3, 3, [
+      affine[0] ?? 0,
+      affine[1] ?? 0,
+      affine[2] ?? 0,
+      affine[3] ?? 0,
+      affine[4] ?? 0,
+      affine[5] ?? 0,
+      0,
+      0,
+      1,
+    ]);
+  }
+
+  matGetRotationMatrix2D(
+    centerX: number,
+    centerY: number,
+    angleDegrees: number,
+    scale: number,
+  ): WasmMatHandle {
+    const radians = (angleDegrees * Math.PI) / 180;
+    const alpha = cleanTiny(scale * Math.cos(radians));
+    const beta = cleanTiny(scale * Math.sin(radians));
+    return f64Handle(2, 3, [
+      alpha,
+      beta,
+      (1 - alpha) * centerX - beta * centerY,
+      -beta,
+      alpha,
+      beta * centerX + (1 - alpha) * centerY,
+    ]);
+  }
+
+  matInvertAffineTransform(transform: WasmMatHandle): WasmMatHandle {
+    const values = transform.toFloat64Array();
+    const a = values[0] ?? 0;
+    const b = values[1] ?? 0;
+    const c = values[2] ?? 0;
+    const d = values[3] ?? 0;
+    const e = values[4] ?? 0;
+    const f = values[5] ?? 0;
+    const determinant = a * e - b * d;
+    const inverseA = e / determinant;
+    const inverseB = -b / determinant;
+    const inverseD = -d / determinant;
+    const inverseE = a / determinant;
+    return f64Handle(
+      2,
+      3,
+      [
+        inverseA,
+        inverseB,
+        -(inverseA * c + inverseB * f),
+        inverseD,
+        inverseE,
+        -(inverseD * c + inverseE * f),
+      ].map(cleanTiny),
+    );
+  }
+
   matInvertInto(source: WasmMatHandle, destination: WasmMatHandle, _method: number): number {
     const values = source.toFloat64Array();
     const determinant = this.matDeterminant(source);
@@ -815,6 +1008,45 @@ class CopyingBackend implements OpenCvBackend {
       ),
     );
     return 1;
+  }
+
+  matIsContourConvex(contour: WasmMatHandle): boolean {
+    const points = contourPoints(contour);
+    let direction = 0;
+    for (let index = 0; index < points.length; index += 1) {
+      const a = requiredPoint(points, index);
+      const b = requiredPoint(points, (index + 1) % points.length);
+      const c = requiredPoint(points, (index + 2) % points.length);
+      const cross = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
+      if (cross === 0) continue;
+      const sign = Math.sign(cross);
+      if (direction !== 0 && sign !== direction) return false;
+      direction = sign;
+    }
+    return direction !== 0;
+  }
+
+  matPointPolygonTest(
+    contour: WasmMatHandle,
+    x: number,
+    y: number,
+    measureDistance: boolean,
+  ): number {
+    const points = contourPoints(contour);
+    let inside = false;
+    let nearest = Number.POSITIVE_INFINITY;
+    for (let index = 0; index < points.length; index += 1) {
+      const start = requiredPoint(points, index);
+      const end = requiredPoint(points, (index + 1) % points.length);
+      nearest = Math.min(nearest, pointSegmentDistance(x, y, start, end));
+      if (start.y > y !== end.y > y) {
+        const crossingX = ((end.x - start.x) * (y - start.y)) / (end.y - start.y) + start.x;
+        if (x < crossingX) inside = !inside;
+      }
+    }
+    if (nearest === 0) return 0;
+    if (!measureDistance) return inside ? 1 : -1;
+    return inside ? nearest : -nearest;
   }
 
   matSolveInto(
@@ -1105,6 +1337,54 @@ function binaryU8(
   return new CopyingMatHandle(left.rows, left.columns, left.channels, output);
 }
 
+function f64Handle(rows: number, columns: number, values: readonly number[]): WasmMatHandle {
+  return new CopyingMatHandle(rows, columns, 1, copyViewBytes(new Float64Array(values)), 6);
+}
+
+function contourPoints(source: WasmMatHandle): Array<{ readonly x: number; readonly y: number }> {
+  const values = source.depth === 4 ? source.toInt32Array() : source.toFloat64Array();
+  const points: Array<{ readonly x: number; readonly y: number }> = [];
+  for (let index = 0; index < values.length; index += 2) {
+    points.push({ x: requiredNumber(values, index), y: requiredNumber(values, index + 1) });
+  }
+  return points;
+}
+
+function requiredPoint(
+  points: ReadonlyArray<{ readonly x: number; readonly y: number }>,
+  index: number,
+): { readonly x: number; readonly y: number } {
+  const point = points[index];
+  if (point === undefined) throw new RangeError(`missing point at index ${index}`);
+  return point;
+}
+
+function requiredNumber(values: Int32Array | Float64Array, index: number): number {
+  const value = values[index];
+  if (value === undefined) throw new RangeError(`missing number at index ${index}`);
+  return value;
+}
+
+function pointSegmentDistance(
+  x: number,
+  y: number,
+  start: { readonly x: number; readonly y: number },
+  end: { readonly x: number; readonly y: number },
+): number {
+  const deltaX = end.x - start.x;
+  const deltaY = end.y - start.y;
+  const lengthSquared = deltaX * deltaX + deltaY * deltaY;
+  const ratio =
+    lengthSquared === 0
+      ? 0
+      : Math.max(0, Math.min(1, ((x - start.x) * deltaX + (y - start.y) * deltaY) / lengthSquared));
+  return Math.hypot(x - (start.x + ratio * deltaX), y - (start.y + ratio * deltaY));
+}
+
+function cleanTiny(value: number): number {
+  return Math.abs(value) < Number.EPSILON ? 0 : value;
+}
+
 function byteAt(data: Uint8Array, index: number): number {
   const value = data[index];
   if (value === undefined) {
@@ -1254,6 +1534,94 @@ describe("OpenCv client", () => {
       transformed,
       coefficients,
       source,
+    ]) {
+      matrix.dispose();
+    }
+  });
+
+  test("measures contours and classifies polygon points", () => {
+    const contour = client.matFromI32(4, 1, 2, new Int32Array([0, 0, 4, 0, 4, 3, 0, 3]));
+
+    expect(client.arcLength(contour, false)).toBe(11);
+    expect(client.arcLength(contour, true)).toBe(14);
+    expect(client.contourArea(contour)).toBe(12);
+    expect(client.boundingRect(contour)).toEqual({ x: 0, y: 0, width: 5, height: 4 });
+    expect(client.isContourConvex(contour)).toBeTrue();
+    expect(client.pointPolygonTest(contour, { x: 2, y: 1 }, true)).toBe(1);
+    expect(() => client.pointPolygonTest(contour, { x: Number.NaN, y: 1 }, false)).toThrow(
+      OpenCvInputError,
+    );
+
+    contour.dispose();
+  });
+
+  test("creates image-processing helpers with structured point results", () => {
+    const kernel = client.getStructuringElement(1, { width: 3, height: 3 }, { x: 1, y: 1 });
+    expect(kernel.toUint8Array()).toEqual(new Uint8Array([0, 1, 0, 1, 1, 1, 0, 1, 0]));
+
+    const window = client.createHanningWindow({ width: 3, height: 3 }, "f64");
+    expect(window.toFloat64Array()).toEqual(new Float64Array([0, 0, 0, 0, 1, 0, 0, 0, 0]));
+
+    expect(client.ellipse2Poly({ x: 0, y: 0 }, { width: 10, height: 5 }, 0, 0, 90, 90)).toEqual([
+      { x: 10, y: 0 },
+      { x: 0, y: 5 },
+    ]);
+    expect(
+      client.clipLine({ x: 10, y: 20, width: 5, height: 4 }, { x: 8, y: 21 }, { x: 16, y: 21 }),
+    ).toEqual([
+      { x: 10, y: 21 },
+      { x: 14, y: 21 },
+    ]);
+    expect(
+      client.clipLine({ x: 10, y: 20, width: 5, height: 4 }, { x: 0, y: 0 }, { x: 1, y: 1 }),
+    ).toBeUndefined();
+    expect(() => client.createHanningWindow({ width: 1, height: 3 }, "f32")).toThrow(
+      OpenCvInputError,
+    );
+
+    window.dispose();
+    kernel.dispose();
+  });
+
+  test("constructs affine and perspective matrices", () => {
+    const rotation = client.getRotationMatrix2D({ x: 1, y: 2 }, 90, 1);
+    expect(Array.from(rotation.toFloat64Array())).toEqual([0, 1, -1, -1, 0, 3]);
+
+    const affineSource = client.matFromF64(3, 2, 1, new Float64Array([0, 0, 1, 0, 0, 1]));
+    const affineDestination = client.matFromF64(3, 2, 1, new Float64Array([2, 3, 4, 3, 2, 6]));
+    const affine = client.getAffineTransform(affineSource, affineDestination);
+    expect(Array.from(affine.toFloat64Array())).toEqual([2, 0, 2, 0, 3, 3]);
+
+    const inverse = client.invertAffineTransform(affine);
+    expect(Array.from(inverse.toFloat64Array())).toEqual([0.5, 0, -1, 0, 1 / 3, -1]);
+
+    const perspectiveSource = client.matFromF64(
+      4,
+      2,
+      1,
+      new Float64Array([0, 0, 1, 0, 1, 1, 0, 1]),
+    );
+    const perspectiveDestination = client.matFromF64(
+      4,
+      2,
+      1,
+      new Float64Array([2, 3, 4, 3, 4, 6, 2, 6]),
+    );
+    const perspective = client.getPerspectiveTransform(perspectiveSource, perspectiveDestination);
+    expect(Array.from(perspective.toFloat64Array())).toEqual([2, 0, 2, 0, 3, 3, 0, 0, 1]);
+    expect(() => client.getRotationMatrix2D({ x: 0, y: 0 }, Number.POSITIVE_INFINITY, 1)).toThrow(
+      OpenCvInputError,
+    );
+
+    for (const matrix of [
+      perspective,
+      perspectiveDestination,
+      perspectiveSource,
+      inverse,
+      affine,
+      affineDestination,
+      affineSource,
+      rotation,
     ]) {
       matrix.dispose();
     }

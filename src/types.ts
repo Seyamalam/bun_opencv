@@ -31,6 +31,21 @@ export interface Point {
   readonly y: number;
 }
 
+/** Positive two-dimensional extent. */
+export interface Size {
+  readonly height: number;
+  readonly width: number;
+}
+
+/** Integer rectangle with an inclusive pixel extent. */
+export interface Rect extends Size, Point {}
+
+/** Structuring-element kind: rectangle, cross, or ellipse. */
+export type StructuringElementKind = 0 | 1 | 2;
+
+/** Floating-point depths supported by Hanning windows. */
+export type HanningWindowDepth = "f32" | "f64";
+
 /** Extrema and first row-major locations returned by `minMaxLoc`. */
 export interface MinMaxLocation {
   readonly maxLoc: Point;
@@ -41,6 +56,34 @@ export interface MinMaxLocation {
 
 /** Low-level contract implemented by the generated WebAssembly module. */
 export interface OpenCvBackend {
+  clipLine(
+    rectangleX: number,
+    rectangleY: number,
+    rectangleWidth: number,
+    rectangleHeight: number,
+    startX: number,
+    startY: number,
+    endX: number,
+    endY: number,
+  ): Int32Array;
+  createHanningWindow(columns: number, rows: number, depth: number): WasmMatHandle;
+  ellipse2Poly(
+    centerX: number,
+    centerY: number,
+    axisX: number,
+    axisY: number,
+    rotationDegrees: number,
+    arcStart: number,
+    arcEnd: number,
+    delta: number,
+  ): Int32Array;
+  getStructuringElement(
+    kind: number,
+    columns: number,
+    rows: number,
+    anchorX: number,
+    anchorY: number,
+  ): WasmMatHandle;
   grayscaleRgba(data: Uint8Array, width: number, height: number): Uint8Array;
   invertRgba(data: Uint8Array, width: number, height: number): Uint8Array;
   matFromF32(data: Float32Array, rows: number, columns: number, channels: number): WasmMatHandle;
@@ -70,12 +113,25 @@ export interface OpenCvBackend {
   matCompareEqU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matCountNonZero(source: WasmMatHandle): number;
   matDeterminant(source: WasmMatHandle): number;
+  matArcLength(contour: WasmMatHandle, closed: boolean): number;
+  matBoundingRect(contour: WasmMatHandle): Int32Array;
+  matContourArea(contour: WasmMatHandle, oriented: boolean): number;
   matInRangeU8(
     source: WasmMatHandle,
     lowerBound: WasmMatHandle,
     upperBound: WasmMatHandle,
   ): WasmMatHandle;
+  matGetAffineTransform(source: WasmMatHandle, destination: WasmMatHandle): WasmMatHandle;
+  matGetPerspectiveTransform(source: WasmMatHandle, destination: WasmMatHandle): WasmMatHandle;
+  matGetRotationMatrix2D(
+    centerX: number,
+    centerY: number,
+    angleDegrees: number,
+    scale: number,
+  ): WasmMatHandle;
+  matInvertAffineTransform(transform: WasmMatHandle): WasmMatHandle;
   matInvertInto(source: WasmMatHandle, destination: WasmMatHandle, method: number): number;
+  matIsContourConvex(contour: WasmMatHandle): boolean;
   matSplit(source: WasmMatHandle): WasmMatHandle[];
   matMerge(first: WasmMatHandle, second: WasmMatHandle): WasmMatHandle;
   matMerge3(first: WasmMatHandle, second: WasmMatHandle, third: WasmMatHandle): WasmMatHandle;
@@ -251,6 +307,12 @@ export interface OpenCvBackend {
     coefficients: WasmMatHandle,
     destination: WasmMatHandle,
   ): void;
+  matPointPolygonTest(
+    contour: WasmMatHandle,
+    x: number,
+    y: number,
+    measureDistance: boolean,
+  ): number;
   matZerosF32(rows: number, columns: number, channels: number): WasmMatHandle;
   matZerosF64(rows: number, columns: number, channels: number): WasmMatHandle;
   matZerosI16(rows: number, columns: number, channels: number): WasmMatHandle;
@@ -279,9 +341,14 @@ export interface OpenCv {
   bitwiseNot(source: Mat): Mat;
   bitwiseOr(left: Mat, right: Mat): Mat;
   bitwiseXor(left: Mat, right: Mat): Mat;
+  arcLength(contour: Mat, closed: boolean): number;
+  boundingRect(contour: Mat): Rect;
+  clipLine(rectangle: Rect, start: Point, end: Point): readonly [Point, Point] | undefined;
   compareEqual(left: Mat, right: Mat): Mat;
   cartToPolar(x: Mat, y: Mat, magnitude: Mat, angle: Mat, degrees?: boolean): void;
   countNonZero(source: Mat): number;
+  contourArea(contour: Mat, oriented?: boolean): number;
+  createHanningWindow(size: Size, depth: HanningWindowDepth): Mat;
   determinant(source: Mat): number;
   convertScaleAbs(source: Mat, alpha?: number, beta?: number): Mat;
   convertScaleAbs(source: Mat, destination: Mat, alpha?: number, beta?: number): void;
@@ -297,6 +364,14 @@ export interface OpenCv {
   divide(a: Mat, b: Mat, scale?: number): Mat;
   divide(a: Mat, b: Mat, destination: Mat, scale?: number): void;
   extractChannel(source: Mat, channel: number): Mat;
+  ellipse2Poly(
+    center: Point,
+    axes: Size,
+    rotationDegrees: number,
+    arcStart: number,
+    arcEnd: number,
+    delta: number,
+  ): Point[];
   exp(source: Mat): Mat;
   flip(source: Mat, flipCode: -1 | 0 | 1): Mat;
   flip(source: Mat, destination: Mat, flipCode: -1 | 0 | 1): void;
@@ -304,6 +379,10 @@ export interface OpenCv {
   hconcat(
     sources: readonly [Mat, Mat] | readonly [Mat, Mat, Mat] | readonly [Mat, Mat, Mat, Mat],
   ): Mat;
+  getAffineTransform(source: Mat, destination: Mat): Mat;
+  getPerspectiveTransform(source: Mat, destination: Mat): Mat;
+  getRotationMatrix2D(center: Point, angleDegrees: number, scale: number): Mat;
+  getStructuringElement(kind: StructuringElementKind, size: Size, anchor?: Point): Mat;
   invert(image: RgbaImage): RgbaImage;
   matFromF32(rows: number, columns: number, channels: number, data: Float32Array): Mat;
   matFromF64(rows: number, columns: number, channels: number, data: Float64Array): Mat;
@@ -314,6 +393,8 @@ export interface OpenCv {
   matFromU8(rows: number, columns: number, channels: number, data: Uint8Array): Mat;
   inRange(source: Mat, lowerBound: Mat, upperBound: Mat): Mat;
   insertChannel(source: Mat, destination: Mat, channel: number): void;
+  invertAffineTransform(transform: Mat): Mat;
+  isContourConvex(contour: Mat): boolean;
   invert(source: Mat, destination: Mat, method?: DecompositionMethod): number;
   log(source: Mat): Mat;
   lut(source: Mat, table: Mat): Mat;
@@ -341,6 +422,7 @@ export interface OpenCv {
     mask?: Mat,
   ): void;
   polarToCart(magnitude: Mat, angle: Mat, x: Mat, y: Mat, degrees?: boolean): void;
+  pointPolygonTest(contour: Mat, point: Point, measureDistance: boolean): number;
   perspectiveTransform(source: Mat, coefficients: Mat): Mat;
   perspectiveTransform(source: Mat, coefficients: Mat, destination: Mat): void;
   pow(source: Mat, exponent: number): Mat;

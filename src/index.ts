@@ -11,15 +11,19 @@ export type { MatDepth, WasmMatHandle } from "./mat.js";
 export type {
   BorderType,
   DecompositionMethod,
+  HanningWindowDepth,
   MinMaxLocation,
   NormalizeType,
   NormType,
   OpenCv,
   OpenCvBackend,
   Point,
+  Rect,
   RgbaImage,
   ReduceKind,
   Scalar,
+  Size,
+  StructuringElementKind,
 } from "./types.js";
 
 /** Loads the package WebAssembly module and returns an initialized client. */

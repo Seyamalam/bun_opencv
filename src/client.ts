@@ -9,14 +9,19 @@ import { Mat, validateMatrixDimension, validateMatrixInput } from "./mat.js";
 import type {
   BorderType,
   DecompositionMethod,
+  HanningWindowDepth,
   MinMaxLocation,
   NormalizeType,
   NormType,
   OpenCv,
   OpenCvBackend,
+  Point,
+  Rect,
   RgbaImage,
   ReduceKind,
   Scalar,
+  Size,
+  StructuringElementKind,
 } from "./types.js";
 
 class WasmOpenCv implements OpenCv {
@@ -32,6 +37,10 @@ class WasmOpenCv implements OpenCv {
 
   add(left: Mat, right: Mat): Mat {
     return new Mat(this.#backend.matAddU8(left.handleForBackend(), right.handleForBackend()));
+  }
+
+  arcLength(contour: Mat, closed: boolean): number {
+    return this.#backend.matArcLength(contour.handleForBackend(), closed);
   }
 
   addWeighted(a: Mat, alpha: number, b: Mat, beta: number, gamma: number): Mat;
@@ -81,6 +90,28 @@ class WasmOpenCv implements OpenCv {
     );
   }
 
+  boundingRect(contour: Mat): Rect {
+    return rectangleFromArray(this.#backend.matBoundingRect(contour.handleForBackend()));
+  }
+
+  clipLine(rectangle: Rect, start: Point, end: Point): readonly [Point, Point] | undefined {
+    validateRect(rectangle);
+    validateIntegerPoint(start, "start");
+    validateIntegerPoint(end, "end");
+    return lineFromArray(
+      this.#backend.clipLine(
+        rectangle.x,
+        rectangle.y,
+        rectangle.width,
+        rectangle.height,
+        start.x,
+        start.y,
+        end.x,
+        end.y,
+      ),
+    );
+  }
+
   compareEqual(left: Mat, right: Mat): Mat {
     return new Mat(this.#backend.matCompareEqU8(left.handleForBackend(), right.handleForBackend()));
   }
@@ -97,6 +128,15 @@ class WasmOpenCv implements OpenCv {
 
   countNonZero(source: Mat): number {
     return this.#backend.matCountNonZero(source.handleForBackend());
+  }
+
+  contourArea(contour: Mat, oriented = false): number {
+    return this.#backend.matContourArea(contour.handleForBackend(), oriented);
+  }
+
+  createHanningWindow(size: Size, depth: HanningWindowDepth): Mat {
+    validateMinimumSize(size, 2, "Hanning window");
+    return new Mat(this.#backend.createHanningWindow(size.width, size.height, depthCode(depth)));
   }
 
   determinant(source: Mat): number {
@@ -182,6 +222,35 @@ class WasmOpenCv implements OpenCv {
     return new Mat(this.#backend.matExtractChannel(source.handleForBackend(), channel));
   }
 
+  ellipse2Poly(
+    center: Point,
+    axes: Size,
+    rotationDegrees: number,
+    arcStart: number,
+    arcEnd: number,
+    delta: number,
+  ): Point[] {
+    validateIntegerPoint(center, "center");
+    validateNonNegativeInteger(axes.width, "axes.width");
+    validateNonNegativeInteger(axes.height, "axes.height");
+    validateSignedInteger(rotationDegrees, "rotationDegrees");
+    validateSignedInteger(arcStart, "arcStart");
+    validateSignedInteger(arcEnd, "arcEnd");
+    validateSignedInteger(delta, "delta");
+    return pointsFromArray(
+      this.#backend.ellipse2Poly(
+        center.x,
+        center.y,
+        axes.width,
+        axes.height,
+        rotationDegrees,
+        arcStart,
+        arcEnd,
+        delta,
+      ),
+    );
+  }
+
   exp(source: Mat): Mat {
     return new Mat(this.#backend.matExp(source.handleForBackend()));
   }
@@ -224,6 +293,42 @@ class WasmOpenCv implements OpenCv {
     sources: readonly [Mat, Mat] | readonly [Mat, Mat, Mat] | readonly [Mat, Mat, Mat, Mat],
   ): Mat {
     return this.#concat(sources, "horizontal");
+  }
+
+  getAffineTransform(source: Mat, destination: Mat): Mat {
+    return new Mat(
+      this.#backend.matGetAffineTransform(
+        source.handleForBackend(),
+        destination.handleForBackend(),
+      ),
+    );
+  }
+
+  getPerspectiveTransform(source: Mat, destination: Mat): Mat {
+    return new Mat(
+      this.#backend.matGetPerspectiveTransform(
+        source.handleForBackend(),
+        destination.handleForBackend(),
+      ),
+    );
+  }
+
+  getRotationMatrix2D(center: Point, angleDegrees: number, scale: number): Mat {
+    validateFinitePoint(center, "center");
+    validateFiniteNumbers({ angleDegrees, scale });
+    return new Mat(this.#backend.matGetRotationMatrix2D(center.x, center.y, angleDegrees, scale));
+  }
+
+  getStructuringElement(
+    kind: StructuringElementKind,
+    size: Size,
+    anchor: Point = { x: -1, y: -1 },
+  ): Mat {
+    validateMinimumSize(size, 1, "structuring element");
+    validateIntegerPoint(anchor, "anchor");
+    return new Mat(
+      this.#backend.getStructuringElement(kind, size.width, size.height, anchor.x, anchor.y),
+    );
   }
 
   invert(image: RgbaImage): RgbaImage;
@@ -304,6 +409,14 @@ class WasmOpenCv implements OpenCv {
       destination.handleForBackend(),
       channel,
     );
+  }
+
+  invertAffineTransform(transform: Mat): Mat {
+    return new Mat(this.#backend.matInvertAffineTransform(transform.handleForBackend()));
+  }
+
+  isContourConvex(contour: Mat): boolean {
+    return this.#backend.matIsContourConvex(contour.handleForBackend());
   }
 
   log(source: Mat): Mat {
@@ -478,6 +591,16 @@ class WasmOpenCv implements OpenCv {
       x.handleForBackend(),
       y.handleForBackend(),
       degrees,
+    );
+  }
+
+  pointPolygonTest(contour: Mat, point: Point, measureDistance: boolean): number {
+    validateFinitePoint(point, "point");
+    return this.#backend.matPointPolygonTest(
+      contour.handleForBackend(),
+      point.x,
+      point.y,
+      measureDistance,
     );
   }
 
@@ -749,10 +872,52 @@ function minMaxLocationFromArray(values: Float64Array): MinMaxLocation {
   };
 }
 
+function rectangleFromArray(values: Int32Array): Rect {
+  if (values.length !== 4) {
+    throw new OpenCvInputError(`WASM rectangle has ${values.length} lanes; expected 4`);
+  }
+  return {
+    x: requiredInteger(values, 0),
+    y: requiredInteger(values, 1),
+    width: requiredInteger(values, 2),
+    height: requiredInteger(values, 3),
+  };
+}
+
+function lineFromArray(values: Int32Array): readonly [Point, Point] | undefined {
+  if (values.length === 0) return undefined;
+  if (values.length !== 4) {
+    throw new OpenCvInputError(`WASM clipped line has ${values.length} lanes; expected 0 or 4`);
+  }
+  return [
+    { x: requiredInteger(values, 0), y: requiredInteger(values, 1) },
+    { x: requiredInteger(values, 2), y: requiredInteger(values, 3) },
+  ];
+}
+
+function pointsFromArray(values: Int32Array): Point[] {
+  if (values.length % 2 !== 0) {
+    throw new OpenCvInputError(`WASM point array has ${values.length} lanes; expected pairs`);
+  }
+  const points: Point[] = [];
+  for (let index = 0; index < values.length; index += 2) {
+    points.push({ x: requiredInteger(values, index), y: requiredInteger(values, index + 1) });
+  }
+  return points;
+}
+
 function requiredFloat(values: Float64Array, index: number): number {
   const value = values[index];
   if (value === undefined) {
     throw new OpenCvInputError(`WASM result is missing lane ${index}`);
+  }
+  return value;
+}
+
+function requiredInteger(values: Int32Array, index: number): number {
+  const value = values[index];
+  if (value === undefined) {
+    throw new OpenCvInputError(`WASM integer result is missing lane ${index}`);
   }
   return value;
 }
@@ -774,6 +939,46 @@ function validateFiniteNumbers(values: Readonly<Record<string, number>>): void {
   for (const [name, value] of Object.entries(values)) {
     if (!Number.isFinite(value)) throw new OpenCvInputError(`${name} must be finite`);
   }
+}
+
+function validateFinitePoint(point: Point, name: string): void {
+  validateFiniteNumbers({ [`${name}.x`]: point.x, [`${name}.y`]: point.y });
+}
+
+function validateIntegerPoint(point: Point, name: string): void {
+  validateSignedInteger(point.x, `${name}.x`);
+  validateSignedInteger(point.y, `${name}.y`);
+}
+
+function validateSignedInteger(value: number, name: string): void {
+  if (!Number.isSafeInteger(value) || value < -2_147_483_648 || value > 2_147_483_647) {
+    throw new OpenCvInputError(`${name} must be a signed 32-bit integer`);
+  }
+}
+
+function validateNonNegativeInteger(value: number, name: string): void {
+  if (!Number.isSafeInteger(value) || value < 0 || value > 2_147_483_647) {
+    throw new OpenCvInputError(`${name} must be a non-negative signed 32-bit integer`);
+  }
+}
+
+function validateMinimumSize(size: Size, minimum: number, name: string): void {
+  validateDimension(size.width, `${name}.width`);
+  validateDimension(size.height, `${name}.height`);
+  if (size.width < minimum || size.height < minimum) {
+    throw new OpenCvInputError(`${name} dimensions must be at least ${minimum}`);
+  }
+}
+
+function validateRect(rectangle: Rect): void {
+  validateSignedInteger(rectangle.x, "rectangle.x");
+  validateSignedInteger(rectangle.y, "rectangle.y");
+  validateDimension(rectangle.width, "rectangle.width");
+  validateDimension(rectangle.height, "rectangle.height");
+}
+
+function depthCode(depth: HanningWindowDepth): number {
+  return depth === "f32" ? 5 : 6;
 }
 
 function validatedScalar(value: Scalar, name: string): Float64Array {
