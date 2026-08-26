@@ -174,6 +174,10 @@ pub fn mat_rotate_into(source: &Mat, destination: &Mat, rotate_code: i32) -> Res
 /// matrix limit.
 #[wasm_bindgen(js_name = matRepeat)]
 pub fn mat_repeat(source: &Mat, row_repeats: i32, column_repeats: i32) -> Result<Mat, JsError> {
+    validate_repeat_counts(row_repeats, column_repeats).map_err(JsError::from)?;
+    if source.rows() == 0 && source.columns() == 0 {
+        return Ok(Mat::empty_output());
+    }
     apply_layout(source, |matrix| {
         repeat_bytes(matrix, row_repeats, column_repeats)
     })
@@ -192,10 +196,29 @@ pub fn mat_repeat_into(
     row_repeats: i32,
     column_repeats: i32,
 ) -> Result<(), JsError> {
+    validate_repeat_counts(row_repeats, column_repeats).map_err(JsError::from)?;
+    if source.rows() == 0 && source.columns() == 0 {
+        destination.write_empty_output();
+        return Ok(());
+    }
     apply_layout_into(source, destination, |matrix| {
         repeat_bytes(matrix, row_repeats, column_repeats)
     })
     .map_err(JsError::from)
+}
+
+fn validate_repeat_counts(
+    row_repeats: i32,
+    column_repeats: i32,
+) -> Result<(), LayoutWasmError> {
+    if row_repeats <= 0 || column_repeats <= 0 {
+        return Err(LayoutError::InvalidRepeatCount {
+            rows: row_repeats,
+            columns: column_repeats,
+        }
+        .into());
+    }
+    Ok(())
 }
 
 /// Horizontally concatenates two matrices with identical rows, channels, and depth.
@@ -420,6 +443,25 @@ mod tests {
 
         assert!(!source.is_continuous());
         mat_flip_into(&source, &destination, 1).expect("flip empty into destination");
+
+        for output in [&allocated, &destination] {
+            assert_eq!(
+                (output.rows(), output.columns(), output.channels()),
+                (0, 0, 1)
+            );
+            assert_eq!(output.depth(), MatDepth::U8);
+            assert!(output.is_continuous());
+            assert!(output.to_u8_array().is_empty());
+        }
+    }
+
+    #[test]
+    fn repeat_marks_positive_count_empty_outputs_continuous() {
+        let source = crate::mat::mat_empty();
+        let allocated = mat_repeat(&source, 2, 3).expect("repeat empty matrix");
+        let destination = u8_matrix(vec![1, 2, 3, 4], 2, 2, 1);
+
+        mat_repeat_into(&source, &destination, 2, 3).expect("repeat empty into destination");
 
         for output in [&allocated, &destination] {
             assert_eq!(
