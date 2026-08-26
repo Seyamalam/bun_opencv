@@ -11,6 +11,7 @@ export const OPENCV_OPERATIONS = [
   { method: "compareEqual", wasmExport: "matCompareEqU8" },
   { method: "countNonZero", wasmExport: "matCountNonZero" },
   { method: "convertScaleAbs", wasmExport: "matConvertScaleAbs" },
+  { method: "copyMakeBorder", wasmExport: "matCopyMakeBorder" },
   { method: "divide", wasmExport: "matDivide" },
   { method: "exp", wasmExport: "matExp" },
   { method: "flip", wasmExport: "matFlip" },

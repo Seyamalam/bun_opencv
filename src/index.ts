@@ -8,7 +8,15 @@ export { OPENCV_OPERATIONS } from "./operations.js";
 export type { OpenCvOperation } from "./operations.js";
 export { Mat } from "./mat.js";
 export type { MatDepth, WasmMatHandle } from "./mat.js";
-export type { MinMaxLocation, OpenCv, OpenCvBackend, Point, RgbaImage, Scalar } from "./types.js";
+export type {
+  BorderType,
+  MinMaxLocation,
+  OpenCv,
+  OpenCvBackend,
+  Point,
+  RgbaImage,
+  Scalar,
+} from "./types.js";
 
 /** Loads the package WebAssembly module and returns an initialized client. */
 export async function initOpenCv(): Promise<ReturnType<typeof createOpenCv>> {

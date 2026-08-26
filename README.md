@@ -79,6 +79,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | core    | `compareEqual`    | `cv.compare`         | Partial | U8 equality mode                      |
 | core    | `countNonZero`    | `cv.countNonZero`    | Partial | All single-channel scalar depths      |
 | core    | `convertScaleAbs` | `cv.convertScaleAbs` | Partial | All input depths to saturated U8      |
+| core    | `copyMakeBorder`  | `cv.copyMakeBorder`  | Partial | All depths and five border modes      |
 | core    | `divide`          | `cv.divide`          | Partial | All depths and matching matrices      |
 | core    | `cartToPolar`     | `cv.cartToPolar`     | Partial | F32/F64 with mutable outputs          |
 | core    | `exp`             | `cv.exp`             | Partial | F32/F64 element-wise output           |
@@ -111,7 +112,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc | `findContours`    | `cv.findContours`    | Planned | Not started                           |
 | imgproc | `warpPerspective` | `cv.warpPerspective` | Planned | Not started                           |
 
-Current full parity is **0 of 488 (0%)**. There are **37 partial families** with working Rust/WASM slices. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+Current full parity is **0 of 488 (0%)**. There are **38 partial families** with working Rust/WASM slices. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
 
 Read [the inventory](docs/INVENTORY.md) and [complete parity contract](docs/PARITY.md) for the denominator, exclusions, and definition of done.
 

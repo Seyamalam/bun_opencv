@@ -37,6 +37,19 @@ export const PARITY_MANIFEST = {
   entries: [
     {
       implementationOrigin: "original",
+      method: "copyMakeBorder",
+      module: "core",
+      notes:
+        "All depths, constant/replicate/reflect/wrap/reflect101 modes, isolated bit, and scalar constants; public destination form remains.",
+      patentReview: "required",
+      sources: [CORE_ARRAY_SOURCE],
+      status: "partial",
+      upstream: "cv.copyMakeBorder",
+      upstreamId: "core.function.copy-make-border",
+      wasmExport: "matCopyMakeBorder",
+    },
+    {
+      implementationOrigin: "original",
       method: "addWeighted",
       module: "core",
       notes: "All scalar depths with finite weights; dtype and public destination forms remain.",

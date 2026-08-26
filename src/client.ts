@@ -6,7 +6,14 @@ import {
 } from "./image.js";
 import { OpenCvInputError } from "./error.js";
 import { Mat, validateMatrixDimension, validateMatrixInput } from "./mat.js";
-import type { MinMaxLocation, OpenCv, OpenCvBackend, RgbaImage, Scalar } from "./types.js";
+import type {
+  BorderType,
+  MinMaxLocation,
+  OpenCv,
+  OpenCvBackend,
+  RgbaImage,
+  Scalar,
+} from "./types.js";
 
 class WasmOpenCv implements OpenCv {
   readonly #backend: OpenCvBackend;
@@ -71,6 +78,38 @@ class WasmOpenCv implements OpenCv {
   convertScaleAbs(source: Mat, alpha = 1, beta = 0): Mat {
     validateFiniteNumbers({ alpha, beta });
     return new Mat(this.#backend.matConvertScaleAbs(source.handleForBackend(), alpha, beta));
+  }
+
+  copyMakeBorder(
+    source: Mat,
+    top: number,
+    bottom: number,
+    left: number,
+    right: number,
+    borderType: BorderType,
+    constant: Scalar = [0, 0, 0, 0],
+  ): Mat {
+    validateBorderSize(top, "top");
+    validateBorderSize(bottom, "bottom");
+    validateBorderSize(left, "left");
+    validateBorderSize(right, "right");
+    validateFiniteNumbers({
+      constant0: constant[0],
+      constant1: constant[1],
+      constant2: constant[2],
+      constant3: constant[3],
+    });
+    return new Mat(
+      this.#backend.matCopyMakeBorder(
+        source.handleForBackend(),
+        top,
+        bottom,
+        left,
+        right,
+        borderType,
+        Float64Array.from(constant),
+      ),
+    );
   }
 
   divide(a: Mat, b: Mat, scale = 1): Mat {
@@ -455,6 +494,12 @@ function validateChannelIndex(channel: number): void {
 function validateFiniteNumbers(values: Readonly<Record<string, number>>): void {
   for (const [name, value] of Object.entries(values)) {
     if (!Number.isFinite(value)) throw new OpenCvInputError(`${name} must be finite`);
+  }
+}
+
+function validateBorderSize(value: number, name: string): void {
+  if (!Number.isSafeInteger(value) || value < 0 || value > 4_294_967_295) {
+    throw new OpenCvInputError(`${name} border must be a non-negative 32-bit integer`);
   }
 }
 

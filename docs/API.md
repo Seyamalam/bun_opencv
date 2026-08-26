@@ -107,6 +107,10 @@ These methods accept F32 and F64 matrices, including strided regions. The option
 
 Integer outputs use nearest-even rounding and saturation. Integer division by zero produces zero. Floating-point outputs retain IEEE 754 behavior. Inputs may be strided regions.
 
+### Matrix borders
+
+`copyMakeBorder(source, top, bottom, left, right, borderType, constant)` supports constant, replicate, reflect, wrap, and reflect-101 modes, with the optional isolated bit. It preserves every scalar depth and channel layout. Constant values use nearest-even rounding and saturation for integer destinations.
+
 ### Matrix reductions
 
 - `countNonZero(source)` supports every scalar depth and requires one channel.

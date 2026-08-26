@@ -460,6 +460,48 @@ class CopyingBackend implements OpenCvBackend {
     destination.copyFromBytes(this.matConvertScaleAbs(source, alpha, beta).toUint8Array());
   }
 
+  matCopyMakeBorder(
+    source: WasmMatHandle,
+    top: number,
+    bottom: number,
+    left: number,
+    right: number,
+    borderType: number,
+    constant: Float64Array,
+  ): WasmMatHandle {
+    if (borderType !== 0 && borderType !== 16) {
+      throw new OpenCvInputError("fake backend only implements constant borders");
+    }
+    const rows = source.rows + top + bottom;
+    const columns = source.columns + left + right;
+    const output = new Uint8Array(rows * columns * source.channels);
+    for (let index = 0; index < output.length; index += 1) {
+      output[index] = Math.round(constant[index % source.channels] ?? 0);
+    }
+    const input = source.toUint8Array();
+    for (let row = 0; row < source.rows; row += 1) {
+      const target = ((row + top) * columns + left) * source.channels;
+      const start = row * source.columns * source.channels;
+      output.set(input.subarray(start, start + source.columns * source.channels), target);
+    }
+    return new CopyingMatHandle(rows, columns, source.channels, output, source.depth);
+  }
+
+  matCopyMakeBorderInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    top: number,
+    bottom: number,
+    left: number,
+    right: number,
+    borderType: number,
+    constant: Float64Array,
+  ): void {
+    destination.copyFromBytes(
+      this.matCopyMakeBorder(source, top, bottom, left, right, borderType, constant).toUint8Array(),
+    );
+  }
+
   matAbsdiffU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle {
     return binaryU8(left, right, (leftValue, rightValue) => Math.abs(leftValue - rightValue));
   }
@@ -1029,5 +1071,15 @@ describe("OpenCv client", () => {
     expect(blended.toUint8Array()).toEqual(new Uint8Array([7, 11, 127]));
     expect(absolute.toUint8Array()).toEqual(new Uint8Array([5, 15, 245]));
     for (const matrix of [absolute, blended, quotient, product, right, left]) matrix.dispose();
+  });
+
+  test("adds typed matrix borders", () => {
+    const source = client.matFromU8(1, 2, 1, new Uint8Array([7, 8]));
+    const bordered = client.copyMakeBorder(source, 1, 1, 1, 1, 0, [9, 0, 0, 0]);
+    expect(bordered.rows).toBe(3);
+    expect(bordered.columns).toBe(4);
+    expect(bordered.toUint8Array()).toEqual(new Uint8Array([9, 9, 9, 9, 9, 7, 8, 9, 9, 9, 9, 9]));
+    bordered.dispose();
+    source.dispose();
   });
 });

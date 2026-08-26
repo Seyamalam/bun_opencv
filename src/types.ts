@@ -10,6 +10,9 @@ export interface RgbaImage {
 /** Four-channel scalar result used by OpenCV reductions. */
 export type Scalar = readonly [number, number, number, number];
 
+/** OpenCV-compatible border mode, optionally combined with the isolated bit. */
+export type BorderType = 0 | 1 | 2 | 3 | 4 | 16 | 17 | 18 | 19 | 20;
+
 /** Zero-based matrix coordinate. */
 export interface Point {
   readonly x: number;
@@ -141,6 +144,25 @@ export interface OpenCvBackend {
     alpha: number,
     beta: number,
   ): void;
+  matCopyMakeBorder(
+    source: WasmMatHandle,
+    top: number,
+    bottom: number,
+    left: number,
+    right: number,
+    borderType: number,
+    constant: Float64Array,
+  ): WasmMatHandle;
+  matCopyMakeBorderInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    top: number,
+    bottom: number,
+    left: number,
+    right: number,
+    borderType: number,
+    constant: Float64Array,
+  ): void;
   matMaxU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matMean(source: WasmMatHandle): Float64Array;
   matMinMaxLoc(source: WasmMatHandle): Float64Array;
@@ -180,6 +202,15 @@ export interface OpenCv {
   cartToPolar(x: Mat, y: Mat, magnitude: Mat, angle: Mat, degrees?: boolean): void;
   countNonZero(source: Mat): number;
   convertScaleAbs(source: Mat, alpha?: number, beta?: number): Mat;
+  copyMakeBorder(
+    source: Mat,
+    top: number,
+    bottom: number,
+    left: number,
+    right: number,
+    borderType: BorderType,
+    constant?: Scalar,
+  ): Mat;
   divide(a: Mat, b: Mat, scale?: number): Mat;
   extractChannel(source: Mat, channel: number): Mat;
   exp(source: Mat): Mat;
