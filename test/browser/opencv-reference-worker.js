@@ -4060,6 +4060,251 @@ function auditNumericContracts(reference) {
   return { contracts, dtype, scale, replacement, overlap, empty, mixedDepth, i32Overflow };
 }
 
+function determinantDiagonal4(pivot) {
+  return [pivot, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+}
+
+function determinantNextDownF64(value) {
+  const buffer = new ArrayBuffer(8);
+  const view = new DataView(buffer);
+  view.setFloat64(0, value, false);
+  view.setBigUint64(0, view.getBigUint64(0, false) - 1n, false);
+  return view.getFloat64(0, false);
+}
+
+function determinantNextDownF32(value) {
+  const buffer = new ArrayBuffer(4);
+  const view = new DataView(buffer);
+  view.setFloat32(0, value, false);
+  view.setUint32(0, view.getUint32(0, false) - 1, false);
+  return view.getFloat32(0, false);
+}
+
+function determinantHilbert(order) {
+  return Array.from({ length: order * order }, (_, index) => {
+    const row = Math.floor(index / order);
+    const column = index % order;
+    return 1 / (row + column + 1);
+  });
+}
+
+function auditDeterminant(reference) {
+  const createMat = (order, type, values) => makeSeedMat(reference, order, order, type, values);
+  const auditMat = (name, order, type, values) => {
+    const source = createMat(order, type, values);
+    const audit = auditTypedMatCall(() => reference.determinant(source), [["source", source]]);
+    safeDelete(source);
+    return { name, audit };
+  };
+  const auditRejected = (name, rows, columns, type, values) => {
+    const source = makeSeedMat(reference, rows, columns, type, values);
+    const audit = auditTypedMatCall(() => reference.determinant(source), [["source", source]]);
+    safeDelete(source);
+    return { name, audit };
+  };
+  const aritySource = createMat(2, reference.CV_64FC1, [1, 2, 3, 4]);
+  const arity = {
+    length: reference.determinant.length,
+    zero: captureCall(() => reference.determinant()),
+    exact: captureCall(() => reference.determinant(aritySource)),
+    extra: captureCall(() => reference.determinant(aritySource, 1)),
+  };
+  safeDelete(aritySource);
+
+  const argumentTypes = {
+    null: captureCall(() => reference.determinant(null)),
+    undefined: captureCall(() => reference.determinant(undefined)),
+    object: captureCall(() => reference.determinant({})),
+    number: captureCall(() => reference.determinant(1)),
+  };
+  const deletedSource = createMat(1, reference.CV_64FC1, [7]);
+  deletedSource.delete();
+  const deleted = captureCall(() => reference.determinant(deletedSource));
+
+  const continuous = [
+    auditMat("F32 continuous", 2, reference.CV_32FC1, [1, 2, 3, 4]),
+    auditMat("F64 continuous", 2, reference.CV_64FC1, [1, 2, 3, 4]),
+  ];
+  const strided = [
+    ["F32 strided", reference.CV_32FC1],
+    ["F64 strided", reference.CV_64FC1],
+  ].map(([name, type]) => {
+    const parent = makeSeedMat(reference, 2, 4, type, [99, 1, 2, 99, 99, 3, 4, 99]);
+    const source = parent.roi(new reference.Rect(1, 0, 2, 2));
+    const audit = auditTypedMatCall(
+      () => reference.determinant(source),
+      [
+        ["source", source],
+        ["parent", parent],
+      ],
+    );
+    safeDelete(source);
+    safeDelete(parent);
+    return { name, audit };
+  });
+
+  const rejectedInputs = [
+    ["U8", reference.CV_8UC1, [1, 2, 3, 4]],
+    ["I8", reference.CV_8SC1, [1, 2, 3, 4]],
+    ["U16", reference.CV_16UC1, [1, 2, 3, 4]],
+    ["I16", reference.CV_16SC1, [1, 2, 3, 4]],
+    ["I32", reference.CV_32SC1, [1, 2, 3, 4]],
+  ].map(([name, type, values]) => auditRejected(name, 2, 2, type, values));
+  rejectedInputs.push(
+    auditRejected("F32 multichannel", 2, 2, reference.CV_32FC2, [1, 2, 3, 4, 5, 6, 7, 8]),
+    auditRejected("F64 nonsquare", 2, 3, reference.CV_64FC1, [1, 2, 3, 4, 5, 6]),
+  );
+
+  const canonicalEmpty = new reference.Mat();
+  const canonicalEmptyAudit = auditTypedMatCall(
+    () => reference.determinant(canonicalEmpty),
+    [["source", canonicalEmpty]],
+  );
+  safeDelete(canonicalEmpty);
+  const empty = {
+    canonical: { name: "canonical", audit: canonicalEmptyAudit },
+    typedF32: auditRejected("typed F32", 0, 0, reference.CV_32FC1, []),
+    typedF64: auditRejected("typed F64", 0, 0, reference.CV_64FC1, []),
+  };
+
+  const small = [
+    auditMat("F64 1x1 negative zero", 1, reference.CV_64FC1, [-0]),
+    auditMat("F64 1x1 NaN", 1, reference.CV_64FC1, [Number.NaN]),
+    auditMat("F32 1x1 negative zero", 1, reference.CV_32FC1, [-0]),
+    auditMat("F32 1x1 infinity", 1, reference.CV_32FC1, [Number.POSITIVE_INFINITY]),
+    auditMat("F64 2x2 exact", 2, reference.CV_64FC1, [1, 2, 3, 4]),
+    auditMat("F64 2x2 negative zero", 2, reference.CV_64FC1, [-0, 0, 0, 1]),
+    auditMat("F64 2x2 nonfinite", 2, reference.CV_64FC1, [Number.POSITIVE_INFINITY, 0, 0, 0]),
+    auditMat("F32 2x2 exact", 2, reference.CV_32FC1, [1, 2, 3, 4]),
+    auditMat("F32 2x2 negative zero", 2, reference.CV_32FC1, [-0, 0, 0, 1]),
+    auditMat("F32 2x2 nonfinite", 2, reference.CV_32FC1, [Number.POSITIVE_INFINITY, 0, 0, 0]),
+    auditMat("F64 3x3 exact", 3, reference.CV_64FC1, [0, 2, 1, 1, 0, 3, 4, 5, 6]),
+    auditMat("F64 3x3 signed zero", 3, reference.CV_64FC1, [-0, 0, 0, 0, 1, 0, 0, 0, 1]),
+    auditMat("F64 3x3 nonfinite", 3, reference.CV_64FC1, [
+      Number.POSITIVE_INFINITY,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+    ]),
+    auditMat("F32 3x3 exact", 3, reference.CV_32FC1, [0, 2, 1, 1, 0, 3, 4, 5, 6]),
+    auditMat("F32 3x3 signed zero", 3, reference.CV_32FC1, [-0, 0, 0, 0, 1, 0, 0, 0, 1]),
+    auditMat("F32 3x3 nonfinite", 3, reference.CV_32FC1, [
+      Number.POSITIVE_INFINITY,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+    ]),
+  ];
+  const widenedSmall = [
+    auditMat(
+      "F32 widened 2x2",
+      2,
+      reference.CV_32FC1,
+      [16_777_216, 16_777_215, 16_777_215, 16_777_214],
+    ),
+    auditMat(
+      "F32 widened 3x3",
+      3,
+      reference.CV_32FC1,
+      [16_777_216, 16_777_215, 1, 16_777_215, 16_777_214, 2, 1, 2, 3],
+    ),
+  ];
+
+  const f64Cutoff = 100 * Number.EPSILON;
+  const f32Cutoff = 10 * 2 ** -23;
+  const large = [
+    auditMat("F64 cutoff exact", 4, reference.CV_64FC1, determinantDiagonal4(f64Cutoff)),
+    auditMat(
+      "F64 cutoff below",
+      4,
+      reference.CV_64FC1,
+      determinantDiagonal4(determinantNextDownF64(f64Cutoff)),
+    ),
+    auditMat("F64 negative cutoff exact", 4, reference.CV_64FC1, determinantDiagonal4(-f64Cutoff)),
+    auditMat(
+      "F64 negative cutoff below",
+      4,
+      reference.CV_64FC1,
+      determinantDiagonal4(-determinantNextDownF64(f64Cutoff)),
+    ),
+    auditMat("F32 cutoff exact", 4, reference.CV_32FC1, determinantDiagonal4(f32Cutoff)),
+    auditMat(
+      "F32 cutoff below",
+      4,
+      reference.CV_32FC1,
+      determinantDiagonal4(determinantNextDownF32(f32Cutoff)),
+    ),
+    auditMat("F32 negative cutoff exact", 4, reference.CV_32FC1, determinantDiagonal4(-f32Cutoff)),
+    auditMat(
+      "F32 negative cutoff below",
+      4,
+      reference.CV_32FC1,
+      determinantDiagonal4(-determinantNextDownF32(f32Cutoff)),
+    ),
+    auditMat(
+      "F64 row swap",
+      4,
+      reference.CV_64FC1,
+      [0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3],
+    ),
+    auditMat(
+      "F32 row swap",
+      4,
+      reference.CV_32FC1,
+      [0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3],
+    ),
+    auditMat(
+      "F64 singular",
+      4,
+      reference.CV_64FC1,
+      [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    ),
+    auditMat(
+      "F32 singular",
+      4,
+      reference.CV_32FC1,
+      [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    ),
+  ];
+
+  const hilbert4 = determinantHilbert(4);
+  const hilbert6 = determinantHilbert(6);
+  const hilbert4F32 = Array.from(new Float32Array(hilbert4));
+  const hilbert6F32 = Array.from(new Float32Array(hilbert6));
+  const precision = [
+    auditMat("F32 Hilbert4", 4, reference.CV_32FC1, hilbert4),
+    auditMat("F32 Hilbert6", 6, reference.CV_32FC1, hilbert6),
+    auditMat("F64 Hilbert4", 4, reference.CV_64FC1, hilbert4),
+    auditMat("F64 Hilbert6", 6, reference.CV_64FC1, hilbert6),
+    auditMat("F64 stored-F32 Hilbert4", 4, reference.CV_64FC1, hilbert4F32),
+    auditMat("F64 stored-F32 Hilbert6", 6, reference.CV_64FC1, hilbert6F32),
+  ];
+
+  return {
+    arity,
+    argumentTypes,
+    deleted,
+    continuous,
+    strided,
+    rejectedInputs,
+    empty,
+    small,
+    widenedSmall,
+    large,
+    precision,
+  };
+}
+
 function auditContourContracts(reference) {
   const i32Rectangle = [0, 0, 4, 0, 4, 3, 0, 3];
   const f32Rectangle = [0.25, -1.5, 4.75, -1.5, 4.75, 2.25, 0.25, 2.25];
@@ -5122,6 +5367,10 @@ self.addEventListener("message", async ({ data: input }) => {
       self.postMessage({ outputs: { rotationMatrixAudit: auditRotationMatrix(reference) } });
       return;
     }
+    if (request === "determinant-contracts") {
+      self.postMessage({ outputs: { determinantAudit: auditDeterminant(reference) } });
+      return;
+    }
     const source = reference.matFromArray(2, 3, reference.CV_8UC1, sourceInput);
     const outputs = {};
     const operations = [
@@ -5303,6 +5552,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.numericAudit = auditNumericContracts(reference);
     outputs.contourAudit = auditContourContracts(reference);
     outputs.polygonAudit = auditPolygonContracts(reference);
+    outputs.determinantAudit = auditDeterminant(reference);
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });
