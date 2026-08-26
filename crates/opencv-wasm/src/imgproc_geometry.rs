@@ -185,7 +185,11 @@ pub(crate) fn point_polygon_test(
         }
         nearest_squared = nearest_squared.min(squared);
         if squared == 0.0 {
-            return Ok(if measure_distance { -0.0 } else { 0.0 });
+            return Ok(if measure_distance && !inside {
+                -0.0
+            } else {
+                0.0
+            });
         }
 
         let crosses_y = (first.y > query.y) != (second.y > query.y);
@@ -406,6 +410,16 @@ mod tests {
             point_polygon_test(&RECTANGLE, Point { x: 4.0, y: 1.0 }, true),
             Ok(0.0)
         );
+
+        let concave = [
+            Point { x: 0.0, y: 0.0 },
+            Point { x: 4.0, y: 0.0 },
+            Point { x: 4.0, y: 4.0 },
+            Point { x: 2.0, y: 2.0 },
+            Point { x: 0.0, y: 4.0 },
+        ];
+        let notch_boundary = point_polygon_test(&concave, Point { x: 3.0, y: 3.0 }, true).unwrap();
+        assert_eq!(notch_boundary.to_bits(), 0.0_f64.to_bits());
     }
 
     #[test]
