@@ -1,17 +1,25 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  AGAST_FEATURE_DETECTOR_DEFAULTS,
+  AgastFeatureDetectorType,
   AKAZE_DEFAULTS,
   AKAZEDescriptorType,
   createOpenCv,
   createRgbaImage,
+  FAST_FEATURE_DETECTOR_DEFAULTS,
+  FastFeatureDetectorType,
   KAZEDiffusivity,
   OpenCvInputError,
 } from "../src/index.js";
 import type {
   OpenCvBackend,
+  WasmAgastFeatureDetectorFactory,
+  WasmAgastFeatureDetectorHandle,
   WasmAKAZEFactory,
   WasmAKAZEHandle,
+  WasmFastFeatureDetectorFactory,
+  WasmFastFeatureDetectorHandle,
   WasmMatHandle,
 } from "../src/index.js";
 
@@ -199,6 +207,110 @@ class CopyingAKAZEHandle implements WasmAKAZEHandle {
   }
 }
 
+class CopyingAgastFeatureDetectorHandle implements WasmAgastFeatureDetectorHandle {
+  #freed = false;
+  #nonmaxSuppression: boolean;
+  #threshold: number;
+  #type: number;
+
+  constructor(
+    threshold: number,
+    nonmaxSuppression: boolean,
+    type: number,
+    readonly onFree: () => void,
+  ) {
+    this.#threshold = threshold;
+    this.#nonmaxSuppression = nonmaxSuppression;
+    this.#type = type;
+  }
+
+  free(): void {
+    if (this.#freed) return;
+    this.#freed = true;
+    this.onFree();
+  }
+
+  getDefaultName(): string {
+    return "Feature2D.AgastFeatureDetector";
+  }
+
+  getNonmaxSuppression(): boolean {
+    return this.#nonmaxSuppression;
+  }
+
+  getThreshold(): number {
+    return this.#threshold;
+  }
+
+  getType(): number {
+    return this.#type;
+  }
+
+  setNonmaxSuppression(value: boolean): void {
+    this.#nonmaxSuppression = value;
+  }
+
+  setThreshold(value: number): void {
+    this.#threshold = value;
+  }
+
+  setType(value: number): void {
+    this.#type = value;
+  }
+}
+
+class CopyingFastFeatureDetectorHandle implements WasmFastFeatureDetectorHandle {
+  #freed = false;
+  #nonmaxSuppression: boolean;
+  #threshold: number;
+  #type: number;
+
+  constructor(
+    threshold: number,
+    nonmaxSuppression: boolean,
+    type: number,
+    readonly onFree: () => void,
+  ) {
+    this.#threshold = threshold;
+    this.#nonmaxSuppression = nonmaxSuppression;
+    this.#type = type;
+  }
+
+  free(): void {
+    if (this.#freed) return;
+    this.#freed = true;
+    this.onFree();
+  }
+
+  getDefaultName(): string {
+    return "Feature2D.FastFeatureDetector";
+  }
+
+  getNonmaxSuppression(): boolean {
+    return this.#nonmaxSuppression;
+  }
+
+  getThreshold(): number {
+    return this.#threshold;
+  }
+
+  getType(): number {
+    return this.#type;
+  }
+
+  setNonmaxSuppression(value: boolean): void {
+    this.#nonmaxSuppression = value;
+  }
+
+  setThreshold(value: number): void {
+    this.#threshold = value;
+  }
+
+  setType(value: number): void {
+    this.#type = value;
+  }
+}
+
 function depthByteWidth(depth: number): number {
   if (depth === 0 || depth === 1) {
     return 1;
@@ -375,7 +487,9 @@ function writeMeanStdDev(
 }
 
 class CopyingBackend implements OpenCvBackend {
+  #agastFeatureDetectorFreeCount = 0;
   #akazeFreeCount = 0;
+  #fastFeatureDetectorFreeCount = 0;
   #logLevel = 3;
   #randomState = 0;
 
@@ -408,6 +522,38 @@ class CopyingBackend implements OpenCvBackend {
       );
     },
   };
+
+  readonly AgastFeatureDetector: WasmAgastFeatureDetectorFactory = {
+    create: (threshold, nonmaxSuppression, type): WasmAgastFeatureDetectorHandle =>
+      new CopyingAgastFeatureDetectorHandle(
+        threshold ?? AGAST_FEATURE_DETECTOR_DEFAULTS.threshold,
+        nonmaxSuppression ?? AGAST_FEATURE_DETECTOR_DEFAULTS.nonmaxSuppression,
+        type ?? AGAST_FEATURE_DETECTOR_DEFAULTS.type,
+        () => {
+          this.#agastFeatureDetectorFreeCount += 1;
+        },
+      ),
+  };
+
+  get agastFeatureDetectorFreeCount(): number {
+    return this.#agastFeatureDetectorFreeCount;
+  }
+
+  readonly FastFeatureDetector: WasmFastFeatureDetectorFactory = {
+    create: (threshold, nonmaxSuppression, type): WasmFastFeatureDetectorHandle =>
+      new CopyingFastFeatureDetectorHandle(
+        threshold ?? FAST_FEATURE_DETECTOR_DEFAULTS.threshold,
+        nonmaxSuppression ?? FAST_FEATURE_DETECTOR_DEFAULTS.nonmaxSuppression,
+        type ?? FAST_FEATURE_DETECTOR_DEFAULTS.type,
+        () => {
+          this.#fastFeatureDetectorFreeCount += 1;
+        },
+      ),
+  };
+
+  get fastFeatureDetectorFreeCount(): number {
+    return this.#fastFeatureDetectorFreeCount;
+  }
 
   get akazeFreeCount(): number {
     return this.#akazeFreeCount;
@@ -2122,6 +2268,76 @@ describe("OpenCv client", () => {
     akaze.dispose();
     expect(backend.akazeFreeCount).toBe(1);
     expect(() => akaze.getThreshold()).toThrow(OpenCvInputError);
+  });
+
+  test("owns an AgastFeatureDetector configuration with OpenCV defaults", () => {
+    const backend = new CopyingBackend();
+    const localClient = createOpenCv(backend);
+    const detector = localClient.createAgastFeatureDetector();
+
+    expect(detector.getDefaultName()).toBe("Feature2D.AgastFeatureDetector");
+    expect(detector.getThreshold()).toBe(AGAST_FEATURE_DETECTOR_DEFAULTS.threshold);
+    expect(detector.getNonmaxSuppression()).toBe(AGAST_FEATURE_DETECTOR_DEFAULTS.nonmaxSuppression);
+    expect(detector.getType()).toBe(AGAST_FEATURE_DETECTOR_DEFAULTS.type);
+
+    detector.setThreshold(23);
+    detector.setNonmaxSuppression(false);
+    detector.setType(AgastFeatureDetectorType.AGAST_7_12s);
+    expect(detector.getThreshold()).toBe(23);
+    expect(detector.getNonmaxSuppression()).toBe(false);
+    expect(detector.getType()).toBe(AgastFeatureDetectorType.AGAST_7_12s);
+
+    detector.dispose();
+    detector.dispose();
+    expect(backend.agastFeatureDetectorFreeCount).toBe(1);
+    expect(() => detector.getThreshold()).toThrow(OpenCvInputError);
+  });
+
+  test("rejects invalid AgastFeatureDetector configuration before calling WASM", () => {
+    const localClient = createOpenCv(new CopyingBackend());
+
+    expect(() => localClient.createAgastFeatureDetector({ threshold: -1 })).toThrow(
+      OpenCvInputError,
+    );
+    const detector = localClient.createAgastFeatureDetector();
+    expect(() => detector.setThreshold(1.5)).toThrow(OpenCvInputError);
+    expect(detector.getThreshold()).toBe(AGAST_FEATURE_DETECTOR_DEFAULTS.threshold);
+    detector.dispose();
+  });
+
+  test("owns a FastFeatureDetector configuration with OpenCV defaults", () => {
+    const backend = new CopyingBackend();
+    const localClient = createOpenCv(backend);
+    const detector = localClient.createFastFeatureDetector();
+
+    expect(detector.getDefaultName()).toBe("Feature2D.FastFeatureDetector");
+    expect(detector.getThreshold()).toBe(FAST_FEATURE_DETECTOR_DEFAULTS.threshold);
+    expect(detector.getNonmaxSuppression()).toBe(FAST_FEATURE_DETECTOR_DEFAULTS.nonmaxSuppression);
+    expect(detector.getType()).toBe(FAST_FEATURE_DETECTOR_DEFAULTS.type);
+
+    detector.setThreshold(31);
+    detector.setNonmaxSuppression(false);
+    detector.setType(FastFeatureDetectorType.TYPE_7_12);
+    expect(detector.getThreshold()).toBe(31);
+    expect(detector.getNonmaxSuppression()).toBe(false);
+    expect(detector.getType()).toBe(FastFeatureDetectorType.TYPE_7_12);
+
+    detector.dispose();
+    detector.dispose();
+    expect(backend.fastFeatureDetectorFreeCount).toBe(1);
+    expect(() => detector.setNonmaxSuppression(true)).toThrow(OpenCvInputError);
+  });
+
+  test("rejects invalid FastFeatureDetector configuration before calling WASM", () => {
+    const localClient = createOpenCv(new CopyingBackend());
+
+    expect(() => localClient.createFastFeatureDetector({ threshold: 256 })).toThrow(
+      OpenCvInputError,
+    );
+    const detector = localClient.createFastFeatureDetector();
+    expect(() => detector.setThreshold(Number.NaN)).toThrow(OpenCvInputError);
+    expect(detector.getThreshold()).toBe(FAST_FEATURE_DETECTOR_DEFAULTS.threshold);
+    detector.dispose();
   });
 
   test("creates and mutates an explicit AKAZE configuration", () => {

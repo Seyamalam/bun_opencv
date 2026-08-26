@@ -1,7 +1,45 @@
 import type { WasmMatHandle } from "./mat.js";
 import type { WasmAKAZEHandle } from "./akaze.js";
+import type {
+  WasmAgastFeatureDetectorHandle,
+  WasmFastFeatureDetectorHandle,
+} from "./feature-detectors.js";
 
 declare module "#wasm" {
+  export class AgastFeatureDetector implements WasmAgastFeatureDetectorHandle {
+    private constructor();
+    static create(
+      threshold?: number | null,
+      nonmaxSuppression?: boolean | null,
+      type?: number | null,
+    ): AgastFeatureDetector;
+    free(): void;
+    getDefaultName(): string;
+    getNonmaxSuppression(): boolean;
+    getThreshold(): number;
+    getType(): number;
+    setNonmaxSuppression(value: boolean): void;
+    setThreshold(value: number): void;
+    setType(value: number): void;
+  }
+
+  export class FastFeatureDetector implements WasmFastFeatureDetectorHandle {
+    private constructor();
+    static create(
+      threshold?: number | null,
+      nonmaxSuppression?: boolean | null,
+      type?: number | null,
+    ): FastFeatureDetector;
+    free(): void;
+    getDefaultName(): string;
+    getNonmaxSuppression(): boolean;
+    getThreshold(): number;
+    getType(): number;
+    setNonmaxSuppression(value: boolean): void;
+    setThreshold(value: number): void;
+    setType(value: number): void;
+  }
+
   export class AKAZE implements WasmAKAZEHandle {
     private constructor();
     static create(

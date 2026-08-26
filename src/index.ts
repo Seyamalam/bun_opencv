@@ -5,6 +5,22 @@ export { createOpenCv } from "./client.js";
 export { AKAZE, AKAZE_DEFAULTS, AKAZEDescriptorType, KAZEDiffusivity } from "./akaze.js";
 export type { AKAZEOptions, WasmAKAZEFactory, WasmAKAZEHandle } from "./akaze.js";
 export { OpenCvInputError } from "./error.js";
+export {
+  AGAST_FEATURE_DETECTOR_DEFAULTS,
+  AgastFeatureDetector,
+  AgastFeatureDetectorType,
+  FAST_FEATURE_DETECTOR_DEFAULTS,
+  FastFeatureDetector,
+  FastFeatureDetectorType,
+} from "./feature-detectors.js";
+export type {
+  AgastFeatureDetectorOptions,
+  FastFeatureDetectorOptions,
+  WasmAgastFeatureDetectorFactory,
+  WasmAgastFeatureDetectorHandle,
+  WasmFastFeatureDetectorFactory,
+  WasmFastFeatureDetectorHandle,
+} from "./feature-detectors.js";
 export { createRgbaImage, imageDataFromRgbaImage, rgbaImageFromImageData } from "./image.js";
 export { OPENCV_OPERATIONS } from "./operations.js";
 export type { OpenCvOperation } from "./operations.js";

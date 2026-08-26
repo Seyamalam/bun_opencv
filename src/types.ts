@@ -1,4 +1,12 @@
 import type { AKAZE, AKAZEOptions, WasmAKAZEFactory } from "./akaze.js";
+import type {
+  AgastFeatureDetector,
+  AgastFeatureDetectorOptions,
+  FastFeatureDetector,
+  FastFeatureDetectorOptions,
+  WasmAgastFeatureDetectorFactory,
+  WasmFastFeatureDetectorFactory,
+} from "./feature-detectors.js";
 import type { Mat, WasmMatHandle } from "./mat.js";
 
 /** An RGBA image whose data contains four bytes per pixel. */
@@ -60,7 +68,9 @@ export interface MinMaxLocation {
 
 /** Low-level contract implemented by the generated WebAssembly module. */
 export interface OpenCvBackend {
+  readonly AgastFeatureDetector: WasmAgastFeatureDetectorFactory;
   readonly AKAZE: WasmAKAZEFactory;
+  readonly FastFeatureDetector: WasmFastFeatureDetectorFactory;
   clipLine(
     rectangleX: number,
     rectangleY: number,
@@ -358,6 +368,8 @@ export interface OpenCv {
   contourArea(contour: Mat, oriented?: boolean): number;
   createHanningWindow(size: Size, depth: HanningWindowDepth): Mat;
   createAKAZE(options?: AKAZEOptions): AKAZE;
+  createAgastFeatureDetector(options?: AgastFeatureDetectorOptions): AgastFeatureDetector;
+  createFastFeatureDetector(options?: FastFeatureDetectorOptions): FastFeatureDetector;
   determinant(source: Mat): number;
   convertScaleAbs(source: Mat, alpha?: number, beta?: number): Mat;
   convertScaleAbs(source: Mat, destination: Mat, alpha?: number, beta?: number): void;

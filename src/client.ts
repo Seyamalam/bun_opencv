@@ -1,6 +1,16 @@
 import { AKAZE, validateAKAZEOptions } from "./akaze.js";
 import type { AKAZEOptions } from "./akaze.js";
 import {
+  AgastFeatureDetector,
+  FastFeatureDetector,
+  validateAgastFeatureDetectorOptions,
+  validateFastFeatureDetectorOptions,
+} from "./feature-detectors.js";
+import type {
+  AgastFeatureDetectorOptions,
+  FastFeatureDetectorOptions,
+} from "./feature-detectors.js";
+import {
   createRgbaImage,
   validateDimension,
   validateRgbaImage,
@@ -154,6 +164,28 @@ class WasmOpenCv implements OpenCv {
         options.octaveLayers,
         options.diffusivity,
         options.maxPoints,
+      ),
+    );
+  }
+
+  createAgastFeatureDetector(options: AgastFeatureDetectorOptions = {}): AgastFeatureDetector {
+    validateAgastFeatureDetectorOptions(options);
+    return new AgastFeatureDetector(
+      this.#backend.AgastFeatureDetector.create(
+        options.threshold,
+        options.nonmaxSuppression,
+        options.type,
+      ),
+    );
+  }
+
+  createFastFeatureDetector(options: FastFeatureDetectorOptions = {}): FastFeatureDetector {
+    validateFastFeatureDetectorOptions(options);
+    return new FastFeatureDetector(
+      this.#backend.FastFeatureDetector.create(
+        options.threshold,
+        options.nonmaxSuppression,
+        options.type,
       ),
     );
   }
