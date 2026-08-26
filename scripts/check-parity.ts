@@ -88,6 +88,14 @@ for (const entry of manifestEntries) {
       `Parity entry ${entry.method} records module ${entry.module}, but ${entry.upstreamId} belongs to ${upstreamFamily.module}`,
     );
   }
+  if (
+    entry.status === "implemented" &&
+    (upstreamFamily.overloadCount === null || upstreamFamily.runtimeArity === null)
+  ) {
+    throw new Error(
+      `Implemented entry ${entry.method} has no pinned browser overload and arity audit`,
+    );
+  }
 }
 
 const supported = manifestEntries.filter((entry) => entry.status !== "planned");

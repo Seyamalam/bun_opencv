@@ -27,9 +27,11 @@ export interface UpstreamOperationFamily {
   readonly jsNames: readonly string[];
   readonly kind: OperationKind;
   readonly module: UpstreamModule;
-  readonly overloadCount: null;
+  readonly overloadCount: number | null;
   readonly overloadScope: string;
   readonly owner?: string;
+  /** JavaScript function length observed in the pinned browser artifact. */
+  readonly runtimeArity: number | null;
   readonly scope: string;
   readonly sourceUrls: readonly string[];
 }
@@ -47,6 +49,27 @@ interface ModuleSurface {
 
 const BROWSER_BASELINE_URL =
   "https://github.com/opencv/opencv/blob/4.13.0/platforms/js/opencv_js.config.py";
+
+interface AuditedBindingForm {
+  readonly overloadCount: number;
+  readonly runtimeArity: number;
+}
+
+const AUDITED_BINDING_FORMS: Readonly<Record<string, AuditedBindingForm>> = Object.freeze({
+  "features2d.gfttdetector.get-block-size": { overloadCount: 1, runtimeArity: 0 },
+  "features2d.gfttdetector.get-default-name": { overloadCount: 1, runtimeArity: 0 },
+  "features2d.gfttdetector.get-harris-detector": { overloadCount: 1, runtimeArity: 0 },
+  "features2d.gfttdetector.get-k": { overloadCount: 1, runtimeArity: 0 },
+  "features2d.gfttdetector.get-max-features": { overloadCount: 1, runtimeArity: 0 },
+  "features2d.gfttdetector.get-min-distance": { overloadCount: 1, runtimeArity: 0 },
+  "features2d.gfttdetector.get-quality-level": { overloadCount: 1, runtimeArity: 0 },
+  "features2d.gfttdetector.set-block-size": { overloadCount: 1, runtimeArity: 1 },
+  "features2d.gfttdetector.set-harris-detector": { overloadCount: 1, runtimeArity: 1 },
+  "features2d.gfttdetector.set-k": { overloadCount: 1, runtimeArity: 1 },
+  "features2d.gfttdetector.set-max-features": { overloadCount: 1, runtimeArity: 1 },
+  "features2d.gfttdetector.set-min-distance": { overloadCount: 1, runtimeArity: 1 },
+  "features2d.gfttdetector.set-quality-level": { overloadCount: 1, runtimeArity: 1 },
+});
 
 const MODULE_SURFACES = {
   calib3d: {
@@ -733,19 +756,27 @@ function constructorLeaf(owner: string): string {
   return segments[segments.length - 1] ?? owner;
 }
 
+function bindingForm(id: string): AuditedBindingForm | undefined {
+  return AUDITED_BINDING_FORMS[id];
+}
+
 function functionFamily(
   module: UpstreamModule,
   name: string,
   sourceUrl: string,
 ): UpstreamOperationFamily {
+  const id = `${module}.function.${stableSegment(name)}`;
+  const audited = bindingForm(id);
   return {
-    id: `${module}.function.${stableSegment(name)}`,
+    id,
     jsNames: [name],
     kind: "function",
     module,
-    overloadCount: null,
-    overloadScope:
-      "All overloads selected by the pinned stock browser build; the generated JS overload count still needs runtime verification.",
+    overloadCount: audited?.overloadCount ?? null,
+    overloadScope: audited
+      ? "The pinned stock browser build exposes one audited generated call form."
+      : "All overloads selected by the pinned stock browser build; the generated JS overload count still needs runtime verification.",
+    runtimeArity: audited?.runtimeArity ?? null,
     scope: `Match cv.${name} inputs, defaults, output mutation, return values, and documented failure behavior.`,
     sourceUrls: [sourceUrl, BROWSER_BASELINE_URL],
   };
@@ -758,14 +789,18 @@ function classFamily(
   sourceUrl: string,
 ): UpstreamOperationFamily {
   const isConstructor = member === constructorLeaf(owner);
+  const id = `${module}.${stableSegment(owner)}.${stableSegment(member)}`;
+  const audited = bindingForm(id);
   const common = {
-    id: `${module}.${stableSegment(owner)}.${stableSegment(member)}`,
+    id,
     jsNames: [`${owner}.${member}`],
     module,
-    overloadCount: null,
-    overloadScope:
-      "All overloads selected by the pinned stock browser build; the generated JS overload count still needs runtime verification.",
+    overloadCount: audited?.overloadCount ?? null,
+    overloadScope: audited
+      ? "The pinned stock browser build exposes one audited generated call form."
+      : "All overloads selected by the pinned stock browser build; the generated JS overload count still needs runtime verification.",
     owner,
+    runtimeArity: audited?.runtimeArity ?? null,
     sourceUrls: [sourceUrl, BROWSER_BASELINE_URL],
   } as const;
 
