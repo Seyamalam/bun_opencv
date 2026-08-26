@@ -245,6 +245,42 @@ impl MutableStorage {
         Ok(())
     }
 
+    pub(crate) fn write_unary_scalars_from_shared(
+        &self,
+        source: &Self,
+        scalar_width: usize,
+        mut operation: impl FnMut(&[u8], &mut [u8]),
+    ) -> Result<(), MutableStorageError> {
+        if !self.shares_allocation_with(source)
+            || self.rows != source.rows
+            || self.row_bytes != source.row_bytes
+            || scalar_width == 0
+            || self.row_bytes % scalar_width != 0
+        {
+            return Err(MutableStorageError::IncorrectBufferLength {
+                expected: source.row_bytes,
+                actual: self.row_bytes,
+            });
+        }
+
+        let scalars_per_row = self.row_bytes / scalar_width;
+        let mut data = self.data.borrow_mut();
+        let mut input = vec![0; scalar_width];
+        let mut output = vec![0; scalar_width];
+        for row in 0..self.rows {
+            let source_row = source.offset + row * source.row_stride;
+            let destination_row = self.offset + row * self.row_stride;
+            for scalar in 0..scalars_per_row {
+                let source_start = source_row + scalar * scalar_width;
+                input.copy_from_slice(&data[source_start..source_start + scalar_width]);
+                operation(&input, &mut output);
+                let destination_start = destination_row + scalar * scalar_width;
+                data[destination_start..destination_start + scalar_width].copy_from_slice(&output);
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) fn from_compact(
         data: Vec<u8>,
         rows: usize,

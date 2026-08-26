@@ -44,6 +44,7 @@ impl From<MatError> for FloatMathWasmError {
 
 type UnaryKernel = fn(&[u8]) -> Result<Vec<u8>, FloatMathError>;
 type BinaryKernel = fn(&[u8], &[u8]) -> Result<Vec<u8>, FloatMathError>;
+type UnaryScalarKernel = fn(&[u8], &mut [u8]);
 
 /// Computes the natural exponential element-wise.
 /// # Errors
@@ -51,6 +52,22 @@ type BinaryKernel = fn(&[u8], &[u8]) -> Result<Vec<u8>, FloatMathError>;
 #[wasm_bindgen(js_name = matExp)]
 pub fn mat_exp(source: &Mat) -> Result<Mat, JsError> {
     unary(source, core_float_math::exp_f32, core_float_math::exp_f64).map_err(JsError::from)
+}
+
+/// Computes the natural exponential into a caller-owned destination.
+/// # Errors
+/// Returns an error unless the source has F32 or F64 depth.
+#[wasm_bindgen(js_name = matExpInto)]
+pub fn mat_exp_into(source: &Mat, destination: &Mat) -> Result<(), JsError> {
+    unary_into(
+        source,
+        destination,
+        core_float_math::exp_f32,
+        core_float_math::exp_f64,
+        exp_scalar_f32,
+        exp_scalar_f64,
+    )
+    .map_err(JsError::from)
 }
 
 /// Computes the natural logarithm element-wise.
@@ -166,6 +183,60 @@ fn unary(
         _ => unreachable!(),
     })
 }
+fn unary_into(
+    source: &Mat,
+    destination: &Mat,
+    f32_kernel: UnaryKernel,
+    f64_kernel: UnaryKernel,
+    f32_scalar_kernel: UnaryScalarKernel,
+    f64_scalar_kernel: UnaryScalarKernel,
+) -> Result<(), FloatMathWasmError> {
+    let depth = float_depth(source)?;
+    let scalar_kernel = match depth {
+        MatDepth::F32 => f32_scalar_kernel,
+        MatDepth::F64 => f64_scalar_kernel,
+        _ => unreachable!(),
+    };
+    if destination.try_write_shared_unary_scalars(source, depth.byte_width(), scalar_kernel)? {
+        return Ok(());
+    }
+
+    let output = match depth {
+        MatDepth::F32 => f32_kernel(&source.compact_bytes())?,
+        MatDepth::F64 => f64_kernel(&source.compact_bytes())?,
+        _ => unreachable!(),
+    };
+    destination.write_output(
+        output,
+        source.rows(),
+        source.columns(),
+        source.channels(),
+        depth,
+    )?;
+    Ok(())
+}
+
+fn exp_scalar_f32(input: &[u8], output: &mut [u8]) {
+    transform_scalar_f32(input, output, f32::exp);
+}
+
+fn exp_scalar_f64(input: &[u8], output: &mut [u8]) {
+    transform_scalar_f64(input, output, f64::exp);
+}
+
+fn transform_scalar_f32(input: &[u8], output: &mut [u8], operation: impl FnOnce(f32) -> f32) {
+    let bytes: [u8; 4] = input
+        .try_into()
+        .expect("F32 scalar traversal always supplies four bytes");
+    output.copy_from_slice(&operation(f32::from_ne_bytes(bytes)).to_ne_bytes());
+}
+
+fn transform_scalar_f64(input: &[u8], output: &mut [u8], operation: impl FnOnce(f64) -> f64) {
+    let bytes: [u8; 8] = input
+        .try_into()
+        .expect("F64 scalar traversal always supplies eight bytes");
+    output.copy_from_slice(&operation(f64::from_ne_bytes(bytes)).to_ne_bytes());
+}
 fn unary_with(
     source: &Mat,
     kernel: impl FnOnce(MatDepth, &[u8]) -> Result<Vec<u8>, FloatMathError>,
@@ -273,6 +344,52 @@ mod tests {
             .unwrap(),
             [5.0, 13.0, 17.0, 25.0]
         );
+    }
+    #[test]
+    fn exp_into_rebinds_an_incompatible_destination() {
+        let source = f32_mat(&[0.0, 1.0], 1, 2, 1);
+        let destination = f64_mat(&[99.0], 1, 1, 1);
+
+        mat_exp_into(&source, &destination).expect("valid exponential destination");
+
+        assert_eq!(
+            (
+                destination.rows(),
+                destination.columns(),
+                destination.channels(),
+                destination.depth(),
+            ),
+            (1, 2, 1, MatDepth::F32)
+        );
+        assert_eq!(
+            destination.to_f32_array().unwrap(),
+            [1.0, std::f32::consts::E]
+        );
+    }
+    #[test]
+    fn exp_into_reads_partially_overlapping_rows_live() {
+        let parent = f32_mat(&[0.0, 1.0, 2.0, 99.0, 0.0, 1.0, 2.0, 99.0], 2, 4, 1);
+        let source = parent.roi(0, 0, 2, 3).unwrap();
+        let destination = parent.roi(0, 1, 2, 3).unwrap();
+
+        mat_exp_into(&source, &destination).expect("valid overlapping exponential destination");
+
+        let actual = parent.to_f32_array().unwrap();
+        for (actual, expected) in actual.into_iter().zip([
+            0.0,
+            1.0,
+            2.718_281_7,
+            15.154_262,
+            0.0,
+            1.0,
+            2.718_281_7,
+            15.154_262,
+        ]) {
+            assert!(
+                (actual - expected).abs() <= 1e-5,
+                "expected {expected}, got {actual}"
+            );
+        }
     }
     #[test]
     fn pair_outputs_mutate_strided_destinations_and_round_trip() {

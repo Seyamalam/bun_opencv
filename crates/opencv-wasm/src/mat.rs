@@ -528,6 +528,40 @@ impl Mat {
         Ok(true)
     }
 
+    pub(crate) fn try_write_shared_unary_scalars(
+        &self,
+        source: &Self,
+        scalar_width: usize,
+        operation: impl FnMut(&[u8], &mut [u8]),
+    ) -> Result<bool, MatError> {
+        let source_header = source.header.borrow();
+        let destination_header = self.header.borrow();
+        let compatible = destination_header.rows == source_header.rows
+            && destination_header.columns == source_header.columns
+            && destination_header.channels == source_header.channels
+            && destination_header.depth == source_header.depth;
+        if !compatible {
+            return Ok(false);
+        }
+
+        let Some(source_storage) = source_header.storage.as_ref() else {
+            return Ok(false);
+        };
+        let Some(destination_storage) = destination_header.storage.as_ref() else {
+            return Ok(false);
+        };
+        if !source_storage.shares_allocation_with(destination_storage) {
+            return Ok(false);
+        }
+
+        destination_storage.write_unary_scalars_from_shared(
+            source_storage,
+            scalar_width,
+            operation,
+        )?;
+        Ok(true)
+    }
+
     fn compact_u8(&self) -> Vec<u8> {
         self.compact_bytes()
     }
