@@ -51,6 +51,63 @@ function captureCall(callback) {
   }
 }
 
+function auditOptimalDftSize(owner) {
+  const i32Cases = [
+    ["positive fraction", 1.9],
+    ["negative fraction", -1.9],
+    ["NaN", Number.NaN],
+    ["positive infinity", Number.POSITIVE_INFINITY],
+    ["negative infinity", Number.NEGATIVE_INFINITY],
+    ["i32 maximum", 2_147_483_647],
+    ["i32 maximum plus one", 2_147_483_648],
+    ["i32 minimum", -2_147_483_648],
+    ["i32 minimum minus one", -2_147_483_649],
+    ["u32 maximum", 4_294_967_295],
+    ["u32 modulus", 4_294_967_296],
+    ["null", null],
+    ["true", true],
+    ["false", false],
+    ["numeric string", "42"],
+    ["fraction string", "-1.9"],
+    ["empty string", ""],
+    ["non-numeric string", "opencv"],
+    ["explicit undefined", undefined],
+  ];
+  const boundaryCases = [
+    ["negative 1024", -1024],
+    ["negative two", -2],
+    ["negative one", -1],
+    ["zero", 0],
+    ["one", 1],
+    ["two", 2],
+    ["three", 3],
+    ["seven", 7],
+    ["twenty five", 25],
+    ["last rounded input", 2_125_763_999],
+    ["first sentinel input", 2_125_764_000],
+    ["sentinel plus one", 2_125_764_001],
+    ["i32 maximum minus one", 2_147_483_646],
+  ];
+  const auditCases = (cases) =>
+    cases.map(([label, value]) => ({
+      label,
+      input: encodeValue(value),
+      call: captureCall(() => owner.getOptimalDFTSize(value)),
+    }));
+
+  return {
+    length: owner.getOptimalDFTSize.length,
+    arity: {
+      missing: captureCall(() => owner.getOptimalDFTSize()),
+      exact: captureCall(() => owner.getOptimalDFTSize(7)),
+      extraOne: captureCall(() => owner.getOptimalDFTSize(7, 1)),
+      extraTwo: captureCall(() => owner.getOptimalDFTSize(7, 1, 2)),
+    },
+    i32: auditCases(i32Cases),
+    boundaries: auditCases(boundaryCases),
+  };
+}
+
 function safeDelete(detector) {
   try {
     detector.delete();
@@ -788,6 +845,7 @@ self.addEventListener("message", async ({ data: input }) => {
       reference.getOptimalDFTSize(2_125_763_999),
       reference.getOptimalDFTSize(2_125_764_000),
     ];
+    outputs.optimalDftSizeAudit = auditOptimalDftSize(reference);
 
     const akaze = new reference.AKAZE();
     outputs.akazeDefaultName = akaze.getDefaultName();
