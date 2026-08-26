@@ -205,6 +205,94 @@ self.addEventListener("message", async ({ data: input }) => {
       gftt.getQualityLevel() === Number.POSITIVE_INFINITY,
     ];
     gftt.delete();
+
+    const gfttAudit = new reference.GFTTDetector();
+    const audit = {
+      getterLengths: [
+        gfttAudit.getBlockSize.length,
+        gfttAudit.getDefaultName.length,
+        gfttAudit.getHarrisDetector.length,
+        gfttAudit.getK.length,
+        gfttAudit.getMaxFeatures.length,
+        gfttAudit.getMinDistance.length,
+        gfttAudit.getQualityLevel.length,
+      ],
+      setterLengths: [
+        gfttAudit.setBlockSize.length,
+        gfttAudit.setHarrisDetector.length,
+        gfttAudit.setK.length,
+        gfttAudit.setMaxFeatures.length,
+        gfttAudit.setMinDistance.length,
+        gfttAudit.setQualityLevel.length,
+      ],
+    };
+    audit.blockFractionReturnsUndefined = gfttAudit.setBlockSize(1.9) === undefined;
+    audit.blockFractionValue = gfttAudit.getBlockSize();
+    audit.maxNaNReturnsUndefined = gfttAudit.setMaxFeatures(Number.NaN) === undefined;
+    audit.maxNaNValue = gfttAudit.getMaxFeatures();
+    audit.kNaNReturnsUndefined = gfttAudit.setK(Number.NaN) === undefined;
+    audit.kNaNPreserved = Number.isNaN(gfttAudit.getK());
+    audit.harrisZeroReturnsUndefined = gfttAudit.setHarrisDetector(0) === undefined;
+    audit.harrisZeroValue = gfttAudit.getHarrisDetector();
+    audit.harrisOneReturnsUndefined = gfttAudit.setHarrisDetector(1) === undefined;
+    audit.harrisOneValue = gfttAudit.getHarrisDetector();
+    try {
+      gfttAudit.getBlockSize(123);
+      audit.extraGetterThrows = false;
+    } catch (error) {
+      audit.extraGetterThrows = true;
+      audit.extraGetterError = {
+        name: error?.name,
+        message: error?.message,
+        text: String(error),
+      };
+    }
+    try {
+      gfttAudit.setBlockSize();
+      audit.missingSetterThrows = false;
+    } catch (error) {
+      audit.missingSetterThrows = true;
+      audit.missingSetterError = {
+        name: error?.name,
+        message: error?.message,
+        text: String(error),
+      };
+    }
+    try {
+      gfttAudit.setBlockSize(7, 99);
+      audit.extraSetterThrows = false;
+    } catch (error) {
+      audit.extraSetterThrows = true;
+      audit.extraSetterError = {
+        name: error?.name,
+        message: error?.message,
+        text: String(error),
+      };
+    }
+    audit.deleteReturnsUndefined = gfttAudit.delete() === undefined;
+    try {
+      gfttAudit.getBlockSize();
+      audit.postDeleteThrows = false;
+    } catch (error) {
+      audit.postDeleteThrows = true;
+      audit.postDeleteError = {
+        name: error?.name,
+        message: error?.message,
+        text: String(error),
+      };
+    }
+    try {
+      gfttAudit.delete();
+      audit.secondDeleteThrows = false;
+    } catch (error) {
+      audit.secondDeleteThrows = true;
+      audit.secondDeleteError = {
+        name: error?.name,
+        message: error?.message,
+        text: String(error),
+      };
+    }
+    outputs.gfttAudit = audit;
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });

@@ -62,6 +62,15 @@
         }
       }
 
+      function callThrows(callback) {
+        try {
+          callback();
+          return false;
+        } catch {
+          return true;
+        }
+      }
+
       function runReference(input) {
         return new Promise((resolve, reject) => {
           const worker = new Worker("/test/browser/opencv-reference-worker.js");
@@ -365,6 +374,89 @@
           0,
         );
         packageGftt.dispose();
+
+        const packageGfttAudit = packageCv.createGFTTDetector();
+        const packageGfttGetterLengths = [
+          packageGfttAudit.getBlockSize.length,
+          packageGfttAudit.getDefaultName.length,
+          packageGfttAudit.getHarrisDetector.length,
+          packageGfttAudit.getK.length,
+          packageGfttAudit.getMaxFeatures.length,
+          packageGfttAudit.getMinDistance.length,
+          packageGfttAudit.getQualityLevel.length,
+        ];
+        const packageGfttSetterLengths = [
+          packageGfttAudit.setBlockSize.length,
+          packageGfttAudit.setHarrisDetector.length,
+          packageGfttAudit.setK.length,
+          packageGfttAudit.setMaxFeatures.length,
+          packageGfttAudit.setMinDistance.length,
+          packageGfttAudit.setQualityLevel.length,
+        ];
+        const packageBlockFractionReturnsUndefined =
+          packageGfttAudit.setBlockSize(1.9) === undefined;
+        const packageBlockFractionValue = packageGfttAudit.getBlockSize();
+        const packageMaxNaNReturnsUndefined =
+          packageGfttAudit.setMaxFeatures(Number.NaN) === undefined;
+        const packageMaxNaNValue = packageGfttAudit.getMaxFeatures();
+        const packageKNaNReturnsUndefined = packageGfttAudit.setK(Number.NaN) === undefined;
+        const packageKNaNPreserved = Number.isNaN(packageGfttAudit.getK());
+        const packageHarrisZeroReturnsUndefined =
+          packageGfttAudit.setHarrisDetector(0) === undefined;
+        const packageHarrisZeroValue = packageGfttAudit.getHarrisDetector();
+        const packageHarrisOneReturnsUndefined =
+          packageGfttAudit.setHarrisDetector(1) === undefined;
+        const packageHarrisOneValue = packageGfttAudit.getHarrisDetector();
+        const packageExtraGetterThrows = callThrows(() => packageGfttAudit.getBlockSize(123));
+        const packageMissingSetterThrows = callThrows(() => packageGfttAudit.setBlockSize());
+        const packageExtraSetterThrows = callThrows(() => packageGfttAudit.setBlockSize(7, 99));
+        const packageDeleteReturnsUndefined = packageGfttAudit.delete() === undefined;
+        const packagePostDeleteThrows = callThrows(() => packageGfttAudit.getBlockSize());
+        const packageSecondDeleteThrows = callThrows(() => packageGfttAudit.delete());
+        sameNumbers(
+          [
+            ...packageGfttGetterLengths,
+            ...packageGfttSetterLengths,
+            packageBlockFractionReturnsUndefined,
+            packageBlockFractionValue,
+            packageMaxNaNReturnsUndefined,
+            packageMaxNaNValue,
+            packageKNaNReturnsUndefined,
+            packageKNaNPreserved,
+            packageHarrisZeroReturnsUndefined,
+            packageHarrisZeroValue,
+            packageHarrisOneReturnsUndefined,
+            packageHarrisOneValue,
+            packageExtraGetterThrows,
+            packageMissingSetterThrows,
+            packageExtraSetterThrows,
+            packageDeleteReturnsUndefined,
+            packagePostDeleteThrows,
+            packageSecondDeleteThrows,
+          ],
+          [
+            ...referenceOutputs.gfttAudit.getterLengths,
+            ...referenceOutputs.gfttAudit.setterLengths,
+            referenceOutputs.gfttAudit.blockFractionReturnsUndefined,
+            referenceOutputs.gfttAudit.blockFractionValue,
+            referenceOutputs.gfttAudit.maxNaNReturnsUndefined,
+            referenceOutputs.gfttAudit.maxNaNValue,
+            referenceOutputs.gfttAudit.kNaNReturnsUndefined,
+            referenceOutputs.gfttAudit.kNaNPreserved,
+            referenceOutputs.gfttAudit.harrisZeroReturnsUndefined,
+            referenceOutputs.gfttAudit.harrisZeroValue,
+            referenceOutputs.gfttAudit.harrisOneReturnsUndefined,
+            referenceOutputs.gfttAudit.harrisOneValue,
+            referenceOutputs.gfttAudit.extraGetterThrows,
+            referenceOutputs.gfttAudit.missingSetterThrows,
+            referenceOutputs.gfttAudit.extraSetterThrows,
+            referenceOutputs.gfttAudit.deleteReturnsUndefined,
+            referenceOutputs.gfttAudit.postDeleteThrows,
+            referenceOutputs.gfttAudit.secondDeleteThrows,
+          ],
+          "GFTT call contract",
+          0,
+        );
 
         packageSource.dispose();
         result.value =
