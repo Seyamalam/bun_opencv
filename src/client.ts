@@ -771,21 +771,23 @@ class WasmOpenCv implements OpenCv {
     return createRgbaImage(targetWidth, targetHeight, data);
   }
 
-  repeat(source: Mat, rowRepeats: number, columnRepeats: number): Mat;
-  repeat(source: Mat, rowRepeats: number, columnRepeats: number, destination: Mat): void;
-  repeat(source: Mat, rowRepeats: number, columnRepeats: number, destination?: Mat): Mat | void {
-    validateDimension(rowRepeats, "rowRepeats");
-    validateDimension(columnRepeats, "columnRepeats");
-    if (destination !== undefined) {
-      this.#backend.matRepeatInto(
+  repeat(source: Mat, rowRepeats: number, columnRepeats: number, destination: Mat): void {
+    requireExactArity(arguments.length, 4, "repeat");
+    const sourceHandle = matHandleForBinding(source);
+    const rows = toWasmI32(rowRepeats);
+    const columns = toWasmI32(columnRepeats);
+    const destinationHandle = matHandleForBinding(destination);
+    this.#backend.matRepeatInto(sourceHandle, destinationHandle, rows, columns);
+  }
+
+  repeatAlloc(source: Mat, rowRepeats: number, columnRepeats: number): Mat {
+    return new Mat(
+      this.#backend.matRepeat(
         source.handleForBackend(),
-        destination.handleForBackend(),
-        rowRepeats,
-        columnRepeats,
-      );
-      return;
-    }
-    return new Mat(this.#backend.matRepeat(source.handleForBackend(), rowRepeats, columnRepeats));
+        toWasmI32(rowRepeats),
+        toWasmI32(columnRepeats),
+      ),
+    );
   }
 
   reduce(source: Mat, destination: Mat, axis: 0 | 1, kind: ReduceKind): void {

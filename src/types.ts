@@ -472,8 +472,8 @@ export interface OpenCv {
   randn(destination: Mat, mean: Scalar, standardDeviation: Scalar): void;
   randu(destination: Mat, lower: Scalar, upper: Scalar): void;
   resizeNearest(image: RgbaImage, targetWidth: number, targetHeight: number): RgbaImage;
-  repeat(source: Mat, rowRepeats: number, columnRepeats: number): Mat;
   repeat(source: Mat, rowRepeats: number, columnRepeats: number, destination: Mat): void;
+  repeatAlloc(source: Mat, rowRepeats: number, columnRepeats: number): Mat;
   rotate(source: Mat, rotateCode: 0 | 1 | 2): Mat;
   rotate(source: Mat, destination: Mat, rotateCode: 0 | 1 | 2): void;
   setIdentity(destination: Mat, value?: Scalar): void;

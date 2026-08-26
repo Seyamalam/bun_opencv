@@ -2344,7 +2344,7 @@ describe("OpenCv client", () => {
     const horizontal = client.flipAlloc(source, 1);
     const transposed = client.transposeAlloc(source);
     const clockwise = client.rotate(source, 0);
-    const repeated = client.repeat(source, 2, 1);
+    const repeated = client.repeatAlloc(source, 2, 1);
     const flippedDestination = client.zerosU8(2, 3, 1);
     const transposedDestination = client.zerosU8(3, 2, 1);
     const rotatedDestination = client.zerosU8(3, 2, 1);
@@ -2453,6 +2453,46 @@ describe("OpenCv client", () => {
       client.flip(source, null, 1);
     }).toThrow(new BindingError("null is not a valid Mat"));
 
+    destination.dispose();
+    source.dispose();
+  });
+
+  test("matches the exact four-argument repeat call contract", () => {
+    const source = client.matFromU8(1, 2, 1, new Uint8Array([1, 2]));
+    const destination = client.zerosU8(2, 4, 1);
+
+    expect(client.repeat.length).toBe(4);
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing missing arguments from plain JavaScript.
+      client.repeat();
+    }).toThrow(new BindingError("function repeat called with 0 arguments, expected 4 args!"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing an extra argument from plain JavaScript.
+      client.repeat(source, 1, 2, destination, 5);
+    }).toThrow(new BindingError("function repeat called with 5 arguments, expected 4 args!"));
+    expect(client.repeat(source, 2, 2, destination)).toBeUndefined();
+    expect(destination.toUint8Array()).toEqual(new Uint8Array([1, 2, 1, 2, 1, 2, 1, 2]));
+
+    const fractionalDestination = client.zerosU8(1, 4, 1);
+    expect(client.repeat(source, 1.9, 2.9, fractionalDestination)).toBeUndefined();
+    expect(fractionalDestination.toUint8Array()).toEqual(new Uint8Array([1, 2, 1, 2]));
+
+    const booleanDestination = client.zerosU8(1, 2, 1);
+    expect(() => {
+      // @ts-expect-error Runtime parity requires boolean-to-int conversion from plain JavaScript.
+      client.repeat(source, true, true, booleanDestination);
+    }).not.toThrow();
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a null Mat from plain JavaScript.
+      client.repeat(null, 1, 1, destination);
+    }).toThrow(new BindingError("null is not a valid Mat"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing an invalid repeat count.
+      client.repeat(source, "1", 1, destination);
+    }).toThrow(new TypeError('Cannot convert "1" to int'));
+
+    booleanDestination.dispose();
+    fractionalDestination.dispose();
     destination.dispose();
     source.dispose();
   });
