@@ -47,6 +47,16 @@ class WasmOpenCv implements OpenCv {
     return new Mat(this.#backend.matCompareEqU8(left.handleForBackend(), right.handleForBackend()));
   }
 
+  cartToPolar(x: Mat, y: Mat, magnitude: Mat, angle: Mat, degrees = false): void {
+    this.#backend.matCartToPolar(
+      x.handleForBackend(),
+      y.handleForBackend(),
+      magnitude.handleForBackend(),
+      angle.handleForBackend(),
+      degrees,
+    );
+  }
+
   countNonZero(source: Mat): number {
     return this.#backend.matCountNonZero(source.handleForBackend());
   }
@@ -54,6 +64,10 @@ class WasmOpenCv implements OpenCv {
   extractChannel(source: Mat, channel: number): Mat {
     validateChannelIndex(channel);
     return new Mat(this.#backend.matExtractChannel(source.handleForBackend(), channel));
+  }
+
+  exp(source: Mat): Mat {
+    return new Mat(this.#backend.matExp(source.handleForBackend()));
   }
 
   flip(source: Mat, flipCode: -1 | 0 | 1): Mat;
@@ -150,6 +164,14 @@ class WasmOpenCv implements OpenCv {
     );
   }
 
+  log(source: Mat): Mat {
+    return new Mat(this.#backend.matLog(source.handleForBackend()));
+  }
+
+  magnitude(x: Mat, y: Mat): Mat {
+    return new Mat(this.#backend.matMagnitude(x.handleForBackend(), y.handleForBackend()));
+  }
+
   max(left: Mat, right: Mat): Mat {
     return new Mat(this.#backend.matMaxU8(left.handleForBackend(), right.handleForBackend()));
   }
@@ -186,6 +208,23 @@ class WasmOpenCv implements OpenCv {
 
   min(left: Mat, right: Mat): Mat {
     return new Mat(this.#backend.matMinU8(left.handleForBackend(), right.handleForBackend()));
+  }
+
+  polarToCart(magnitude: Mat, angle: Mat, x: Mat, y: Mat, degrees = false): void {
+    this.#backend.matPolarToCart(
+      magnitude.handleForBackend(),
+      angle.handleForBackend(),
+      x.handleForBackend(),
+      y.handleForBackend(),
+      degrees,
+    );
+  }
+
+  pow(source: Mat, exponent: number): Mat {
+    if (!Number.isFinite(exponent)) {
+      throw new OpenCvInputError("exponent must be finite");
+    }
+    return new Mat(this.#backend.matPow(source.handleForBackend(), exponent));
   }
 
   minMaxLoc(source: Mat): MinMaxLocation {
@@ -236,6 +275,10 @@ class WasmOpenCv implements OpenCv {
 
   split(source: Mat): Mat[] {
     return this.#backend.matSplit(source.handleForBackend()).map((handle) => new Mat(handle));
+  }
+
+  sqrt(source: Mat): Mat {
+    return new Mat(this.#backend.matSqrt(source.handleForBackend()));
   }
 
   sum(source: Mat): Scalar {

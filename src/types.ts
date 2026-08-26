@@ -70,6 +70,25 @@ export interface OpenCvBackend {
   ): WasmMatHandle;
   matExtractChannel(source: WasmMatHandle, channel: number): WasmMatHandle;
   matInsertChannel(source: WasmMatHandle, destination: WasmMatHandle, channel: number): void;
+  matExp(source: WasmMatHandle): WasmMatHandle;
+  matLog(source: WasmMatHandle): WasmMatHandle;
+  matSqrt(source: WasmMatHandle): WasmMatHandle;
+  matPow(source: WasmMatHandle, exponent: number): WasmMatHandle;
+  matMagnitude(x: WasmMatHandle, y: WasmMatHandle): WasmMatHandle;
+  matCartToPolar(
+    x: WasmMatHandle,
+    y: WasmMatHandle,
+    magnitude: WasmMatHandle,
+    angle: WasmMatHandle,
+    degrees: boolean,
+  ): void;
+  matPolarToCart(
+    magnitude: WasmMatHandle,
+    angle: WasmMatHandle,
+    x: WasmMatHandle,
+    y: WasmMatHandle,
+    degrees: boolean,
+  ): void;
   matMaxU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matMean(source: WasmMatHandle): Float64Array;
   matMinMaxLoc(source: WasmMatHandle): Float64Array;
@@ -105,8 +124,10 @@ export interface OpenCv {
   bitwiseOr(left: Mat, right: Mat): Mat;
   bitwiseXor(left: Mat, right: Mat): Mat;
   compareEqual(left: Mat, right: Mat): Mat;
+  cartToPolar(x: Mat, y: Mat, magnitude: Mat, angle: Mat, degrees?: boolean): void;
   countNonZero(source: Mat): number;
   extractChannel(source: Mat, channel: number): Mat;
+  exp(source: Mat): Mat;
   flip(source: Mat, flipCode: -1 | 0 | 1): Mat;
   flip(source: Mat, destination: Mat, flipCode: -1 | 0 | 1): void;
   grayscale(image: RgbaImage): RgbaImage;
@@ -120,6 +141,8 @@ export interface OpenCv {
   matFromU8(rows: number, columns: number, channels: number, data: Uint8Array): Mat;
   inRange(source: Mat, lowerBound: Mat, upperBound: Mat): Mat;
   insertChannel(source: Mat, destination: Mat, channel: number): void;
+  log(source: Mat): Mat;
+  magnitude(x: Mat, y: Mat): Mat;
   max(left: Mat, right: Mat): Mat;
   mean(source: Mat): Scalar;
   merge(
@@ -127,6 +150,8 @@ export interface OpenCv {
   ): Mat;
   minMaxLoc(source: Mat): MinMaxLocation;
   min(left: Mat, right: Mat): Mat;
+  polarToCart(magnitude: Mat, angle: Mat, x: Mat, y: Mat, degrees?: boolean): void;
+  pow(source: Mat, exponent: number): Mat;
   resizeNearest(image: RgbaImage, targetWidth: number, targetHeight: number): RgbaImage;
   repeat(source: Mat, rowRepeats: number, columnRepeats: number): Mat;
   repeat(source: Mat, rowRepeats: number, columnRepeats: number, destination: Mat): void;
@@ -135,6 +160,7 @@ export interface OpenCv {
   threshold(image: RgbaImage, threshold: number): RgbaImage;
   subtract(left: Mat, right: Mat): Mat;
   split(source: Mat): Mat[];
+  sqrt(source: Mat): Mat;
   sum(source: Mat): Scalar;
   transpose(source: Mat): Mat;
   transpose(source: Mat, destination: Mat): void;

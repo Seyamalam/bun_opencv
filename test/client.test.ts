@@ -111,6 +111,41 @@ function mergeHandles(sources: readonly WasmMatHandle[]): WasmMatHandle {
   return new CopyingMatHandle(first.rows, first.columns, channels, output, first.depth);
 }
 
+function floatValues(source: WasmMatHandle): Float32Array | Float64Array {
+  return source.depth === 5 ? source.toFloat32Array() : source.toFloat64Array();
+}
+
+function floatHandle(source: WasmMatHandle, values: readonly number[]): WasmMatHandle {
+  const typed = source.depth === 5 ? new Float32Array(values) : new Float64Array(values);
+  return new CopyingMatHandle(
+    source.rows,
+    source.columns,
+    source.channels,
+    copyViewBytes(typed),
+    source.depth,
+  );
+}
+
+function mapFloatHandle(
+  source: WasmMatHandle,
+  operation: (value: number) => number,
+): WasmMatHandle {
+  return floatHandle(source, Array.from(floatValues(source), operation));
+}
+
+function zipFloatHandles(
+  left: WasmMatHandle,
+  right: WasmMatHandle,
+  operation: (left: number, right: number) => number,
+): WasmMatHandle {
+  const leftValues = floatValues(left);
+  const rightValues = floatValues(right);
+  return floatHandle(
+    left,
+    Array.from(leftValues, (value, index) => operation(value, rightValues[index] ?? Number.NaN)),
+  );
+}
+
 class CopyingBackend implements OpenCvBackend {
   grayscaleRgba(data: Uint8Array): Uint8Array {
     return new Uint8Array(data);
@@ -217,6 +252,64 @@ class CopyingBackend implements OpenCvBackend {
       output.set(input.subarray(sourceOffset, sourceOffset + scalarWidth), destinationOffset);
     }
     destination.copyFromBytes(output);
+  }
+
+  matExp(source: WasmMatHandle): WasmMatHandle {
+    return mapFloatHandle(source, Math.exp);
+  }
+
+  matLog(source: WasmMatHandle): WasmMatHandle {
+    return mapFloatHandle(source, Math.log);
+  }
+
+  matSqrt(source: WasmMatHandle): WasmMatHandle {
+    return mapFloatHandle(source, Math.sqrt);
+  }
+
+  matPow(source: WasmMatHandle, exponent: number): WasmMatHandle {
+    return mapFloatHandle(source, (value) => value ** exponent);
+  }
+
+  matMagnitude(x: WasmMatHandle, y: WasmMatHandle): WasmMatHandle {
+    return zipFloatHandles(x, y, Math.hypot);
+  }
+
+  matCartToPolar(
+    x: WasmMatHandle,
+    y: WasmMatHandle,
+    magnitude: WasmMatHandle,
+    angle: WasmMatHandle,
+    degrees: boolean,
+  ): void {
+    magnitude.copyFromBytes(this.matMagnitude(x, y).toUint8Array());
+    const scale = degrees ? 180 / Math.PI : 1;
+    angle.copyFromBytes(
+      zipFloatHandles(x, y, (xValue, yValue) => Math.atan2(yValue, xValue) * scale).toUint8Array(),
+    );
+  }
+
+  matPolarToCart(
+    magnitude: WasmMatHandle,
+    angle: WasmMatHandle,
+    x: WasmMatHandle,
+    y: WasmMatHandle,
+    degrees: boolean,
+  ): void {
+    const scale = degrees ? Math.PI / 180 : 1;
+    x.copyFromBytes(
+      zipFloatHandles(
+        magnitude,
+        angle,
+        (length, direction) => length * Math.cos(direction * scale),
+      ).toUint8Array(),
+    );
+    y.copyFromBytes(
+      zipFloatHandles(
+        magnitude,
+        angle,
+        (length, direction) => length * Math.sin(direction * scale),
+      ).toUint8Array(),
+    );
   }
 
   matAbsdiffU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle {
@@ -718,5 +811,44 @@ describe("OpenCv client", () => {
     merged.dispose();
     for (const plane of planes) plane.dispose();
     source.dispose();
+  });
+
+  test("runs floating-point math and cartesian conversions", () => {
+    const x = client.matFromF32(1, 2, 1, new Float32Array([3, 0]));
+    const y = client.matFromF32(1, 2, 1, new Float32Array([4, 2]));
+    const exponential = client.exp(x);
+    const logarithm = client.log(exponential);
+    const squareRoot = client.sqrt(y);
+    const squared = client.pow(x, 2);
+    const vectorLength = client.magnitude(x, y);
+    expect(Array.from(exponential.toFloat32Array())).toEqual([Math.fround(Math.exp(3)), 1]);
+    expect(Array.from(logarithm.toFloat32Array())[0]).toBeCloseTo(3, 5);
+    expect(Array.from(squareRoot.toFloat32Array())).toEqual([2, Math.fround(Math.sqrt(2))]);
+    expect(Array.from(squared.toFloat32Array())).toEqual([9, 0]);
+    expect(Array.from(vectorLength.toFloat32Array())).toEqual([5, 2]);
+
+    const lengths = client.zerosF32(1, 2, 1);
+    const angles = client.zerosF32(1, 2, 1);
+    client.cartToPolar(x, y, lengths, angles);
+    const roundTripX = client.zerosF32(1, 2, 1);
+    const roundTripY = client.zerosF32(1, 2, 1);
+    client.polarToCart(lengths, angles, roundTripX, roundTripY);
+    expect(Array.from(roundTripX.toFloat32Array())[0]).toBeCloseTo(3, 5);
+    expect(Array.from(roundTripY.toFloat32Array())[0]).toBeCloseTo(4, 5);
+
+    for (const matrix of [
+      roundTripY,
+      roundTripX,
+      angles,
+      lengths,
+      vectorLength,
+      squared,
+      squareRoot,
+      exponential,
+      logarithm,
+      y,
+      x,
+    ])
+      matrix.dispose();
   });
 });

@@ -89,6 +89,15 @@ Each layout operation also accepts an OpenCV-style destination overload: `flip(s
 
 Channel operations preserve raw scalar bytes for all seven depths and compact strided source regions. Insertions into a destination region update its shared parent storage.
 
+### Floating-point math
+
+- `exp(source)`, `log(source)`, `sqrt(source)`, and `pow(source, exponent)` apply element-wise math and return a new matrix.
+- `magnitude(x, y)` computes vector length element by element.
+- `cartToPolar(x, y, magnitude, angle, degrees)` writes lengths and angles into exact mutable destinations.
+- `polarToCart(magnitude, angle, x, y, degrees)` writes cartesian components into exact mutable destinations.
+
+These methods accept F32 and F64 matrices, including strided regions. The optional `degrees` argument defaults to `false`. Results follow Rust and WebAssembly IEEE 754 behavior; parity fixtures use declared tolerances because optimized OpenCV kernels may use different approximations.
+
 ### Matrix reductions
 
 - `countNonZero(source)` supports every scalar depth and requires one channel.

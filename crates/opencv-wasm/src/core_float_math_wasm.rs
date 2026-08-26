@@ -45,39 +45,29 @@ impl From<MatError> for FloatMathWasmError {
 type UnaryKernel = fn(&[u8]) -> Result<Vec<u8>, FloatMathError>;
 type BinaryKernel = fn(&[u8], &[u8]) -> Result<Vec<u8>, FloatMathError>;
 
-macro_rules! unary_export {
-    ($name:ident, $js:literal, $f32:ident, $f64:ident, $doc:literal) => {
-        #[doc = $doc]
-        ///
-        /// # Errors
-        /// Returns an error unless the source has F32 or F64 depth.
-        #[wasm_bindgen(js_name = $js)]
-        pub fn $name(source: &Mat) -> Result<Mat, JsError> {
-            unary(source, core_float_math::$f32, core_float_math::$f64).map_err(JsError::from)
-        }
-    };
+/// Computes the natural exponential element-wise.
+/// # Errors
+/// Returns an error unless the source has F32 or F64 depth.
+#[wasm_bindgen(js_name = matExp)]
+pub fn mat_exp(source: &Mat) -> Result<Mat, JsError> {
+    unary(source, core_float_math::exp_f32, core_float_math::exp_f64).map_err(JsError::from)
 }
-unary_export!(
-    mat_exp,
-    "matExp",
-    exp_f32,
-    exp_f64,
-    "Computes the natural exponential element-wise."
-);
-unary_export!(
-    mat_log,
-    "matLog",
-    log_f32,
-    log_f64,
-    "Computes the natural logarithm element-wise."
-);
-unary_export!(
-    mat_sqrt,
-    "matSqrt",
-    sqrt_f32,
-    sqrt_f64,
-    "Computes the square root element-wise."
-);
+
+/// Computes the natural logarithm element-wise.
+/// # Errors
+/// Returns an error unless the source has F32 or F64 depth.
+#[wasm_bindgen(js_name = matLog)]
+pub fn mat_log(source: &Mat) -> Result<Mat, JsError> {
+    unary(source, core_float_math::log_f32, core_float_math::log_f64).map_err(JsError::from)
+}
+
+/// Computes the square root element-wise.
+/// # Errors
+/// Returns an error unless the source has F32 or F64 depth.
+#[wasm_bindgen(js_name = matSqrt)]
+pub fn mat_sqrt(source: &Mat) -> Result<Mat, JsError> {
+    unary(source, core_float_math::sqrt_f32, core_float_math::sqrt_f64).map_err(JsError::from)
+}
 
 /// Raises every element to a scalar exponent.
 /// # Errors
