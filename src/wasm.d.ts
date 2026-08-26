@@ -1,6 +1,7 @@
 import type { WasmMatHandle } from "./mat.js";
 import type { WasmAKAZEHandle } from "./akaze.js";
 import type { WasmKAZEHandle } from "./kaze.js";
+import type { WasmGFTTDetectorHandle } from "./gftt.js";
 import type {
   WasmAgastFeatureDetectorHandle,
   WasmFastFeatureDetectorHandle,
@@ -95,6 +96,32 @@ declare module "#wasm" {
     setNOctaves(value: number): void;
     setThreshold(value: number): void;
     setUpright(value: boolean): void;
+  }
+
+  export class GFTTDetector implements WasmGFTTDetectorHandle {
+    private constructor();
+    static create(
+      maxFeatures?: number | null,
+      qualityLevel?: number | null,
+      minDistance?: number | null,
+      blockSize?: number | null,
+      useHarrisDetector?: boolean | null,
+      k?: number | null,
+    ): GFTTDetector;
+    free(): void;
+    getBlockSize(): number;
+    getDefaultName(): string;
+    getHarrisDetector(): boolean;
+    getK(): number;
+    getMaxFeatures(): number;
+    getMinDistance(): number;
+    getQualityLevel(): number;
+    setBlockSize(value: number): void;
+    setHarrisDetector(value: boolean): void;
+    setK(value: number): void;
+    setMaxFeatures(value: number): void;
+    setMinDistance(value: number): void;
+    setQualityLevel(value: number): void;
   }
 
   export default function initialize(): Promise<void>;

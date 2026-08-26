@@ -2,6 +2,8 @@ import { AKAZE, validateAKAZEOptions } from "./akaze.js";
 import type { AKAZEOptions } from "./akaze.js";
 import { KAZE, validateKAZEOptions } from "./kaze.js";
 import type { KAZEOptions } from "./kaze.js";
+import { GFTTDetector, validateGFTTDetectorOptions } from "./gftt.js";
+import type { GFTTDetectorOptions } from "./gftt.js";
 import {
   AgastFeatureDetector,
   FastFeatureDetector,
@@ -180,6 +182,20 @@ class WasmOpenCv implements OpenCv {
         options.octaves,
         options.octaveLayers,
         options.diffusivity,
+      ),
+    );
+  }
+
+  createGFTTDetector(options: GFTTDetectorOptions = {}): GFTTDetector {
+    validateGFTTDetectorOptions(options);
+    return new GFTTDetector(
+      this.#backend.GFTTDetector.create(
+        options.maxFeatures,
+        options.qualityLevel,
+        options.minDistance,
+        options.blockSize,
+        options.useHarrisDetector,
+        options.k,
       ),
     );
   }

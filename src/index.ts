@@ -6,6 +6,12 @@ export { AKAZE, AKAZE_DEFAULTS, AKAZEDescriptorType, KAZEDiffusivity } from "./a
 export type { AKAZEOptions, WasmAKAZEFactory, WasmAKAZEHandle } from "./akaze.js";
 export { KAZE, KAZE_DEFAULTS } from "./kaze.js";
 export type { KAZEOptions, WasmKAZEFactory, WasmKAZEHandle } from "./kaze.js";
+export { GFTT_DETECTOR_DEFAULTS, GFTTDetector } from "./gftt.js";
+export type {
+  GFTTDetectorOptions,
+  WasmGFTTDetectorFactory,
+  WasmGFTTDetectorHandle,
+} from "./gftt.js";
 export { OpenCvInputError } from "./error.js";
 export {
   AGAST_FEATURE_DETECTOR_DEFAULTS,

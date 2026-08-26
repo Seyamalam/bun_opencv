@@ -9,6 +9,7 @@ import {
   createRgbaImage,
   FAST_FEATURE_DETECTOR_DEFAULTS,
   FastFeatureDetectorType,
+  GFTT_DETECTOR_DEFAULTS,
   KAZE_DEFAULTS,
   KAZEDiffusivity,
   OpenCvInputError,
@@ -21,6 +22,8 @@ import type {
   WasmAKAZEHandle,
   WasmFastFeatureDetectorFactory,
   WasmFastFeatureDetectorHandle,
+  WasmGFTTDetectorFactory,
+  WasmGFTTDetectorHandle,
   WasmKAZEFactory,
   WasmKAZEHandle,
   WasmMatHandle,
@@ -207,6 +210,91 @@ class CopyingAKAZEHandle implements WasmAKAZEHandle {
       throw new OpenCvInputError("invalid AKAZE threshold");
     }
     this.#threshold = value;
+  }
+}
+
+class CopyingGFTTDetectorHandle implements WasmGFTTDetectorHandle {
+  #blockSize: number;
+  #freed = false;
+  #harrisDetector: boolean;
+  #k: number;
+  #maxFeatures: number;
+  #minDistance: number;
+  #qualityLevel: number;
+
+  constructor(
+    maxFeatures: number,
+    qualityLevel: number,
+    minDistance: number,
+    blockSize: number,
+    harrisDetector: boolean,
+    k: number,
+    readonly onFree: () => void,
+  ) {
+    this.#maxFeatures = maxFeatures;
+    this.#qualityLevel = qualityLevel;
+    this.#minDistance = minDistance;
+    this.#blockSize = blockSize;
+    this.#harrisDetector = harrisDetector;
+    this.#k = k;
+  }
+
+  free(): void {
+    if (this.#freed) return;
+    this.#freed = true;
+    this.onFree();
+  }
+
+  getBlockSize(): number {
+    return this.#blockSize;
+  }
+
+  getDefaultName(): string {
+    return "Feature2D.GFTTDetector";
+  }
+
+  getHarrisDetector(): boolean {
+    return this.#harrisDetector;
+  }
+
+  getK(): number {
+    return this.#k;
+  }
+
+  getMaxFeatures(): number {
+    return this.#maxFeatures;
+  }
+
+  getMinDistance(): number {
+    return this.#minDistance;
+  }
+
+  getQualityLevel(): number {
+    return this.#qualityLevel;
+  }
+
+  setBlockSize(value: number): void {
+    this.#blockSize = value;
+  }
+
+  setHarrisDetector(value: boolean): void {
+    this.#harrisDetector = value;
+  }
+
+  setK(value: number): void {
+    this.#k = value;
+  }
+
+  setMaxFeatures(value: number): void {
+    this.#maxFeatures = value;
+  }
+
+  setMinDistance(value: number): void {
+    this.#minDistance = value;
+  }
+
+  setQualityLevel(value: number): void {
+    this.#qualityLevel = value;
   }
 }
 
@@ -590,6 +678,7 @@ class CopyingBackend implements OpenCvBackend {
   #agastFeatureDetectorFreeCount = 0;
   #akazeFreeCount = 0;
   #fastFeatureDetectorFreeCount = 0;
+  #gfttDetectorFreeCount = 0;
   #kazeFreeCount = 0;
   #logLevel = 3;
   #randomState = 0;
@@ -639,6 +728,28 @@ class CopyingBackend implements OpenCvBackend {
       ),
   };
 
+  readonly GFTTDetector: WasmGFTTDetectorFactory = {
+    create: (
+      maxFeatures,
+      qualityLevel,
+      minDistance,
+      blockSize,
+      useHarrisDetector,
+      k,
+    ): WasmGFTTDetectorHandle =>
+      new CopyingGFTTDetectorHandle(
+        maxFeatures ?? GFTT_DETECTOR_DEFAULTS.maxFeatures,
+        qualityLevel ?? GFTT_DETECTOR_DEFAULTS.qualityLevel,
+        minDistance ?? GFTT_DETECTOR_DEFAULTS.minDistance,
+        blockSize ?? GFTT_DETECTOR_DEFAULTS.blockSize,
+        useHarrisDetector ?? GFTT_DETECTOR_DEFAULTS.useHarrisDetector,
+        k ?? GFTT_DETECTOR_DEFAULTS.k,
+        () => {
+          this.#gfttDetectorFreeCount += 1;
+        },
+      ),
+  };
+
   readonly AgastFeatureDetector: WasmAgastFeatureDetectorFactory = {
     create: (threshold, nonmaxSuppression, type): WasmAgastFeatureDetectorHandle =>
       new CopyingAgastFeatureDetectorHandle(
@@ -657,6 +768,10 @@ class CopyingBackend implements OpenCvBackend {
 
   get kazeFreeCount(): number {
     return this.#kazeFreeCount;
+  }
+
+  get gfttDetectorFreeCount(): number {
+    return this.#gfttDetectorFreeCount;
   }
 
   readonly FastFeatureDetector: WasmFastFeatureDetectorFactory = {
@@ -2513,6 +2628,77 @@ describe("OpenCv client", () => {
     akaze.dispose();
     expect(() => akaze.setThreshold(0.2)).toThrow(OpenCvInputError);
     expect(() => localClient.createAKAZE({ descriptorSize: -1 })).toThrow(OpenCvInputError);
+  });
+
+  test("owns a GFTTDetector configuration with OpenCV 4.13 defaults", () => {
+    const backend = new CopyingBackend();
+    const localClient = createOpenCv(backend);
+    const detector = localClient.createGFTTDetector();
+
+    expect(detector.getDefaultName()).toBe("Feature2D.GFTTDetector");
+    expect(detector.getMaxFeatures()).toBe(GFTT_DETECTOR_DEFAULTS.maxFeatures);
+    expect(detector.getQualityLevel()).toBe(GFTT_DETECTOR_DEFAULTS.qualityLevel);
+    expect(detector.getMinDistance()).toBe(GFTT_DETECTOR_DEFAULTS.minDistance);
+    expect(detector.getBlockSize()).toBe(GFTT_DETECTOR_DEFAULTS.blockSize);
+    expect(detector.getHarrisDetector()).toBe(GFTT_DETECTOR_DEFAULTS.useHarrisDetector);
+    expect(detector.getK()).toBe(GFTT_DETECTOR_DEFAULTS.k);
+
+    detector.dispose();
+    detector.dispose();
+    expect(backend.gfttDetectorFreeCount).toBe(1);
+    expect(() => detector.getMaxFeatures()).toThrow(OpenCvInputError);
+    expect(() => detector.setHarrisDetector(true)).toThrow(OpenCvInputError);
+  });
+
+  test("creates and mutates the full GFTTDetector configuration", () => {
+    const localClient = createOpenCv(new CopyingBackend());
+    const detector = localClient.createGFTTDetector({
+      blockSize: -1,
+      k: -1,
+      maxFeatures: -1,
+      minDistance: -1,
+      qualityLevel: -1,
+      useHarrisDetector: true,
+    });
+
+    expect(detector.getBlockSize()).toBe(-1);
+    expect(detector.getK()).toBe(-1);
+    expect(detector.getMaxFeatures()).toBe(-1);
+    expect(detector.getMinDistance()).toBe(-1);
+    expect(detector.getQualityLevel()).toBe(-1);
+    expect(detector.getHarrisDetector()).toBe(true);
+
+    detector.setBlockSize(-2_147_483_648);
+    detector.setK(Number.NaN);
+    detector.setMaxFeatures(2_147_483_647);
+    detector.setMinDistance(Number.NEGATIVE_INFINITY);
+    detector.setQualityLevel(Number.POSITIVE_INFINITY);
+    detector.setHarrisDetector(false);
+    expect(detector.getBlockSize()).toBe(-2_147_483_648);
+    expect(detector.getK()).toBeNaN();
+    expect(detector.getMaxFeatures()).toBe(2_147_483_647);
+    expect(detector.getMinDistance()).toBe(Number.NEGATIVE_INFINITY);
+    expect(detector.getQualityLevel()).toBe(Number.POSITIVE_INFINITY);
+    expect(detector.getHarrisDetector()).toBe(false);
+    detector.dispose();
+  });
+
+  test("rejects GFTTDetector integer values that WebAssembly cannot represent", () => {
+    const localClient = createOpenCv(new CopyingBackend());
+
+    expect(() => localClient.createGFTTDetector({ maxFeatures: -2_147_483_649 })).toThrow(
+      OpenCvInputError,
+    );
+    expect(() => localClient.createGFTTDetector({ blockSize: 2_147_483_648 })).toThrow(
+      OpenCvInputError,
+    );
+    expect(() => localClient.createGFTTDetector({ blockSize: 1.5 })).toThrow(OpenCvInputError);
+    const detector = localClient.createGFTTDetector();
+    expect(() => detector.setMaxFeatures(Number.NaN)).toThrow(OpenCvInputError);
+    expect(() => detector.setBlockSize(Number.POSITIVE_INFINITY)).toThrow(OpenCvInputError);
+    expect(detector.getMaxFeatures()).toBe(GFTT_DETECTOR_DEFAULTS.maxFeatures);
+    expect(detector.getBlockSize()).toBe(GFTT_DETECTOR_DEFAULTS.blockSize);
+    detector.dispose();
   });
 
   test("owns a KAZE configuration with OpenCV 4.13 defaults", () => {

@@ -1,5 +1,6 @@
 import type { AKAZE, AKAZEOptions, WasmAKAZEFactory } from "./akaze.js";
 import type { KAZE, KAZEOptions, WasmKAZEFactory } from "./kaze.js";
+import type { GFTTDetector, GFTTDetectorOptions, WasmGFTTDetectorFactory } from "./gftt.js";
 import type {
   AgastFeatureDetector,
   AgastFeatureDetectorOptions,
@@ -72,6 +73,7 @@ export interface OpenCvBackend {
   readonly AgastFeatureDetector: WasmAgastFeatureDetectorFactory;
   readonly AKAZE: WasmAKAZEFactory;
   readonly FastFeatureDetector: WasmFastFeatureDetectorFactory;
+  readonly GFTTDetector: WasmGFTTDetectorFactory;
   readonly KAZE: WasmKAZEFactory;
   clipLine(
     rectangleX: number,
@@ -373,6 +375,7 @@ export interface OpenCv {
   createKAZE(options?: KAZEOptions): KAZE;
   createAgastFeatureDetector(options?: AgastFeatureDetectorOptions): AgastFeatureDetector;
   createFastFeatureDetector(options?: FastFeatureDetectorOptions): FastFeatureDetector;
+  createGFTTDetector(options?: GFTTDetectorOptions): GFTTDetector;
   determinant(source: Mat): number;
   convertScaleAbs(source: Mat, alpha?: number, beta?: number): Mat;
   convertScaleAbs(source: Mat, destination: Mat, alpha?: number, beta?: number): void;
