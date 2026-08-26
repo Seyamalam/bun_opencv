@@ -147,7 +147,9 @@ The random functions use an independently authored SplitMix64 stream and Box-Mul
 
 OpenCV's 4.13.0 JavaScript binding configuration lists `getLogLevel` and `setLogLevel`, but the official documentation artifact used by the browser differential harness does not expose them at runtime. Their package behavior is covered by Rust and TypeScript tests; direct upstream runtime comparison is therefore unavailable for that pinned artifact.
 
-`getOptimalDFTSize` accepts signed 32-bit integers. It returns `-1` for negative values, `1` for zero and one, and otherwise returns the next 2-, 3-, and 5-smooth size. OpenCV.js treats `2,125,764,000` as an exclusive upper sentinel: `2,125,763,999` maps to it, while the sentinel itself and larger inputs return `-1`. Inputs outside the signed 32-bit range throw `OpenCvInputError` at the TypeScript boundary.
+`getOptimalDFTSize` requires exactly one argument; missing or extra arguments throw `BindingError`. Its plain-JavaScript boundary matches Embind signed i32 conversion: numeric fractions truncate toward zero, `NaN` becomes zero, and booleans become `1` or `0`. Numbers outside the signed 32-bit range, infinities, strings, `null`, and `undefined` throw `TypeError`.
+
+After conversion, the function returns `-1` for negative values, `1` for zero and one, and otherwise returns the next 2-, 3-, and 5-smooth size. OpenCV.js treats `2,125,764,000` as an exclusive upper sentinel: `2,125,763,999` maps to it, while the sentinel itself and larger signed i32 inputs return `-1`. The pinned browser matrix verifies the call contract and boundary values, while exhaustive Rust tests verify minimality and every representable smooth-size transition.
 
 ### Per-element transforms
 

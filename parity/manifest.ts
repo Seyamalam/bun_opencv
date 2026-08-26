@@ -849,10 +849,10 @@ export const PARITY_MANIFEST = {
       method: "getOptimalDFTSize",
       module: "core",
       notes:
-        "Signed 32-bit inputs, negative inputs returning -1, zero returning 1, and the browser runtime's exclusive 2,125,764,000 upper sentinel; representative browser differential fixtures pass, while JavaScript numeric coercion audits remain.",
+        "Matches the pinned browser's exact one-argument contract, Embind signed i32 coercion and errors, minimal 2-, 3-, and 5-smooth results, negative and zero behavior, and exclusive 2,125,764,000 upper sentinel.",
       patentReview: "required",
       sources: [CORE_SOURCE],
-      status: "partial",
+      status: "implemented",
       upstream: "cv.getOptimalDFTSize",
       upstreamId: "core.function.get-optimal-dftsize",
       wasmExport: "getOptimalDFTSize",

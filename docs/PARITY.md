@@ -25,7 +25,7 @@ Desktop modules that the official OpenCV.js build disables are outside this pari
 
 ## Fully implemented families
 
-Forty-five detector instance methods meet the full-family definition. Current full parity is 45 of 488, or 9.22%.
+Forty-six families meet the full-family definition. Current full parity is 46 of 488, or 9.43%.
 
 | Package methods                                                                                                   | OpenCV.js families                              | Verified contract                                                        |
 | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------ |
@@ -50,10 +50,11 @@ Forty-five detector instance methods meet the full-family definition. Current fu
 | `AKAZE.setDescriptorChannels`, `AKAZE.setDescriptorSize`                                                          | Matching non-enum `cv.AKAZE` descriptor setters | Exact i32 coercion, undefined return, argument errors, and lifecycle     |
 | `AKAZE.setNOctaveLayers`, `AKAZE.setNOctaves`                                                                     | Matching non-enum `cv.AKAZE` octave setters     | Exact i32 coercion, undefined return, argument errors, and lifecycle     |
 | `AKAZE.setThreshold`                                                                                              | `cv.AKAZE.setThreshold`                         | Exact F64 coercion, non-finite values, argument errors, and lifecycle    |
+| `getOptimalDFTSize`                                                                                               | `cv.getOptimalDFTSize`                          | Exact arity, i32 coercion, smooth results, errors, and sentinel          |
 
 ## Working partial families
 
-Eighty-four families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 129 families in total.
+Eighty-three families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 129 families in total.
 
 | Package methods                                                                              | OpenCV.js families                                                    | Current limit                                            |
 | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------- |
@@ -73,7 +74,7 @@ Eighty-four families have useful original Rust/WASM slices but do not meet the f
 | `mean`, `minMaxLoc`, `trace`                                                                 | `cv.mean`, `cv.minMaxLoc`, `cv.trace`                                 | Masks or multi-channel trace remain                      |
 | `mixChannels`                                                                                | `cv.mixChannels`                                                      | One source and destination; MatVector remains            |
 | `setIdentity`, `randu`, `randn`, `setRNGSeed`                                                | Matching `cv` initialization and random families                      | Package RNG sequences differ from OpenCV                 |
-| `getLogLevel`, `setLogLevel`, `getOptimalDFTSize`                                            | Matching `cv` runtime utility families                                | DFT browser fixtures pass; logs absent upstream artifact |
+| `getLogLevel`, `setLogLevel`                                                                 | Matching `cv` logging families                                        | Log bindings stay absent from upstream browser artifact. |
 | `transform`, `perspectiveTransform`                                                          | `cv.transform`, `cv.perspectiveTransform`                             | Selected channel and coefficient forms                   |
 | `determinant`, `invert`, `solve`                                                             | `cv.determinant`, `cv.invert`, `cv.solve`                             | Selected dense single-channel methods                    |
 | `arcLength`, `contourArea`, `boundingRect`                                                   | Matching `cv` contour geometry families                               | I32/F32/F64 2D contour layouts                           |
@@ -93,6 +94,8 @@ Eighty-four families have useful original Rust/WASM slices but do not meet the f
 | `grayscale`, `resizeNearest`, `threshold`                                                    | `cv.cvtColor`, `cv.resize`, `cv.threshold`                            | One RGBA or luma-derived specialization each             |
 
 The fixture exposes the direct `AKAZE` constructor and all 15 instance methods. Its complete matrix checks exact arity, defaults, return values, signed i32 and F64 coercion, missing and extra arguments, deletion, repeat deletion, and calls after deletion. The 11 non-enum instance methods pass and count as implemented. The four descriptor-type and diffusivity methods remain partial because the official binding exchanges enum objects, and the config-listed static `AKAZE.create` binding is absent from the artifact.
+
+The fixture passes the complete pinned browser contract for `getOptimalDFTSize`. It checks exact arity, Embind signed i32 coercion and errors, negative and zero inputs, smooth-size results, the exclusive `2,125,764,000` upper sentinel, and the remaining signed i32 boundary. Exhaustive Rust tests additionally verify minimality and every representable 2-, 3-, and 5-smooth boundary. This family counts as implemented.
 
 The fixture exposes the direct `KAZE` constructor and all 13 instance methods. Its complete matrix checks exact arity, defaults, return values, signed i32, F64, and boolean coercion, missing and extra arguments, deletion, repeat deletion, and calls after deletion. The 11 non-enum instance methods pass and count as implemented. `getDiffusivity` and `setDiffusivity` remain partial because the official binding exchanges enum objects, and the config-listed static `KAZE.create` binding is absent from the artifact.
 

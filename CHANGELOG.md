@@ -32,6 +32,7 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - Eleven fully implemented non-enum AKAZE instance methods with exact arity, complete signed i32 and F64 coercion, `BindingError` argument checks, and deletion behavior, bringing the totals to 84 partial, 45 implemented, and 129 supported families.
 - AKAZE descriptor-type and diffusivity methods and the factory remain partial because enum objects and static construction do not yet match the pinned browser binding.
 - OpenCV.js-compatible negative-input and upper-sentinel behavior for `getOptimalDFTSize`, plus a fail-closed numeric browser comparator for enum-backed values.
+- A fully implemented `getOptimalDFTSize` family with exact arity, Embind signed i32 coercion and errors, exhaustive smooth-size boundary tests, and the pinned upper sentinel, bringing the totals to 83 partial, 46 implemented, and 129 supported families.
 - Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
 
 ### Planned

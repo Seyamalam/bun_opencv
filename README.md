@@ -86,7 +86,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | core       | `exp`                                       | `cv.exp`                                       | Partial | F32/F64 element-wise output              |
 | core       | `flip`                                      | `cv.flip`                                      | Partial | All depths and destination mutation      |
 | core       | `getLogLevel`                               | `cv.getLogLevel`                               | Partial | Package-owned log level 0 through 6      |
-| core       | `getOptimalDFTSize`                         | `cv.getOptimalDFTSize`                         | Partial | Signed 32-bit 5-smooth size planning     |
+| core       | `getOptimalDFTSize`                         | `cv.getOptimalDFTSize`                         | Full    | Exact i32 contract and smooth result     |
 | core       | `hconcat`                                   | `cv.hconcat`                                   | Partial | All depths, two through four inputs      |
 | core       | `inRange`                                   | `cv.inRange`                                   | Partial | U8 matrix bounds                         |
 | core       | `invert`                                    | `cv.invert`                                    | Partial | Square matrices and three methods        |
@@ -203,7 +203,9 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `findContours`                              | `cv.findContours`                              | Planned | Not started                              |
 | imgproc    | `warpPerspective`                           | `cv.warpPerspective`                           | Planned | Not started                              |
 
-Current full parity is **45 of 488 (9.22%)**. There are **84 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+Current full parity is **46 of 488 (9.43%)**. There are **83 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+
+The fixture passes the complete pinned browser contract for `getOptimalDFTSize`, including exact arity, Embind signed i32 coercion and errors, negative and zero inputs, every smooth-size boundary exercised by Rust tests, and the exclusive `2,125,764,000` upper sentinel. This family counts as full parity.
 
 The fixture passes the complete pinned browser contract for the 11 non-enum AKAZE instance methods. It checks exact arity, defaults, return values, signed i32 and F64 coercion, missing and extra arguments, deletion, repeat deletion, and calls after deletion. Those 11 families count as full parity. The factory and four enum-backed descriptor-type and diffusivity methods remain partial because static construction and enum-object behavior do not match the pinned binding.
 
