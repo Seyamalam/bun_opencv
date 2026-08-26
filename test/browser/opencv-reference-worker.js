@@ -217,6 +217,188 @@ function auditGftt(createDetector) {
   };
 }
 
+function auditKazePrimitive(createDetector) {
+  const getters = [
+    "getDefaultName",
+    "getExtended",
+    "getNOctaveLayers",
+    "getNOctaves",
+    "getThreshold",
+    "getUpright",
+  ];
+  const setters = [
+    ["setExtended", true],
+    ["setNOctaveLayers", 6],
+    ["setNOctaves", 5],
+    ["setThreshold", 0.25],
+    ["setUpright", true],
+  ];
+  const i32Cases = [
+    ["positive fraction", 1.9],
+    ["negative fraction", -1.9],
+    ["NaN", Number.NaN],
+    ["positive infinity", Number.POSITIVE_INFINITY],
+    ["negative infinity", Number.NEGATIVE_INFINITY],
+    ["i32 maximum", 2_147_483_647],
+    ["i32 maximum plus one", 2_147_483_648],
+    ["i32 minimum", -2_147_483_648],
+    ["i32 minimum minus one", -2_147_483_649],
+    ["u32 maximum", 4_294_967_295],
+    ["u32 modulus", 4_294_967_296],
+    ["null", null],
+    ["true", true],
+    ["false", false],
+    ["numeric string", "42"],
+    ["fraction string", "-1.9"],
+    ["empty string", ""],
+    ["non-numeric string", "opencv"],
+    ["explicit undefined", undefined],
+  ];
+  const f64Cases = [
+    ["negative zero", -0],
+    ["NaN", Number.NaN],
+    ["positive infinity", Number.POSITIVE_INFINITY],
+    ["negative infinity", Number.NEGATIVE_INFINITY],
+    ["null", null],
+    ["true", true],
+    ["false", false],
+    ["numeric string", "1.25"],
+    ["empty string", ""],
+    ["non-numeric string", "opencv"],
+    ["explicit undefined", undefined],
+  ];
+  const booleanCases = [
+    ["true", true],
+    ["false", false],
+    ["zero", 0],
+    ["one", 1],
+    ["negative one", -1],
+    ["two", 2],
+    ["NaN", Number.NaN],
+    ["positive infinity", Number.POSITIVE_INFINITY],
+    ["negative infinity", Number.NEGATIVE_INFINITY],
+    ["null", null],
+    ["empty string", ""],
+    ["zero string", "0"],
+    ["false string", "false"],
+    ["non-empty string", "opencv"],
+    ["object", {}],
+    ["explicit undefined", undefined],
+  ];
+
+  const captureState = (detector) =>
+    Object.fromEntries(getters.map((method) => [method, captureCall(() => detector[method]())]));
+  const defaultsDetector = createDetector();
+  const defaults = captureState(defaultsDetector);
+  safeDelete(defaultsDetector);
+
+  const getterArity = getters.map((method) => {
+    const detector = createDetector();
+    const audit = {
+      method,
+      length: detector[method].length,
+      exact: captureCall(() => detector[method]()),
+      extraOne: {
+        stateBefore: captureState(detector),
+        call: captureCall(() => detector[method](1)),
+        stateAfter: captureState(detector),
+      },
+      extraTwo: {
+        stateBefore: captureState(detector),
+        call: captureCall(() => detector[method](1, 2)),
+        stateAfter: captureState(detector),
+      },
+    };
+    safeDelete(detector);
+    return audit;
+  });
+  const setterArity = setters.map(([method, value]) => {
+    const lengthDetector = createDetector();
+    const length = lengthDetector[method].length;
+    safeDelete(lengthDetector);
+    const exactDetector = createDetector();
+    const stateBeforeExact = captureState(exactDetector);
+    const exact = captureCall(() => exactDetector[method](value));
+    const stateAfterExact = captureState(exactDetector);
+    safeDelete(exactDetector);
+
+    const auditFailure = (invoke) => {
+      const detector = createDetector();
+      const stateBefore = captureState(detector);
+      const call = captureCall(() => invoke(detector, method, value));
+      const stateAfter = captureState(detector);
+      safeDelete(detector);
+      return { stateBefore, call, stateAfter };
+    };
+
+    return {
+      method,
+      length,
+      exact: { stateBefore: stateBeforeExact, call: exact, stateAfter: stateAfterExact },
+      missing: auditFailure((detector, setter) => detector[setter]()),
+      extraOne: auditFailure((detector, setter, argument) => detector[setter](argument, 1)),
+      extraTwo: auditFailure((detector, setter, argument) => detector[setter](argument, 1, 2)),
+    };
+  });
+
+  const auditCases = (setter, cases) =>
+    cases.map(([label, value]) => {
+      const detector = createDetector();
+      const stateBefore = captureState(detector);
+      const call = captureCall(() => detector[setter](value));
+      const stateAfter = captureState(detector);
+      safeDelete(detector);
+      return { label, input: encodeValue(value), stateBefore, call, stateAfter };
+    });
+
+  const deadDetector = createDetector();
+  const deleteLength = captureCall(() => deadDetector.delete.length);
+  const stateBeforeDelete = captureState(deadDetector);
+  const firstDelete = captureCall(() => deadDetector.delete());
+  const postDelete = {
+    getters: getters.map((method) => ({
+      method,
+      call: captureCall(() => deadDetector[method]()),
+    })),
+    setters: setters.map(([method, value]) => ({
+      method,
+      call: captureCall(() => deadDetector[method](value)),
+    })),
+    secondDelete: captureCall(() => deadDetector.delete()),
+  };
+
+  const auditDeleteExtra = (...arguments_) => {
+    const detector = createDetector();
+    const stateBefore = captureState(detector);
+    const call = captureCall(() => detector.delete(...arguments_));
+    const stateAfter = captureState(detector);
+    safeDelete(detector);
+    return { stateBefore, call, stateAfter };
+  };
+
+  return {
+    defaults,
+    arity: { getters: getterArity, setters: setterArity },
+    boolean: {
+      extended: auditCases("setExtended", booleanCases),
+      upright: auditCases("setUpright", booleanCases),
+    },
+    i32: {
+      octaveLayers: auditCases("setNOctaveLayers", i32Cases),
+      octaves: auditCases("setNOctaves", i32Cases),
+    },
+    f64: { threshold: auditCases("setThreshold", f64Cases) },
+    lifetime: {
+      deleteLength,
+      stateBeforeDelete,
+      firstDelete,
+      postDelete,
+      deleteExtraOne: auditDeleteExtra(1),
+      deleteExtraTwo: auditDeleteExtra(1, 2),
+    },
+  };
+}
+
 function auditThresholdDetector(createDetector) {
   const getters = ["getDefaultName", "getNonmaxSuppression", "getThreshold"];
   const setters = [
@@ -556,6 +738,7 @@ self.addEventListener("message", async ({ data: input }) => {
     gftt.delete();
 
     outputs.gfttAudit = auditGftt(() => new reference.GFTTDetector());
+    outputs.kazePrimitiveAudit = auditKazePrimitive(() => new reference.KAZE());
     outputs.agastPrimitiveAudit = auditThresholdDetector(
       () => new reference.AgastFeatureDetector(),
     );
