@@ -256,6 +256,30 @@
     },
     {
       "implementationOrigin": "original",
+      "method": "merge",
+      "module": "core",
+      "notes": "Two through four all-depth Mat inputs are supported; MatVector and caller-provided destination forms remain.",
+      "patentReview": "required",
+      "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
+      "status": "partial",
+      "upstream": "cv.merge",
+      "upstreamId": "core.function.merge",
+      "wasmExport": "matMerge"
+    },
+    {
+      "implementationOrigin": "original",
+      "method": "split",
+      "module": "core",
+      "notes": "All scalar depths, channels, and strided regions are supported; the MatVector destination form remains.",
+      "patentReview": "required",
+      "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
+      "status": "partial",
+      "upstream": "cv.split",
+      "upstreamId": "core.function.split",
+      "wasmExport": "matSplit"
+    },
+    {
+      "implementationOrigin": "original",
       "method": "trace",
       "module": "core",
       "notes": "All scalar depths with channel-zero scalar output; full multi-channel Scalar behavior remains.",

@@ -59,6 +59,17 @@ export interface OpenCvBackend {
     lowerBound: WasmMatHandle,
     upperBound: WasmMatHandle,
   ): WasmMatHandle;
+  matSplit(source: WasmMatHandle): WasmMatHandle[];
+  matMerge(first: WasmMatHandle, second: WasmMatHandle): WasmMatHandle;
+  matMerge3(first: WasmMatHandle, second: WasmMatHandle, third: WasmMatHandle): WasmMatHandle;
+  matMerge4(
+    first: WasmMatHandle,
+    second: WasmMatHandle,
+    third: WasmMatHandle,
+    fourth: WasmMatHandle,
+  ): WasmMatHandle;
+  matExtractChannel(source: WasmMatHandle, channel: number): WasmMatHandle;
+  matInsertChannel(source: WasmMatHandle, destination: WasmMatHandle, channel: number): void;
   matMaxU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matMean(source: WasmMatHandle): Float64Array;
   matMinMaxLoc(source: WasmMatHandle): Float64Array;
@@ -95,6 +106,7 @@ export interface OpenCv {
   bitwiseXor(left: Mat, right: Mat): Mat;
   compareEqual(left: Mat, right: Mat): Mat;
   countNonZero(source: Mat): number;
+  extractChannel(source: Mat, channel: number): Mat;
   flip(source: Mat, flipCode: -1 | 0 | 1): Mat;
   flip(source: Mat, destination: Mat, flipCode: -1 | 0 | 1): void;
   grayscale(image: RgbaImage): RgbaImage;
@@ -107,8 +119,12 @@ export interface OpenCv {
   matFromU16(rows: number, columns: number, channels: number, data: Uint16Array): Mat;
   matFromU8(rows: number, columns: number, channels: number, data: Uint8Array): Mat;
   inRange(source: Mat, lowerBound: Mat, upperBound: Mat): Mat;
+  insertChannel(source: Mat, destination: Mat, channel: number): void;
   max(left: Mat, right: Mat): Mat;
   mean(source: Mat): Scalar;
+  merge(
+    sources: readonly [Mat, Mat] | readonly [Mat, Mat, Mat] | readonly [Mat, Mat, Mat, Mat],
+  ): Mat;
   minMaxLoc(source: Mat): MinMaxLocation;
   min(left: Mat, right: Mat): Mat;
   resizeNearest(image: RgbaImage, targetWidth: number, targetHeight: number): RgbaImage;
@@ -118,6 +134,7 @@ export interface OpenCv {
   rotate(source: Mat, destination: Mat, rotateCode: 0 | 1 | 2): void;
   threshold(image: RgbaImage, threshold: number): RgbaImage;
   subtract(left: Mat, right: Mat): Mat;
+  split(source: Mat): Mat[];
   sum(source: Mat): Scalar;
   transpose(source: Mat): Mat;
   transpose(source: Mat, destination: Mat): void;

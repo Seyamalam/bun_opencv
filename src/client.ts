@@ -51,6 +51,11 @@ class WasmOpenCv implements OpenCv {
     return this.#backend.matCountNonZero(source.handleForBackend());
   }
 
+  extractChannel(source: Mat, channel: number): Mat {
+    validateChannelIndex(channel);
+    return new Mat(this.#backend.matExtractChannel(source.handleForBackend(), channel));
+  }
+
   flip(source: Mat, flipCode: -1 | 0 | 1): Mat;
   flip(source: Mat, destination: Mat, flipCode: -1 | 0 | 1): void;
   flip(source: Mat, destinationOrCode: Mat | -1 | 0 | 1, flipCode?: -1 | 0 | 1): Mat | void {
@@ -136,12 +141,47 @@ class WasmOpenCv implements OpenCv {
     );
   }
 
+  insertChannel(source: Mat, destination: Mat, channel: number): void {
+    validateChannelIndex(channel);
+    this.#backend.matInsertChannel(
+      source.handleForBackend(),
+      destination.handleForBackend(),
+      channel,
+    );
+  }
+
   max(left: Mat, right: Mat): Mat {
     return new Mat(this.#backend.matMaxU8(left.handleForBackend(), right.handleForBackend()));
   }
 
   mean(source: Mat): Scalar {
     return scalarFromArray(this.#backend.matMean(source.handleForBackend()));
+  }
+
+  merge(
+    sources: readonly [Mat, Mat] | readonly [Mat, Mat, Mat] | readonly [Mat, Mat, Mat, Mat],
+  ): Mat {
+    const handles = sources.map((source) => source.handleForBackend());
+    const first = handles[0];
+    const second = handles[1];
+    if (first === undefined || second === undefined) {
+      throw new OpenCvInputError("merge requires two through four matrices");
+    }
+    if (handles.length === 2) {
+      return new Mat(this.#backend.matMerge(first, second));
+    }
+    const third = handles[2];
+    if (third === undefined) {
+      throw new OpenCvInputError("merge requires a third matrix");
+    }
+    if (handles.length === 3) {
+      return new Mat(this.#backend.matMerge3(first, second, third));
+    }
+    const fourth = handles[3];
+    if (fourth === undefined) {
+      throw new OpenCvInputError("merge requires a fourth matrix");
+    }
+    return new Mat(this.#backend.matMerge4(first, second, third, fourth));
   }
 
   min(left: Mat, right: Mat): Mat {
@@ -192,6 +232,10 @@ class WasmOpenCv implements OpenCv {
 
   subtract(left: Mat, right: Mat): Mat {
     return new Mat(this.#backend.matSubtractU8(left.handleForBackend(), right.handleForBackend()));
+  }
+
+  split(source: Mat): Mat[] {
+    return this.#backend.matSplit(source.handleForBackend()).map((handle) => new Mat(handle));
   }
 
   sum(source: Mat): Scalar {
@@ -304,6 +348,12 @@ function requiredCode<T extends number>(value: T | undefined): T {
     throw new OpenCvInputError("operation code is required when a destination is supplied");
   }
   return value;
+}
+
+function validateChannelIndex(channel: number): void {
+  if (!Number.isSafeInteger(channel) || channel < 0 || channel > 511) {
+    throw new OpenCvInputError("channel must be a non-negative integer below 512");
+  }
 }
 
 /** Creates a client from a compatible backend. Most callers should use `initOpenCv`. */

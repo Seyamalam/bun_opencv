@@ -87,6 +87,30 @@ function copyViewBytes(data: ArrayBufferView): Uint8Array {
   return new Uint8Array(new Uint8Array(data.buffer, data.byteOffset, data.byteLength));
 }
 
+function mergeHandles(sources: readonly WasmMatHandle[]): WasmMatHandle {
+  const first = sources[0];
+  if (first === undefined) {
+    throw new OpenCvInputError("merge requires a source");
+  }
+  const scalarWidth = depthByteWidth(first.depth);
+  const channels = sources.reduce((total, source) => total + source.channels, 0);
+  const output = new Uint8Array(first.rows * first.columns * channels * scalarWidth);
+  for (let pixel = 0; pixel < first.rows * first.columns; pixel += 1) {
+    let targetChannel = 0;
+    for (const source of sources) {
+      const bytes = source.toUint8Array();
+      const sourceStart = pixel * source.channels * scalarWidth;
+      const targetStart = (pixel * channels + targetChannel) * scalarWidth;
+      output.set(
+        bytes.subarray(sourceStart, sourceStart + source.channels * scalarWidth),
+        targetStart,
+      );
+      targetChannel += source.channels;
+    }
+  }
+  return new CopyingMatHandle(first.rows, first.columns, channels, output, first.depth);
+}
+
 class CopyingBackend implements OpenCvBackend {
   grayscaleRgba(data: Uint8Array): Uint8Array {
     return new Uint8Array(data);
@@ -143,6 +167,56 @@ class CopyingBackend implements OpenCvBackend {
 
   matFlipInto(source: WasmMatHandle, destination: WasmMatHandle, flipCode: number): void {
     destination.copyFromBytes(this.matFlip(source, flipCode).toUint8Array());
+  }
+
+  matSplit(source: WasmMatHandle): WasmMatHandle[] {
+    const scalarWidth = depthByteWidth(source.depth);
+    const input = source.toUint8Array();
+    return Array.from({ length: source.channels }, (_, channel) => {
+      const output = new Uint8Array(source.rows * source.columns * scalarWidth);
+      for (let pixel = 0; pixel < source.rows * source.columns; pixel += 1) {
+        const inputOffset = (pixel * source.channels + channel) * scalarWidth;
+        output.set(input.subarray(inputOffset, inputOffset + scalarWidth), pixel * scalarWidth);
+      }
+      return new CopyingMatHandle(source.rows, source.columns, 1, output, source.depth);
+    });
+  }
+
+  matMerge(first: WasmMatHandle, second: WasmMatHandle): WasmMatHandle {
+    return mergeHandles([first, second]);
+  }
+
+  matMerge3(first: WasmMatHandle, second: WasmMatHandle, third: WasmMatHandle): WasmMatHandle {
+    return mergeHandles([first, second, third]);
+  }
+
+  matMerge4(
+    first: WasmMatHandle,
+    second: WasmMatHandle,
+    third: WasmMatHandle,
+    fourth: WasmMatHandle,
+  ): WasmMatHandle {
+    return mergeHandles([first, second, third, fourth]);
+  }
+
+  matExtractChannel(source: WasmMatHandle, channel: number): WasmMatHandle {
+    const output = this.matSplit(source)[channel];
+    if (output === undefined) {
+      throw new OpenCvInputError("channel is out of bounds");
+    }
+    return output;
+  }
+
+  matInsertChannel(source: WasmMatHandle, destination: WasmMatHandle, channel: number): void {
+    const scalarWidth = depthByteWidth(destination.depth);
+    const input = source.toUint8Array();
+    const output = destination.toUint8Array();
+    for (let pixel = 0; pixel < destination.rows * destination.columns; pixel += 1) {
+      const sourceOffset = pixel * scalarWidth;
+      const destinationOffset = (pixel * destination.channels + channel) * scalarWidth;
+      output.set(input.subarray(sourceOffset, sourceOffset + scalarWidth), destinationOffset);
+    }
+    destination.copyFromBytes(output);
   }
 
   matAbsdiffU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle {
@@ -622,5 +696,27 @@ describe("OpenCv client", () => {
     expect(matrix.toUint8Array()).toEqual(new Uint8Array([6, 5, 4, 3, 2, 1]));
     expect(() => matrix.copyFromBytes(new Uint8Array([1]))).toThrow(OpenCvInputError);
     matrix.dispose();
+  });
+
+  test("splits, merges, extracts, and inserts channels", () => {
+    const source = client.matFromU8(1, 2, 3, new Uint8Array([1, 10, 100, 2, 20, 200]));
+    const planes = client.split(source);
+    expect(planes.map((plane) => plane.toUint8Array())).toEqual([
+      new Uint8Array([1, 2]),
+      new Uint8Array([10, 20]),
+      new Uint8Array([100, 200]),
+    ]);
+    const merged = client.merge([planes[0]!, planes[1]!, planes[2]!]);
+    expect(merged.toUint8Array()).toEqual(source.toUint8Array());
+    const extracted = client.extractChannel(source, 1);
+    expect(extracted.toUint8Array()).toEqual(new Uint8Array([10, 20]));
+    const destination = client.zerosU8(1, 2, 3);
+    client.insertChannel(extracted, destination, 2);
+    expect(destination.toUint8Array()).toEqual(new Uint8Array([0, 0, 10, 0, 0, 20]));
+    destination.dispose();
+    extracted.dispose();
+    merged.dispose();
+    for (const plane of planes) plane.dispose();
+    source.dispose();
   });
 });

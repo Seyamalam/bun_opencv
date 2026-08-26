@@ -293,6 +293,32 @@ export const PARITY_MANIFEST = {
     },
     {
       implementationOrigin: "original",
+      method: "merge",
+      module: "core",
+      notes:
+        "Two through four all-depth Mat inputs are supported; MatVector and caller-provided destination forms remain.",
+      patentReview: "required",
+      sources: [CORE_ARRAY_SOURCE],
+      status: "partial",
+      upstream: "cv.merge",
+      upstreamId: "core.function.merge",
+      wasmExport: "matMerge",
+    },
+    {
+      implementationOrigin: "original",
+      method: "split",
+      module: "core",
+      notes:
+        "All scalar depths, channels, and strided regions are supported; the MatVector destination form remains.",
+      patentReview: "required",
+      sources: [CORE_ARRAY_SOURCE],
+      status: "partial",
+      upstream: "cv.split",
+      upstreamId: "core.function.split",
+      wasmExport: "matSplit",
+    },
+    {
+      implementationOrigin: "original",
       method: "trace",
       module: "core",
       notes:

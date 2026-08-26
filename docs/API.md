@@ -78,6 +78,17 @@ Multi-input operations require identical rows, columns, and channels. These meth
 
 These operations preserve all seven scalar depths and every interleaved channel. They return new Rust-owned matrices and compact non-contiguous regions before rearranging pixels.
 
+Each layout operation also accepts an OpenCV-style destination overload: `flip(source, destination, code)`, `transpose(source, destination)`, `rotate(source, destination, code)`, and `repeat(source, rows, columns, destination)`. Destinations must have the exact output shape, channels, and depth. Writes through regions update their shared parent storage.
+
+### Matrix channels
+
+- `split(source)` returns one single-channel matrix per input channel.
+- `merge([first, second])`, `merge([first, second, third])`, and `merge([first, second, third, fourth])` interleave compatible inputs without invalidating them.
+- `extractChannel(source, channel)` returns one selected channel.
+- `insertChannel(source, destination, channel)` writes a single-channel source into one destination channel.
+
+Channel operations preserve raw scalar bytes for all seven depths and compact strided source regions. Insertions into a destination region update its shared parent storage.
+
 ### Matrix reductions
 
 - `countNonZero(source)` supports every scalar depth and requires one channel.
@@ -115,6 +126,10 @@ Returns a matrix that shares its parent's Rust allocation. Creating a region doe
 Copies logical bytes into compact JavaScript memory. For a U8 matrix those bytes are elements. For every other depth this method returns the compact raw byte representation. Strided regions omit bytes outside the region.
 
 Typed element copies are available through `toInt8Array`, `toUint16Array`, `toInt16Array`, `toInt32Array`, `toFloat32Array`, and `toFloat64Array`. Calling a typed accessor that does not match the matrix depth throws.
+
+### `matrix.copyFromBytes(data)`
+
+Replaces the logical raw bytes of a matrix. The input length must equal `matrix.byteLength`. Writes are atomic and respect region stride, so overlapping regions and their parent observe the new values.
 
 ### `matrix.dispose()`
 
