@@ -31,6 +31,7 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - OpenCV.js-compatible negative-input and upper-sentinel behavior for `getOptimalDFTSize`, plus a fail-closed numeric browser comparator for enum-backed values.
 - A fully implemented `getOptimalDFTSize` family with exact arity, Embind signed i32 coercion and errors, exhaustive smooth-size boundary tests, and the pinned upper sentinel, bringing the totals to 83 partial, 46 implemented, and 129 supported families.
 - Ten fully implemented enum-backed detector methods across AKAZE, KAZE, AGAST, and FAST. Their browser contract covers enum namespace descriptors, canonical and shared singleton identity, structural setter coercion, unknown signed i32 wire values, exact arity, and lifetime errors. The totals are now 73 partial, 56 implemented, and 129 supported families; detector factories remain partial.
+- A fully implemented `transpose` family with exact two-argument calls, all scalar depths, OutputArray reallocation, empty and deleted matrices, in-place shapes, detached incompatible regions, and OpenCV-compatible overlapping aliases. The totals are now 72 partial, 57 implemented, and 129 supported families.
 - Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
 
 ### Planned

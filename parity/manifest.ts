@@ -1629,10 +1629,10 @@ export const PARITY_MANIFEST = {
       method: "transpose",
       module: "core",
       notes:
-        "All scalar depths and channels with allocating results and mutable destinations; the U8 browser differential passes, while empty-matrix and all-depth differential audits remain.",
+        "Exact two-argument browser contract across all scalar depths, empty and deleted matrices, destination reallocation, in-place operation, and shared or detached regions.",
       patentReview: "required",
       sources: [CORE_ARRAY_SOURCE],
-      status: "partial",
+      status: "implemented",
       upstream: "cv.transpose",
       upstreamId: "core.function.transpose",
       wasmExport: "matTranspose",
