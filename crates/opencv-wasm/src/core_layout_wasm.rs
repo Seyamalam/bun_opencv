@@ -20,6 +20,7 @@ enum LayoutWasmError {
         actual: MatDepth,
     },
     ElementWidthOverflow(usize),
+    InPlaceRepeat,
     Kernel(LayoutError),
     Matrix(MatError),
 }
@@ -41,6 +42,9 @@ impl fmt::Display for LayoutWasmError {
                     "matrix scalar width {width} exceeds the layout limit"
                 )
             }
+            Self::InPlaceRepeat => {
+                formatter.write_str("repeat source and destination must be different matrices")
+            }
             Self::Kernel(error) => error.fmt(formatter),
             Self::Matrix(error) => error.fmt(formatter),
         }
@@ -52,7 +56,9 @@ impl Error for LayoutWasmError {
         match self {
             Self::Kernel(error) => Some(error),
             Self::Matrix(error) => Some(error),
-            Self::ElementWidthOverflow(_) | Self::IncompatibleSourceDepth { .. } => None,
+            Self::ElementWidthOverflow(_)
+            | Self::InPlaceRepeat
+            | Self::IncompatibleSourceDepth { .. } => None,
         }
     }
 }
@@ -174,7 +180,7 @@ pub fn mat_rotate_into(source: &Mat, destination: &Mat, rotate_code: i32) -> Res
 /// matrix limit.
 #[wasm_bindgen(js_name = matRepeat)]
 pub fn mat_repeat(source: &Mat, row_repeats: i32, column_repeats: i32) -> Result<Mat, JsError> {
-    validate_repeat_counts(row_repeats, column_repeats).map_err(JsError::from)?;
+    validate_repeat_counts(row_repeats, column_repeats)?;
     if source.rows() == 0 && source.columns() == 0 {
         return Ok(Mat::empty_output());
     }
@@ -196,7 +202,19 @@ pub fn mat_repeat_into(
     row_repeats: i32,
     column_repeats: i32,
 ) -> Result<(), JsError> {
-    validate_repeat_counts(row_repeats, column_repeats).map_err(JsError::from)?;
+    repeat_into_mat(source, destination, row_repeats, column_repeats).map_err(JsError::from)
+}
+
+fn repeat_into_mat(
+    source: &Mat,
+    destination: &Mat,
+    row_repeats: i32,
+    column_repeats: i32,
+) -> Result<(), LayoutWasmError> {
+    validate_repeat_counts(row_repeats, column_repeats)?;
+    if std::ptr::eq(source, destination) {
+        return Err(LayoutWasmError::InPlaceRepeat);
+    }
     if source.rows() == 0 && source.columns() == 0 {
         destination.write_empty_output();
         return Ok(());
@@ -204,13 +222,9 @@ pub fn mat_repeat_into(
     apply_layout_into(source, destination, |matrix| {
         repeat_bytes(matrix, row_repeats, column_repeats)
     })
-    .map_err(JsError::from)
 }
 
-fn validate_repeat_counts(
-    row_repeats: i32,
-    column_repeats: i32,
-) -> Result<(), LayoutWasmError> {
+fn validate_repeat_counts(row_repeats: i32, column_repeats: i32) -> Result<(), LayoutWasmError> {
     if row_repeats <= 0 || column_repeats <= 0 {
         return Err(LayoutError::InvalidRepeatCount {
             rows: row_repeats,
@@ -471,6 +485,19 @@ mod tests {
             assert_eq!(output.depth(), MatDepth::U8);
             assert!(output.is_continuous());
             assert!(output.to_u8_array().is_empty());
+        }
+    }
+
+    #[test]
+    fn repeat_rejects_the_exact_same_matrix_handle_without_mutation() {
+        for (row_repeats, column_repeats) in [(1, 1), (2, 1), (1, 2), (2, 2)] {
+            let matrix = u8_matrix(vec![1, 2, 3, 4], 2, 2, 1);
+
+            assert!(matches!(
+                repeat_into_mat(&matrix, &matrix, row_repeats, column_repeats),
+                Err(LayoutWasmError::InPlaceRepeat)
+            ));
+            assert_eq!(matrix.to_u8_array(), [1, 2, 3, 4]);
         }
     }
 
