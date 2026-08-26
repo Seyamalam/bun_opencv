@@ -1688,6 +1688,361 @@
         };
       }
 
+      const FLOAT_UNARY_METHODS = ["exp", "log", "sqrt"];
+      const FLOAT_INTEGER_TYPES = [
+        ["CV_8UC1", "u8", 1, [0, 1, 2, 3, 4, 5]],
+        ["CV_8SC1", "i8", 1, [-3, -2, -1, 0, 1, 2]],
+        ["CV_16UC1", "u16", 1, [0, 1, 2, 3, 4, 5]],
+        ["CV_16SC1", "i16", 1, [-3, -2, -1, 0, 1, 2]],
+        ["CV_32SC1", "i32", 1, [-3, -2, -1, 0, 1, 2]],
+      ];
+      const FLOAT_VALID_TYPES = [
+        ["CV_32FC1", "f32", 1, [-1.5, 2.25, -3.5, 4.75, -5.5, 6.25]],
+        [
+          "CV_32FC3",
+          "f32",
+          3,
+          [-1, 2, 3, -4, 5, 6, -7, 8, 9, -10, 11, 12, -13, 14, 15, -16, 17, 18],
+        ],
+        ["CV_64FC1", "f64", 1, [-1.5, 2.25, -3.5, 4.75, -5.5, 6.25]],
+        ["CV_64FC2", "f64", 2, [-1, 2, -3, 4, -5, 6, -7, 8, -9, 10, -11, 12]],
+      ];
+
+      function auditPackageFloatDestination(packageCv, method, name, createDestination) {
+        const source = makePackageSeedMat(
+          packageCv,
+          2,
+          3,
+          "f32",
+          2,
+          [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3],
+        );
+        const destination = createDestination();
+        const audit = auditPackageTypedMatCall(
+          () => packageCv[method](source, destination),
+          [
+            ["source", source],
+            ["destination", destination],
+          ],
+        );
+        disposePackageMat(destination);
+        disposePackageMat(source);
+        return { name, audit };
+      }
+
+      function auditPackageUnaryRoi(
+        packageCv,
+        method,
+        name,
+        sourceRect,
+        destinationRect,
+        sameParent,
+        destinationDepth = "f32",
+      ) {
+        const sourceParent = makePackageSeedMat(
+          packageCv,
+          4,
+          7,
+          "f32",
+          1,
+          Array.from({ length: 28 }, (_, index) => (index + 1) / 10),
+        );
+        const destinationParent = sameParent
+          ? sourceParent
+          : makePackageSeedMat(
+              packageCv,
+              4,
+              7,
+              destinationDepth,
+              1,
+              Array.from({ length: 28 }, () => 99),
+            );
+        const source = sourceParent.roi(sourceRect[1], sourceRect[0], sourceRect[3], sourceRect[2]);
+        const destination = destinationParent.roi(
+          destinationRect[1],
+          destinationRect[0],
+          destinationRect[3],
+          destinationRect[2],
+        );
+        const audit = auditPackageTypedMatCall(
+          () => packageCv[method](source, destination),
+          [
+            ["source", source],
+            ["destination", destination],
+            ["sourceParent", sourceParent],
+            ["destinationParent", destinationParent],
+          ],
+        );
+        disposePackageMat(destination);
+        disposePackageMat(source);
+        if (!sameParent) disposePackageMat(destinationParent);
+        disposePackageMat(sourceParent);
+        return { name, sameParent, audit };
+      }
+
+      function auditPackageUnaryType(packageCv, method, name, depth, channels, values) {
+        const source = makePackageSeedMat(packageCv, 2, 3, depth, channels, values);
+        const destination = packageCv.emptyMat();
+        const audit = auditPackageTypedMatCall(
+          () => packageCv[method](source, destination),
+          [
+            ["source", source],
+            ["destination", destination],
+          ],
+        );
+        disposePackageMat(destination);
+        disposePackageMat(source);
+        return { name, available: true, audit };
+      }
+
+      function auditPackageUnary(packageCv, method) {
+        const source = makePackageSeedMat(packageCv, 1, 2, "f32", 1, [1, 4]);
+        const destination = packageCv.emptyMat();
+        const arity = {
+          functionLength: capturePrimitive(() => packageCv[method].length),
+          zero: captureCall(() => packageCv[method]()),
+          one: captureCall(() => packageCv[method](source)),
+          two: captureCall(() => packageCv[method](source, destination)),
+          three: captureCall(() => packageCv[method](source, destination, 1)),
+          destinationAfter: capturePrimitive(() => summarizePackageTypedMat(destination)),
+        };
+        const argumentTypes = {
+          source: {
+            null: captureCall(() => packageCv[method](null, destination)),
+            undefined: captureCall(() => packageCv[method](undefined, destination)),
+            object: captureCall(() => packageCv[method]({}, destination)),
+            number: captureCall(() => packageCv[method](1, destination)),
+            string: captureCall(() => packageCv[method]("x", destination)),
+          },
+          destination: {
+            null: captureCall(() => packageCv[method](source, null)),
+            undefined: captureCall(() => packageCv[method](source, undefined)),
+            object: captureCall(() => packageCv[method](source, {})),
+            number: captureCall(() => packageCv[method](source, 1)),
+            string: captureCall(() => packageCv[method](source, "x")),
+          },
+        };
+        disposePackageMat(destination);
+        disposePackageMat(source);
+
+        const deletedSource = makePackageSeedMat(packageCv, 1, 1, "f32", 1, [1]);
+        const liveDestination = packageCv.emptyMat();
+        deletedSource.dispose();
+        const deletedSourceAudit = auditPackageTypedMatCall(
+          () => packageCv[method](deletedSource, liveDestination),
+          [
+            ["source", deletedSource],
+            ["destination", liveDestination],
+          ],
+        );
+        disposePackageMat(liveDestination);
+        const liveSource = makePackageSeedMat(packageCv, 1, 1, "f32", 1, [1]);
+        const deletedDestination = packageCv.emptyMat();
+        deletedDestination.dispose();
+        const deletedDestinationAudit = auditPackageTypedMatCall(
+          () => packageCv[method](liveSource, deletedDestination),
+          [
+            ["source", liveSource],
+            ["destination", deletedDestination],
+          ],
+        );
+        disposePackageMat(liveSource);
+
+        const freshEmptySource = packageCv.emptyMat();
+        const freshEmptyDestination = packageCv.emptyMat();
+        const freshEmpty = auditPackageTypedMatCall(
+          () => packageCv[method](freshEmptySource, freshEmptyDestination),
+          [
+            ["source", freshEmptySource],
+            ["destination", freshEmptyDestination],
+          ],
+        );
+        disposePackageMat(freshEmptyDestination);
+        disposePackageMat(freshEmptySource);
+        const freshEmptyIntoFullSource = packageCv.emptyMat();
+        const populatedDestination = makePackageSeedMat(packageCv, 1, 2, "f32", 1, [7, 8]);
+        const freshEmptyIntoFull = auditPackageTypedMatCall(
+          () => packageCv[method](freshEmptyIntoFullSource, populatedDestination),
+          [
+            ["source", freshEmptyIntoFullSource],
+            ["destination", populatedDestination],
+          ],
+        );
+        disposePackageMat(populatedDestination);
+        disposePackageMat(freshEmptyIntoFullSource);
+
+        const typedEmpty = [
+          ["0x0-F32C1", 0, 0, "f32", 1],
+          ["0x3-F32C2", 0, 3, "f32", 2],
+          ["3x0-F64C1", 3, 0, "f64", 1],
+        ].map(([name, rows, columns, depth, channels]) => {
+          const typedSource = makePackageSeedMat(packageCv, rows, columns, depth, channels, []);
+          const typedDestination = packageCv.emptyMat();
+          const audit = auditPackageTypedMatCall(
+            () => packageCv[method](typedSource, typedDestination),
+            [
+              ["source", typedSource],
+              ["destination", typedDestination],
+            ],
+          );
+          disposePackageMat(typedDestination);
+          disposePackageMat(typedSource);
+          return { name, audit };
+        });
+
+        const validTypes = FLOAT_VALID_TYPES.map(([name, depth, channels, values]) =>
+          auditPackageUnaryType(packageCv, method, name, depth, channels, values),
+        );
+        const unsupportedIntegerTypes =
+          method === "sqrt"
+            ? []
+            : FLOAT_INTEGER_TYPES.map(([name, depth, channels, values]) =>
+                auditPackageUnaryType(packageCv, method, name, depth, channels, values),
+              );
+        const numericEdges = [
+          [
+            "F32",
+            "f32",
+            [
+              Number.NEGATIVE_INFINITY,
+              -4,
+              -1.401298464324817e-45,
+              -0,
+              0,
+              1.401298464324817e-45,
+              4,
+              Number.POSITIVE_INFINITY,
+              Number.NaN,
+            ],
+          ],
+          [
+            "F64",
+            "f64",
+            [
+              Number.NEGATIVE_INFINITY,
+              -4,
+              -Number.MIN_VALUE,
+              -0,
+              0,
+              Number.MIN_VALUE,
+              4,
+              Number.POSITIVE_INFINITY,
+              Number.NaN,
+            ],
+          ],
+        ].map(([name, depth, values]) => {
+          const edgeSource = makePackageSeedMat(packageCv, 1, values.length, depth, 1, values);
+          const edgeDestination = packageCv.emptyMat();
+          const audit = auditPackageTypedMatCall(
+            () => packageCv[method](edgeSource, edgeDestination),
+            [
+              ["source", edgeSource],
+              ["destination", edgeDestination],
+            ],
+          );
+          disposePackageMat(edgeDestination);
+          disposePackageMat(edgeSource);
+          return { name, audit };
+        });
+
+        return {
+          method,
+          arity,
+          argumentTypes,
+          destinationReplacement: [
+            auditPackageFloatDestination(packageCv, method, "empty", () => packageCv.emptyMat()),
+            auditPackageFloatDestination(packageCv, method, "correct-metadata", () =>
+              makePackageSeedMat(
+                packageCv,
+                2,
+                3,
+                "f32",
+                2,
+                Array.from({ length: 12 }, () => 99),
+              ),
+            ),
+            auditPackageFloatDestination(packageCv, method, "wrong-shape", () =>
+              makePackageSeedMat(
+                packageCv,
+                3,
+                2,
+                "f32",
+                2,
+                Array.from({ length: 12 }, () => 99),
+              ),
+            ),
+            auditPackageFloatDestination(packageCv, method, "wrong-type-and-channels", () =>
+              makePackageSeedMat(
+                packageCv,
+                2,
+                3,
+                "f64",
+                1,
+                Array.from({ length: 6 }, () => 99),
+              ),
+            ),
+          ],
+          roi: [
+            auditPackageUnaryRoi(
+              packageCv,
+              method,
+              "compatible-separate",
+              [1, 1, 3, 2],
+              [2, 1, 3, 2],
+              false,
+            ),
+            auditPackageUnaryRoi(
+              packageCv,
+              method,
+              "incompatible-detach",
+              [1, 1, 3, 2],
+              [2, 1, 2, 3],
+              false,
+            ),
+            auditPackageUnaryRoi(
+              packageCv,
+              method,
+              "wrong-type-detach",
+              [1, 1, 3, 2],
+              [2, 1, 3, 2],
+              false,
+              "f64",
+            ),
+            auditPackageUnaryRoi(
+              packageCv,
+              method,
+              "exact-alias",
+              [1, 1, 3, 2],
+              [1, 1, 3, 2],
+              true,
+            ),
+            auditPackageUnaryRoi(
+              packageCv,
+              method,
+              "overlap-right",
+              [0, 1, 3, 2],
+              [1, 1, 3, 2],
+              true,
+            ),
+            auditPackageUnaryRoi(
+              packageCv,
+              method,
+              "overlap-down",
+              [1, 0, 3, 2],
+              [1, 1, 3, 2],
+              true,
+            ),
+          ],
+          empty: { fresh: freshEmpty, freshIntoFull: freshEmptyIntoFull, typed: typedEmpty },
+          deleted: { source: deletedSourceAudit, destination: deletedDestinationAudit },
+          validTypes,
+          unsupportedIntegerTypes,
+          numericEdges,
+          excludedUnsafeIntegerTypes:
+            method === "sqrt" ? FLOAT_INTEGER_TYPES.map(([name]) => name) : [],
+        };
+      }
+
       function propertyDescriptorSummary(owner, property) {
         const descriptor = Object.getOwnPropertyDescriptor(owner, property);
         if (descriptor === undefined) return { present: false };
