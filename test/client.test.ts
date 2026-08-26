@@ -2561,6 +2561,34 @@ describe("OpenCv client", () => {
     for (const matrix of [solution, rightHandSide, inverse, coefficients]) matrix.dispose();
   });
 
+  test("matches determinant call and Mat binding contracts", () => {
+    type JavascriptBindingValue =
+      boolean | number | bigint | string | symbol | object | null | undefined;
+    const backend = new CopyingBackend();
+    const localClient = createOpenCv(backend);
+    const source = localClient.matFromF64(2, 2, 1, new Float64Array([1, 2, 3, 4]));
+    // SAFETY: This widens only the plain-JavaScript call shapes exercised by the binding audit.
+    const javascriptClient = localClient as typeof localClient & {
+      determinant(source?: JavascriptBindingValue, extra?: JavascriptBindingValue): number;
+    };
+
+    expect(localClient.determinant.length).toBe(1);
+    const sourceBefore = source.toFloat64Array();
+    expect(localClient.determinant(source)).toBe(-2);
+    expect(source.toFloat64Array()).toEqual(sourceBefore);
+    expect(() => javascriptClient.determinant()).toThrow(BindingError);
+    expect(() => javascriptClient.determinant(source, 1)).toThrow(BindingError);
+    expect(() => javascriptClient.determinant(null)).toThrow(
+      new BindingError("null is not a valid Mat"),
+    );
+    expect(() => javascriptClient.determinant({})).toThrow(BindingError);
+
+    source.dispose();
+    expect(() => localClient.determinant(source)).toThrow(
+      new BindingError("Cannot pass deleted object as a pointer of type Mat"),
+    );
+  });
+
   test("exposes matrix-based core operations", () => {
     expect(client).toHaveProperty("add");
     expect(client).toHaveProperty("subtract");

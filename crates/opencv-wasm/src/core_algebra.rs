@@ -42,51 +42,146 @@ impl fmt::Display for AlgebraError {
 
 impl Error for AlgebraError {}
 
-/// Computes a square matrix determinant with Gaussian elimination and partial pivoting.
-///
-/// The implementation works in `f64`. A row swap flips the determinant sign. Only an exactly
-/// zero pivot returns zero, so a small but nonsingular determinant is not rounded away.
+/// Computes an F64 square matrix determinant with depth-specific OpenCV-compatible arithmetic.
 pub(crate) fn determinant(values: &[f64], order: usize) -> Result<f64, AlgebraError> {
     validate_shape(values.len(), order, order)?;
-    validate_finite(values)?;
+    match order {
+        1 => Ok(values[0]),
+        2 => Ok(values[0] * values[3] - values[1] * values[2]),
+        3 => Ok(determinant_3x3(
+            values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[7],
+            values[8],
+        )),
+        _ => Ok(determinant_f64_elimination(values, order)),
+    }
+}
 
+/// Computes an F32 square matrix determinant while retaining F32 elimination rounding.
+pub(crate) fn determinant_f32(values: &[f32], order: usize) -> Result<f64, AlgebraError> {
+    validate_shape(values.len(), order, order)?;
+    match order {
+        1 => Ok(f64::from(values[0])),
+        2 => Ok(determinant_2x2_f32(values)),
+        3 => Ok(determinant_3x3(
+            f64::from(values[0]),
+            f64::from(values[1]),
+            f64::from(values[2]),
+            f64::from(values[3]),
+            f64::from(values[4]),
+            f64::from(values[5]),
+            f64::from(values[6]),
+            f64::from(values[7]),
+            f64::from(values[8]),
+        )),
+        _ => Ok(determinant_f32_elimination(values, order)),
+    }
+}
+
+fn determinant_2x2_f32(values: &[f32]) -> f64 {
+    f64::from(values[0]) * f64::from(values[3]) - f64::from(values[1]) * f64::from(values[2])
+}
+
+#[allow(clippy::too_many_arguments)]
+fn determinant_3x3(
+    a00: f64,
+    a01: f64,
+    a02: f64,
+    a10: f64,
+    a11: f64,
+    a12: f64,
+    a20: f64,
+    a21: f64,
+    a22: f64,
+) -> f64 {
+    a00 * (a11 * a22 - a12 * a21) - a01 * (a10 * a22 - a12 * a20) + a02 * (a10 * a21 - a11 * a20)
+}
+
+fn determinant_f64_elimination(values: &[f64], order: usize) -> f64 {
     let mut matrix = values.to_vec();
     let mut sign = 1.0;
     let mut product = 1.0;
+    let cutoff = 100.0 * f64::EPSILON;
     for column in 0..order {
-        let pivot_row = (column..order)
-            .max_by(|&left, &right| {
-                matrix[left * order + column]
-                    .abs()
-                    .total_cmp(&matrix[right * order + column].abs())
-            })
-            .expect("a validated square matrix has a pivot candidate");
-        let pivot = matrix[pivot_row * order + column];
-        if pivot == 0.0 {
-            return Ok(0.0);
+        let pivot_row = pivot_row_f64(&matrix, order, column);
+        let candidate = matrix[pivot_row * order + column];
+        if candidate.abs() < cutoff {
+            return 0.0;
         }
         if pivot_row != column {
-            for index in 0..order {
-                matrix.swap(column * order + index, pivot_row * order + index);
-            }
+            swap_rows(&mut matrix, order, column, pivot_row);
             sign = -sign;
         }
         let pivot = matrix[column * order + column];
         product *= pivot;
-        if !product.is_finite() {
-            return Err(AlgebraError::NumericalFailure);
-        }
+        let reciprocal = -1.0 / pivot;
         for row in column + 1..order {
-            let factor = matrix[row * order + column] / pivot;
+            let multiple = matrix[row * order + column] * reciprocal;
             for index in column + 1..order {
-                matrix[row * order + index] -= factor * matrix[column * order + index];
-                if !matrix[row * order + index].is_finite() {
-                    return Err(AlgebraError::NumericalFailure);
-                }
+                matrix[row * order + index] += multiple * matrix[column * order + index];
             }
         }
     }
-    Ok(sign * product)
+    sign * product
+}
+
+fn determinant_f32_elimination(values: &[f32], order: usize) -> f64 {
+    let mut matrix = values.to_vec();
+    let mut sign = 1.0;
+    let mut product = 1.0;
+    let cutoff = 10.0 * f32::EPSILON;
+    for column in 0..order {
+        let pivot_row = pivot_row_f32(&matrix, order, column);
+        let candidate = matrix[pivot_row * order + column];
+        if candidate.abs() < cutoff {
+            return 0.0;
+        }
+        if pivot_row != column {
+            swap_rows(&mut matrix, order, column, pivot_row);
+            sign = -sign;
+        }
+        let pivot = matrix[column * order + column];
+        product *= f64::from(pivot);
+        let reciprocal = -1.0 / pivot;
+        for row in column + 1..order {
+            let multiple = matrix[row * order + column] * reciprocal;
+            for index in column + 1..order {
+                matrix[row * order + index] += multiple * matrix[column * order + index];
+            }
+        }
+    }
+    sign * product
+}
+
+fn pivot_row_f64(matrix: &[f64], order: usize, column: usize) -> usize {
+    let mut pivot_row = column;
+    let mut pivot_magnitude = matrix[column * order + column].abs();
+    for row in column + 1..order {
+        let magnitude = matrix[row * order + column].abs();
+        if magnitude > pivot_magnitude {
+            pivot_row = row;
+            pivot_magnitude = magnitude;
+        }
+    }
+    pivot_row
+}
+
+fn pivot_row_f32(matrix: &[f32], order: usize, column: usize) -> usize {
+    let mut pivot_row = column;
+    let mut pivot_magnitude = matrix[column * order + column].abs();
+    for row in column + 1..order {
+        let magnitude = matrix[row * order + column].abs();
+        if magnitude > pivot_magnitude {
+            pivot_row = row;
+            pivot_magnitude = magnitude;
+        }
+    }
+    pivot_row
+}
+
+fn swap_rows<T>(matrix: &mut [T], order: usize, first: usize, second: usize) {
+    for column in 0..order {
+        matrix.swap(first * order + column, second * order + column);
+    }
 }
 
 /// Inverts a square matrix by solving one right-hand side per identity column.
@@ -471,6 +566,116 @@ mod tests {
     }
 
     #[test]
+    fn determinant_matches_direct_small_matrix_arithmetic() {
+        assert_eq!(determinant(&[], 0), Err(AlgebraError::EmptyMatrix));
+
+        let one = determinant(&[-0.0], 1).expect("valid 1x1 matrix");
+        assert_eq!(one.to_bits(), (-0.0_f64).to_bits());
+
+        let two = determinant(&[-0.0, 0.0, 0.0, 1.0], 2).expect("valid 2x2 matrix");
+        assert_eq!(two.to_bits(), (-0.0_f64).to_bits());
+        assert_eq!(determinant(&[1.0e-300, 0.0, 0.0, 1.0], 2), Ok(1.0e-300));
+
+        let three = determinant(&[-0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0], 3)
+            .expect("valid 3x3 matrix");
+        assert_eq!(three.to_bits(), 0.0_f64.to_bits());
+
+        let one_f32 = determinant_f32(&[-0.0], 1).expect("valid 1x1 matrix");
+        assert_eq!(one_f32.to_bits(), (-0.0_f64).to_bits());
+        let two_f32 = determinant_f32(&[-0.0, 0.0, 0.0, 1.0], 2).expect("valid 2x2 matrix");
+        assert_eq!(two_f32.to_bits(), (-0.0_f64).to_bits());
+        let three_f32 = determinant_f32(&[-0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0], 3)
+            .expect("valid 3x3 matrix");
+        assert_eq!(three_f32.to_bits(), 0.0_f64.to_bits());
+
+        assert_eq!(
+            determinant_f32(&[16_777_216.0, 16_777_215.0, 16_777_215.0, 16_777_214.0], 2),
+            Ok(-1.0)
+        );
+    }
+
+    #[test]
+    fn determinant_f64_uses_the_opencv_absolute_pivot_cutoff_for_large_matrices() {
+        let cutoff = 100.0 * f64::EPSILON;
+        let diagonal = |pivot| {
+            [
+                pivot, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+            ]
+        };
+
+        let below = determinant(&diagonal(cutoff.next_down()), 4).expect("valid matrix");
+        assert_eq!(below.to_bits(), 0.0_f64.to_bits());
+        assert_eq!(determinant(&diagonal(cutoff), 4), Ok(cutoff));
+        let negative_below = determinant(&diagonal(-cutoff.next_down()), 4).expect("valid matrix");
+        assert_eq!(negative_below.to_bits(), 0.0_f64.to_bits());
+        assert_eq!(determinant(&diagonal(-cutoff), 4), Ok(-cutoff));
+
+        let swapped = [
+            0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 3.0,
+        ];
+        assert_eq!(determinant(&swapped, 4), Ok(-6.0));
+
+        let singular = [
+            1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+        ];
+        let value = determinant(&singular, 4).expect("valid matrix");
+        assert_eq!(value.to_bits(), 0.0_f64.to_bits());
+    }
+
+    #[test]
+    fn determinant_f32_keeps_float_elimination_rounding() {
+        let cutoff = 10.0 * f32::EPSILON;
+        let diagonal = |pivot| {
+            [
+                pivot, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+            ]
+        };
+        let below = determinant_f32(&diagonal(f32::from_bits(cutoff.to_bits() - 1)), 4)
+            .expect("valid matrix");
+        assert_eq!(below.to_bits(), 0.0_f64.to_bits());
+        assert_eq!(determinant_f32(&diagonal(cutoff), 4), Ok(f64::from(cutoff)));
+        let negative_below = determinant_f32(&diagonal(-f32::from_bits(cutoff.to_bits() - 1)), 4)
+            .expect("valid matrix");
+        assert_eq!(negative_below.to_bits(), 0.0_f64.to_bits());
+        assert_eq!(
+            determinant_f32(&diagonal(-cutoff), 4),
+            Ok(-f64::from(cutoff))
+        );
+
+        let hilbert4 = [
+            1.0_f32,
+            1.0 / 2.0,
+            1.0 / 3.0,
+            1.0 / 4.0,
+            1.0 / 2.0,
+            1.0 / 3.0,
+            1.0 / 4.0,
+            1.0 / 5.0,
+            1.0 / 3.0,
+            1.0 / 4.0,
+            1.0 / 5.0,
+            1.0 / 6.0,
+            1.0 / 4.0,
+            1.0 / 5.0,
+            1.0 / 6.0,
+            1.0 / 7.0,
+        ];
+        assert_eq!(
+            determinant_f32(&hilbert4, 4),
+            Ok(1.653_435_457_709_787_2e-7)
+        );
+
+        let hilbert6 = std::array::from_fn::<_, 36, _>(|index| {
+            let row = index / 6;
+            let column = index % 6;
+            let denominator = u8::try_from(row + column + 1).expect("Hilbert index fits in u8");
+            1.0_f32 / f32::from(denominator)
+        });
+        let rounded_singular = determinant_f32(&hilbert6, 6).expect("valid matrix");
+        assert_eq!(rounded_singular.to_bits(), 0.0_f64.to_bits());
+    }
+
+    #[test]
     fn inverse_solves_each_identity_column() {
         let inverse = invert(&[4.0, 7.0, 2.0, 6.0], 2)
             .expect("valid shape")
@@ -532,14 +737,71 @@ mod tests {
     }
 
     #[test]
-    fn determinant_rejects_non_finite_input_and_output() {
-        assert_eq!(
-            determinant(&[f64::NAN], 1),
-            Err(AlgebraError::NonFiniteInput)
+    fn determinant_propagates_non_finite_values() {
+        assert!(
+            determinant(&[f64::NAN], 1)
+                .expect("non-finite values are accepted")
+                .is_nan()
         );
         assert_eq!(
             determinant(&[f64::MAX, 0.0, 0.0, 2.0], 2),
-            Err(AlgebraError::NumericalFailure)
+            Ok(f64::INFINITY)
+        );
+        assert!(
+            determinant(&[f64::INFINITY, 0.0, 0.0, 0.0], 2)
+                .expect("non-finite values are accepted")
+                .is_nan()
+        );
+
+        let diagonal_infinity = [
+            f64::INFINITY,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+        ];
+        assert_eq!(determinant(&diagonal_infinity, 4), Ok(f64::INFINITY));
+
+        let mut diagonal_nan = diagonal_infinity;
+        diagonal_nan[0] = f64::NAN;
+        assert!(
+            determinant(&diagonal_nan, 4)
+                .expect("non-finite values are accepted")
+                .is_nan()
+        );
+
+        let diagonal_infinity_f32 = [
+            f32::INFINITY,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+        ];
+        assert_eq!(
+            determinant_f32(&diagonal_infinity_f32, 4),
+            Ok(f64::INFINITY)
         );
     }
 }

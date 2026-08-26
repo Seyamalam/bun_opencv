@@ -13,6 +13,7 @@ enum AlgebraWasmError {
     Matrix(MatError),
     SingleChannelRequired,
     SquareMatrixRequired { rows: u32, columns: u32 },
+    FloatingSourceRequired(MatDepth),
     FloatingDestinationRequired(MatDepth),
     InvertDestinationMismatch,
     SolveShapeMismatch,
@@ -32,6 +33,10 @@ impl fmt::Display for AlgebraWasmError {
             Self::SquareMatrixRequired { rows, columns } => write!(
                 formatter,
                 "operation requires a square matrix; received {rows}x{columns}"
+            ),
+            Self::FloatingSourceRequired(depth) => write!(
+                formatter,
+                "determinant source requires F32 or F64 depth; received {depth:?}"
             ),
             Self::FloatingDestinationRequired(depth) => write!(
                 formatter,
@@ -70,11 +75,10 @@ impl From<MatError> for AlgebraWasmError {
 
 /// Computes the determinant of a square, single-channel matrix.
 ///
-/// Every package scalar depth is accepted. Integer and F32 elements are widened to F64 before
-/// partial-pivoted elimination.
+/// F32 sources retain F32 elimination arithmetic; F64 sources retain F64 arithmetic.
 ///
 /// # Errors
-/// Returns an error for a multi-channel, nonsquare, or non-finite source.
+/// Returns an error for an empty, multi-channel, nonsquare, or non-floating source.
 #[wasm_bindgen(js_name = matDeterminant)]
 pub fn mat_determinant(source: &Mat) -> Result<f64, JsError> {
     determinant_adapter(source).map_err(JsError::from)
@@ -114,11 +118,12 @@ pub fn mat_solve_into(
 fn determinant_adapter(source: &Mat) -> Result<f64, AlgebraWasmError> {
     validate_single_channel(source)?;
     validate_square(source)?;
-    let values = decode(source);
-    Ok(core_algebra::determinant(
-        &values,
-        usize::try_from(source.rows()).map_err(|_| AlgebraError::SizeOverflow)?,
-    )?)
+    let order = usize::try_from(source.rows()).map_err(|_| AlgebraError::SizeOverflow)?;
+    match source.depth() {
+        MatDepth::F32 => Ok(core_algebra::determinant_f32(&decode_f32(source), order)?),
+        MatDepth::F64 => Ok(core_algebra::determinant(&decode_f64(source), order)?),
+        depth => Err(AlgebraWasmError::FloatingSourceRequired(depth)),
+    }
 }
 
 fn invert_adapter(source: &Mat, destination: &Mat, method: u32) -> Result<f64, AlgebraWasmError> {
@@ -287,6 +292,24 @@ fn decode(matrix: &Mat) -> Vec<f64> {
     }
 }
 
+fn decode_f32(matrix: &Mat) -> Vec<f32> {
+    matrix
+        .compact_bytes()
+        .chunks_exact(4)
+        .map(|chunk| {
+            f32::from_ne_bytes(
+                chunk
+                    .try_into()
+                    .expect("F32 matrix chunks always contain four bytes"),
+            )
+        })
+        .collect()
+}
+
+fn decode_f64(matrix: &Mat) -> Vec<f64> {
+    decode_chunks::<8, f64>(&matrix.compact_bytes(), f64::from_ne_bytes)
+}
+
 fn decode_chunks<const WIDTH: usize, T>(
     bytes: &[u8],
     decode_value: impl Fn([u8; WIDTH]) -> T,
@@ -318,50 +341,57 @@ mod tests {
     }
 
     #[test]
-    fn determinant_decodes_every_scalar_depth() {
-        let matrices = [
-            matrix(vec![1, 2, 3, 4], 2, 2, MatDepth::U8),
-            matrix(
-                scalar_bytes(&[1_i8, 2, 3, 4], |v| v.to_ne_bytes().to_vec()),
-                2,
-                2,
-                MatDepth::I8,
-            ),
-            matrix(
-                scalar_bytes(&[1_u16, 2, 3, 4], |v| v.to_ne_bytes().to_vec()),
-                2,
-                2,
-                MatDepth::U16,
-            ),
-            matrix(
-                scalar_bytes(&[1_i16, 2, 3, 4], |v| v.to_ne_bytes().to_vec()),
-                2,
-                2,
-                MatDepth::I16,
-            ),
-            matrix(
-                scalar_bytes(&[1_i32, 2, 3, 4], |v| v.to_ne_bytes().to_vec()),
-                2,
-                2,
-                MatDepth::I32,
-            ),
-            matrix(
-                scalar_bytes(&[1_f32, 2.0, 3.0, 4.0], |v| v.to_ne_bytes().to_vec()),
-                2,
-                2,
-                MatDepth::F32,
-            ),
-            matrix(
-                scalar_bytes(&[1_f64, 2.0, 3.0, 4.0], |v| v.to_ne_bytes().to_vec()),
-                2,
-                2,
-                MatDepth::F64,
-            ),
-        ];
+    fn determinant_accepts_only_nonempty_floating_square_matrices() {
+        let f32_source = matrix(
+            scalar_bytes(&[1_f32, 2.0, 3.0, 4.0], |v| v.to_ne_bytes().to_vec()),
+            2,
+            2,
+            MatDepth::F32,
+        );
+        let f64_source = matrix(
+            scalar_bytes(&[1_f64, 2.0, 3.0, 4.0], |v| v.to_ne_bytes().to_vec()),
+            2,
+            2,
+            MatDepth::F64,
+        );
+        assert_eq!(determinant_adapter(&f32_source), Ok(-2.0));
+        assert_eq!(determinant_adapter(&f64_source), Ok(-2.0));
 
-        for source in matrices {
-            assert_eq!(determinant_adapter(&source), Ok(-2.0));
+        let typed_empty = crate::mat::mat_from_f64(&[], 0, 0, 1).expect("typed empty matrix");
+        assert_eq!(
+            determinant_adapter(&typed_empty),
+            Err(AlgebraWasmError::Kernel(AlgebraError::EmptyMatrix))
+        );
+        let canonical_empty = crate::mat::mat_empty();
+        assert!(determinant_adapter(&canonical_empty).is_err());
+
+        for (depth, byte_width) in [
+            (MatDepth::U8, 1),
+            (MatDepth::I8, 1),
+            (MatDepth::U16, 2),
+            (MatDepth::I16, 2),
+            (MatDepth::I32, 4),
+        ] {
+            let source = matrix(vec![0; 4 * byte_width], 2, 2, depth);
+            assert_eq!(
+                determinant_adapter(&source),
+                Err(AlgebraWasmError::FloatingSourceRequired(depth))
+            );
         }
+
+        let parent_f32 = matrix(
+            scalar_bytes(&[99.0_f32, 1.0, 2.0, 99.0, 3.0, 4.0], |v| {
+                v.to_ne_bytes().to_vec()
+            }),
+            2,
+            3,
+            MatDepth::F32,
+        );
+        let roi_f32 = parent_f32.roi(0, 1, 2, 2).expect("strided F32 source");
+        assert!(!roi_f32.is_continuous());
+        let before = parent_f32.compact_bytes();
+        assert_eq!(determinant_adapter(&roi_f32), Ok(-2.0));
+        assert_eq!(parent_f32.compact_bytes(), before);
     }
 
     #[test]
@@ -438,7 +468,9 @@ mod tests {
         );
         let source = parent.roi(0, 1, 2, 2).expect("strided source");
         assert!(!source.is_continuous());
+        let before_determinant = parent.compact_bytes();
         assert!((determinant_adapter(&source).expect("determinant") - 10.0).abs() <= 1.0e-14);
+        assert_eq!(parent.compact_bytes(), before_determinant);
 
         assert_eq!(invert_adapter(&source, &source, 0), Ok(1.0));
         let values = decode(&source);
@@ -454,13 +486,26 @@ mod tests {
 
     #[test]
     fn adapters_reject_invalid_metadata_before_mutating_destinations() {
-        let two_channel = Mat::from_owned_bytes(vec![1, 2, 3, 4], 1, 2, 2, MatDepth::U8)
-            .expect("valid matrix storage");
+        let two_channel = Mat::from_owned_bytes(
+            scalar_bytes(&[1.0_f32, 2.0, 3.0, 4.0], |v| v.to_ne_bytes().to_vec()),
+            1,
+            2,
+            2,
+            MatDepth::F32,
+        )
+        .expect("valid matrix storage");
         assert_eq!(
             determinant_adapter(&two_channel),
             Err(AlgebraWasmError::SingleChannelRequired)
         );
-        let nonsquare = matrix(vec![1, 2, 3, 4, 5, 6], 2, 3, MatDepth::U8);
+        let nonsquare = matrix(
+            scalar_bytes(&[1.0_f64, 2.0, 3.0, 4.0, 5.0, 6.0], |v| {
+                v.to_ne_bytes().to_vec()
+            }),
+            2,
+            3,
+            MatDepth::F64,
+        );
         assert_eq!(
             determinant_adapter(&nonsquare),
             Err(AlgebraWasmError::SquareMatrixRequired {

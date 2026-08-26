@@ -256,7 +256,8 @@ class WasmOpenCv implements OpenCv {
   }
 
   determinant(source: Mat): number {
-    return this.#backend.matDeterminant(source.handleForBackend());
+    requireExactArity(arguments.length, 1, "determinant");
+    return this.#backend.matDeterminant(matHandleForBinding(source));
   }
 
   convertScaleAbs(
