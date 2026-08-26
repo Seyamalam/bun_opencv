@@ -177,8 +177,8 @@ pub(crate) fn point_polygon_test(
     let mut inside = false;
     let mut nearest_squared = f64::INFINITY;
     for index in 0..points.len() {
-        let first = points[index];
-        let second = points[(index + 1) % points.len()];
+        let first = points[(index + points.len() - 1) % points.len()];
+        let second = points[index];
         let squared = point_segment_distance_squared(query, first, second);
         if !squared.is_finite() {
             return Err(GeometryError::NumericOverflow);
@@ -420,6 +420,19 @@ mod tests {
         ];
         let notch_boundary = point_polygon_test(&concave, Point { x: 3.0, y: 3.0 }, true).unwrap();
         assert_eq!(notch_boundary.to_bits(), 0.0_f64.to_bits());
+
+        let clockwise = [RECTANGLE[0], RECTANGLE[3], RECTANGLE[2], RECTANGLE[1]];
+        for points in [&RECTANGLE[..], &clockwise[..]] {
+            for query in [
+                Point { x: 2.0, y: 0.0 },
+                Point { x: 4.0, y: 1.5 },
+                Point { x: 2.0, y: 3.0 },
+                Point { x: 0.0, y: 1.5 },
+            ] {
+                let boundary = point_polygon_test(points, query, true).unwrap();
+                assert_eq!(boundary.to_bits(), (-0.0_f64).to_bits());
+            }
+        }
     }
 
     #[test]
