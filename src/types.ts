@@ -13,6 +13,12 @@ export type Scalar = readonly [number, number, number, number];
 /** OpenCV-compatible border mode, optionally combined with the isolated bit. */
 export type BorderType = 0 | 1 | 2 | 3 | 4 | 16 | 17 | 18 | 19 | 20;
 
+/** Supported OpenCV numeric, binary, and relative norm flags. */
+export type NormType = 1 | 2 | 4 | 5 | 6 | 7 | 9 | 10 | 12 | 13;
+
+/** Norm modes accepted by normalization. */
+export type NormalizeType = 1 | 2 | 4 | 32;
+
 /** Zero-based matrix coordinate. */
 export interface Point {
   readonly x: number;
@@ -75,6 +81,30 @@ export interface OpenCvBackend {
   matInsertChannel(source: WasmMatHandle, destination: WasmMatHandle, channel: number): void;
   matLut(source: WasmMatHandle, table: WasmMatHandle): WasmMatHandle;
   matLutInto(source: WasmMatHandle, table: WasmMatHandle, destination: WasmMatHandle): void;
+  matNorm(source: WasmMatHandle, normType: number): number;
+  matNormMasked(source: WasmMatHandle, normType: number, mask: WasmMatHandle): number;
+  matNormDiff(first: WasmMatHandle, second: WasmMatHandle, normType: number): number;
+  matNormDiffMasked(
+    first: WasmMatHandle,
+    second: WasmMatHandle,
+    normType: number,
+    mask: WasmMatHandle,
+  ): number;
+  matNormalizeInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    alpha: number,
+    beta: number,
+    normType: number,
+  ): void;
+  matNormalizeMaskedInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    alpha: number,
+    beta: number,
+    normType: number,
+    mask: WasmMatHandle,
+  ): void;
   matHconcat2(first: WasmMatHandle, second: WasmMatHandle): WasmMatHandle;
   matHconcat3(first: WasmMatHandle, second: WasmMatHandle, third: WasmMatHandle): WasmMatHandle;
   matHconcat4(
@@ -248,6 +278,16 @@ export interface OpenCv {
   min(left: Mat, right: Mat): Mat;
   multiply(a: Mat, b: Mat, scale?: number): Mat;
   multiply(a: Mat, b: Mat, destination: Mat, scale?: number): void;
+  norm(source: Mat, normType?: NormType, mask?: Mat): number;
+  norm(first: Mat, second: Mat, normType?: NormType, mask?: Mat): number;
+  normalize(
+    source: Mat,
+    destination: Mat,
+    alpha: number,
+    beta: number,
+    normType: NormalizeType,
+    mask?: Mat,
+  ): void;
   polarToCart(magnitude: Mat, angle: Mat, x: Mat, y: Mat, degrees?: boolean): void;
   pow(source: Mat, exponent: number): Mat;
   resizeNearest(image: RgbaImage, targetWidth: number, targetHeight: number): RgbaImage;

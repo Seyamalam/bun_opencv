@@ -197,6 +197,26 @@ function binaryNumericU8(
   return new CopyingMatHandle(left.rows, left.columns, left.channels, output);
 }
 
+function normBytes(values: Uint8Array, normType: number): number {
+  const baseType = normType & 7;
+  if (baseType === 1) return Math.max(0, ...values);
+  if (baseType === 2) return values.reduce((sum, value) => sum + Math.abs(value), 0);
+  if (baseType === 5) return values.reduce((sum, value) => sum + value * value, 0);
+  return Math.sqrt(values.reduce((sum, value) => sum + value * value, 0));
+}
+
+function maskedBytes(source: WasmMatHandle, mask: WasmMatHandle): Uint8Array {
+  const input = source.toUint8Array();
+  const selected = mask.toUint8Array();
+  const output: number[] = [];
+  for (let pixel = 0; pixel < source.rows * source.columns; pixel += 1) {
+    if (selected[pixel] === 0) continue;
+    const offset = pixel * source.channels;
+    output.push(...input.subarray(offset, offset + source.channels));
+  }
+  return Uint8Array.from(output);
+}
+
 class CopyingBackend implements OpenCvBackend {
   grayscaleRgba(data: Uint8Array): Uint8Array {
     return new Uint8Array(data);
@@ -318,6 +338,80 @@ class CopyingBackend implements OpenCvBackend {
 
   matLutInto(source: WasmMatHandle, table: WasmMatHandle, destination: WasmMatHandle): void {
     destination.copyFromBytes(this.matLut(source, table).toUint8Array());
+  }
+
+  matNorm(source: WasmMatHandle, normType: number): number {
+    return normBytes(source.toUint8Array(), normType);
+  }
+
+  matNormMasked(source: WasmMatHandle, normType: number, mask: WasmMatHandle): number {
+    return normBytes(maskedBytes(source, mask), normType);
+  }
+
+  matNormDiff(first: WasmMatHandle, second: WasmMatHandle, normType: number): number {
+    const right = second.toUint8Array();
+    return normBytes(
+      Uint8Array.from(first.toUint8Array(), (value, index) =>
+        Math.abs(value - (right[index] ?? 0)),
+      ),
+      normType,
+    );
+  }
+
+  matNormDiffMasked(
+    first: WasmMatHandle,
+    second: WasmMatHandle,
+    normType: number,
+    mask: WasmMatHandle,
+  ): number {
+    const right = second.toUint8Array();
+    const difference = Uint8Array.from(first.toUint8Array(), (value, index) =>
+      Math.abs(value - (right[index] ?? 0)),
+    );
+    const handle = new CopyingMatHandle(first.rows, first.columns, first.channels, difference);
+    return normBytes(maskedBytes(handle, mask), normType);
+  }
+
+  matNormalizeInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    alpha: number,
+    beta: number,
+    normType: number,
+  ): void {
+    const input = source.toUint8Array();
+    const denominator = normBytes(input, normType);
+    destination.copyFromBytes(
+      Uint8Array.from(input, (value) =>
+        Math.round(denominator === 0 ? 0 : (value * alpha) / denominator + beta),
+      ),
+    );
+  }
+
+  matNormalizeMaskedInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    alpha: number,
+    beta: number,
+    normType: number,
+    mask: WasmMatHandle,
+  ): void {
+    const before = destination.toUint8Array();
+    const temporary = new CopyingMatHandle(
+      source.rows,
+      source.columns,
+      source.channels,
+      new Uint8Array(source.byteLength),
+    );
+    this.matNormalizeInto(source, temporary, alpha, beta, normType);
+    const normalized = temporary.toUint8Array();
+    const maskBytes = mask.toUint8Array();
+    for (let pixel = 0; pixel < source.rows * source.columns; pixel += 1) {
+      if (maskBytes[pixel] === 0) continue;
+      const offset = pixel * source.channels;
+      before.set(normalized.subarray(offset, offset + source.channels), offset);
+    }
+    destination.copyFromBytes(before);
   }
 
   matHconcat2(first: WasmMatHandle, second: WasmMatHandle): WasmMatHandle {
@@ -1116,5 +1210,18 @@ describe("OpenCv client", () => {
     result.dispose();
     source.dispose();
     table.dispose();
+  });
+
+  test("computes norms and normalizes into destinations", () => {
+    const source = client.matFromU8(1, 2, 1, new Uint8Array([3, 4]));
+    expect(client.norm(source, 4)).toBe(5);
+    const other = client.matFromU8(1, 2, 1, new Uint8Array([0, 0]));
+    expect(client.norm(source, other, 2)).toBe(7);
+    const destination = client.zerosU8(1, 2, 1);
+    client.normalize(source, destination, 10, 0, 4);
+    expect(destination.toUint8Array()).toEqual(new Uint8Array([6, 8]));
+    destination.dispose();
+    other.dispose();
+    source.dispose();
   });
 });

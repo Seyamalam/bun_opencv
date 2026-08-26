@@ -9,6 +9,8 @@ import { Mat, validateMatrixDimension, validateMatrixInput } from "./mat.js";
 import type {
   BorderType,
   MinMaxLocation,
+  NormalizeType,
+  NormType,
   OpenCv,
   OpenCvBackend,
   RgbaImage,
@@ -354,6 +356,69 @@ class WasmOpenCv implements OpenCv {
     scale = destinationOrScale;
     validateFiniteNumbers({ scale });
     return new Mat(this.#backend.matMultiply(a.handleForBackend(), b.handleForBackend(), scale));
+  }
+
+  norm(source: Mat, normType?: NormType, mask?: Mat): number;
+  norm(first: Mat, second: Mat, normType?: NormType, mask?: Mat): number;
+  norm(
+    first: Mat,
+    secondOrType: Mat | NormType = 4,
+    typeOrMask?: NormType | Mat,
+    mask?: Mat,
+  ): number {
+    if (secondOrType instanceof Mat) {
+      const resolvedMask = typeOrMask instanceof Mat ? typeOrMask : mask;
+      const normType = typeOrMask instanceof Mat ? 4 : (typeOrMask ?? 4);
+      return resolvedMask === undefined
+        ? this.#backend.matNormDiff(
+            first.handleForBackend(),
+            secondOrType.handleForBackend(),
+            normType,
+          )
+        : this.#backend.matNormDiffMasked(
+            first.handleForBackend(),
+            secondOrType.handleForBackend(),
+            normType,
+            resolvedMask.handleForBackend(),
+          );
+    }
+    const resolvedMask = typeOrMask instanceof Mat ? typeOrMask : undefined;
+    return resolvedMask === undefined
+      ? this.#backend.matNorm(first.handleForBackend(), secondOrType)
+      : this.#backend.matNormMasked(
+          first.handleForBackend(),
+          secondOrType,
+          resolvedMask.handleForBackend(),
+        );
+  }
+
+  normalize(
+    source: Mat,
+    destination: Mat,
+    alpha: number,
+    beta: number,
+    normType: NormalizeType,
+    mask?: Mat,
+  ): void {
+    validateFiniteNumbers({ alpha, beta });
+    if (mask === undefined) {
+      this.#backend.matNormalizeInto(
+        source.handleForBackend(),
+        destination.handleForBackend(),
+        alpha,
+        beta,
+        normType,
+      );
+      return;
+    }
+    this.#backend.matNormalizeMaskedInto(
+      source.handleForBackend(),
+      destination.handleForBackend(),
+      alpha,
+      beta,
+      normType,
+      mask.handleForBackend(),
+    );
   }
 
   polarToCart(magnitude: Mat, angle: Mat, x: Mat, y: Mat, degrees = false): void {

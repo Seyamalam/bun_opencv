@@ -11,6 +11,8 @@ export type { MatDepth, WasmMatHandle } from "./mat.js";
 export type {
   BorderType,
   MinMaxLocation,
+  NormalizeType,
+  NormType,
   OpenCv,
   OpenCvBackend,
   Point,

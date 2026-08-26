@@ -37,6 +37,32 @@ export const PARITY_MANIFEST = {
   entries: [
     {
       implementationOrigin: "original",
+      method: "norm",
+      module: "core",
+      notes:
+        "Single/difference, masked, relative, numeric, Hamming, and Hamming2 forms across all depths; differential fixtures remain.",
+      patentReview: "required",
+      sources: [CORE_ARRAY_SOURCE],
+      status: "partial",
+      upstream: "cv.norm",
+      upstreamId: "core.function.norm",
+      wasmExport: "matNorm",
+    },
+    {
+      implementationOrigin: "original",
+      method: "normalize",
+      module: "core",
+      notes:
+        "INF/L1/L2/MINMAX modes, masks, every source/destination depth, strided regions, and mutable destinations; differential fixtures remain.",
+      patentReview: "required",
+      sources: [CORE_ARRAY_SOURCE],
+      status: "partial",
+      upstream: "cv.normalize",
+      upstreamId: "core.function.normalize",
+      wasmExport: "matNormalizeInto",
+    },
+    {
+      implementationOrigin: "original",
       method: "lut",
       module: "core",
       notes:

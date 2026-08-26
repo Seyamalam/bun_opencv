@@ -27,6 +27,8 @@ export const OPENCV_OPERATIONS = [
   { method: "min", wasmExport: "matMinU8" },
   { method: "minMaxLoc", wasmExport: "matMinMaxLoc" },
   { method: "multiply", wasmExport: "matMultiply" },
+  { method: "norm", wasmExport: "matNorm" },
+  { method: "normalize", wasmExport: "matNormalizeInto" },
   { method: "polarToCart", wasmExport: "matPolarToCart" },
   { method: "pow", wasmExport: "matPow" },
   { method: "resizeNearest", wasmExport: "resizeNearestRgba" },

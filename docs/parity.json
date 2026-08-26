@@ -4,6 +4,30 @@
   "entries": [
     {
       "implementationOrigin": "original",
+      "method": "norm",
+      "module": "core",
+      "notes": "Single/difference, masked, relative, numeric, Hamming, and Hamming2 forms across all depths; differential fixtures remain.",
+      "patentReview": "required",
+      "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
+      "status": "partial",
+      "upstream": "cv.norm",
+      "upstreamId": "core.function.norm",
+      "wasmExport": "matNorm"
+    },
+    {
+      "implementationOrigin": "original",
+      "method": "normalize",
+      "module": "core",
+      "notes": "INF/L1/L2/MINMAX modes, masks, every source/destination depth, strided regions, and mutable destinations; differential fixtures remain.",
+      "patentReview": "required",
+      "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
+      "status": "partial",
+      "upstream": "cv.normalize",
+      "upstreamId": "core.function.normalize",
+      "wasmExport": "matNormalizeInto"
+    },
+    {
+      "implementationOrigin": "original",
       "method": "lut",
       "module": "core",
       "notes": "U8/I8 sources, one or matching table channels, every output depth, strided regions, and mutable destinations; differential fixtures remain.",
