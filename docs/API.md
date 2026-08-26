@@ -251,6 +251,40 @@ The decomposition method defaults to `0` for LU. Method `3` selects Cholesky and
 
 Reducers compact non-contiguous regions before decoding values. Floating-point sums, means, and traces propagate NaN. `minMaxLoc` skips NaN and throws when every value is NaN.
 
+### AKAZE configuration
+
+`cv.createAKAZE(options)` allocates a Rust-owned AKAZE configuration handle. The current slice stores configuration only. Feature detection, descriptor extraction, image input, and keypoint output are not implemented yet.
+
+```ts
+import { AKAZEDescriptorType, KAZEDiffusivity } from "bun-opencv";
+
+const akaze = cv.createAKAZE({
+  descriptorChannels: 3,
+  descriptorSize: 0,
+  descriptorType: AKAZEDescriptorType.MLDB,
+  diffusivity: KAZEDiffusivity.PM_G2,
+  maxPoints: -1,
+  octaveLayers: 4,
+  octaves: 4,
+  threshold: 0.001,
+});
+
+try {
+  akaze.setThreshold(0.002);
+  console.log(akaze.getThreshold());
+} finally {
+  akaze.dispose();
+}
+```
+
+Omitting every option uses the OpenCV 4.13 defaults shown above. Descriptor types accept KAZE upright, KAZE, MLDB upright, or MLDB. Descriptor channels range from 1 through 3. Descriptor size is zero or a positive signed 32-bit integer. Octaves and octave layers must be positive signed 32-bit integers. Thresholds must be finite and non-negative. Diffusivity accepts PM G1, PM G2, Weickert, or Charbonnier. `maxPoints` accepts a signed 32-bit integer but has no getter or setter in the pinned AKAZE inventory.
+
+The getters return the current Rust-owned values. Setters validate before mutation, so a rejected update preserves the prior value. `getDefaultName()` returns `"Feature2D.AKAZE"`.
+
+The pinned OpenCV.js 4.13.0 browser fixture passes the documented defaults and one mutation for every instance setting. The official artifact exposes a directly constructible `AKAZE` class but omits the config-listed static `AKAZE.create`, so the package factory has no direct runtime comparator for that baseline.
+
+Call `dispose()` when the handle is no longer needed. Repeated disposal does nothing. Any getter or setter after disposal throws `OpenCvInputError`.
+
 ## Errors
 
 The TypeScript boundary throws `OpenCvInputError` for invalid dimensions, byte lengths, and thresholds. Rust rejects the same invalid dimensions and byte lengths if a caller bypasses the TypeScript client.

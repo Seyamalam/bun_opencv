@@ -19,6 +19,7 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - Structuring-element, Hanning-window, ellipse-polyline, and line-clipping helpers.
 - Affine, inverse-affine, rotation, and perspective transform matrix constructors with F64 output.
 - Alias-safe single-source `mixChannels` routing across all scalar depths.
+- Sixteen partial AKAZE configuration families with typed defaults, validated Rust-owned state, and deterministic disposal, bringing the supported partial total to 85.
 - Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
 
 ### Planned
