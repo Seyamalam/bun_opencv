@@ -2821,13 +2821,262 @@ function auditCoordinateConversions(reference) {
   safeDelete(precisePolarAngle);
   safeDelete(precisePolarMagnitude);
 
+  const polarReplacementMagnitude = makeF32([3, 2, 4, 5]);
+  const polarReplacementAngle = makeF32([0, 90, 180, 270]);
+  const polarReplacementX = makeSeedMat(
+    reference,
+    2,
+    2,
+    reference.CV_64FC2,
+    [99, 99, 99, 99, 99, 99, 99, 99],
+  );
+  const polarReplacementY = makeSeedMat(reference, 2, 2, reference.CV_8UC1, [99, 99, 99, 99]);
+  const polarReplacement = auditTypedMatCall(
+    () =>
+      reference.polarToCart(
+        polarReplacementMagnitude,
+        polarReplacementAngle,
+        polarReplacementX,
+        polarReplacementY,
+        true,
+      ),
+    [
+      ["magnitude", polarReplacementMagnitude],
+      ["angle", polarReplacementAngle],
+      ["x", polarReplacementX],
+      ["y", polarReplacementY],
+    ],
+  );
+  safeDelete(polarReplacementY);
+  safeDelete(polarReplacementX);
+  safeDelete(polarReplacementAngle);
+  safeDelete(polarReplacementMagnitude);
+
+  const auditCartMismatch = (name, createY) => {
+    const mismatchX = makeSeedMat(reference, 2, 2, reference.CV_32FC1, [1, 2, 3, 4]);
+    const mismatchY = createY();
+    const mismatchMagnitude = new reference.Mat();
+    const mismatchAngle = new reference.Mat();
+    const audit = auditTypedMatCall(
+      () => reference.cartToPolar(mismatchX, mismatchY, mismatchMagnitude, mismatchAngle),
+      [
+        ["x", mismatchX],
+        ["y", mismatchY],
+        ["magnitude", mismatchMagnitude],
+        ["angle", mismatchAngle],
+      ],
+    );
+    safeDelete(mismatchAngle);
+    safeDelete(mismatchMagnitude);
+    safeDelete(mismatchY);
+    safeDelete(mismatchX);
+    return { name, audit };
+  };
+  const auditPolarMismatch = (name, createAngle) => {
+    const mismatchMagnitude = makeSeedMat(reference, 2, 2, reference.CV_32FC1, [1, 2, 3, 4]);
+    const mismatchAngle = createAngle();
+    const mismatchX = new reference.Mat();
+    const mismatchY = new reference.Mat();
+    const audit = auditTypedMatCall(
+      () => reference.polarToCart(mismatchMagnitude, mismatchAngle, mismatchX, mismatchY),
+      [
+        ["magnitude", mismatchMagnitude],
+        ["angle", mismatchAngle],
+        ["x", mismatchX],
+        ["y", mismatchY],
+      ],
+    );
+    safeDelete(mismatchY);
+    safeDelete(mismatchX);
+    safeDelete(mismatchAngle);
+    safeDelete(mismatchMagnitude);
+    return { name, audit };
+  };
+  const mismatches = {
+    cart: [
+      auditCartMismatch("shape", () =>
+        makeSeedMat(reference, 1, 4, reference.CV_32FC1, [1, 2, 3, 4]),
+      ),
+      auditCartMismatch("depth", () =>
+        makeSeedMat(reference, 2, 2, reference.CV_64FC1, [1, 2, 3, 4]),
+      ),
+      auditCartMismatch("channels", () =>
+        makeSeedMat(reference, 2, 2, reference.CV_32FC2, [1, 2, 3, 4, 5, 6, 7, 8]),
+      ),
+    ],
+    polar: [
+      auditPolarMismatch("shape", () =>
+        makeSeedMat(reference, 1, 4, reference.CV_32FC1, [0, 1, 2, 3]),
+      ),
+      auditPolarMismatch("depth", () =>
+        makeSeedMat(reference, 2, 2, reference.CV_64FC1, [0, 1, 2, 3]),
+      ),
+      auditPolarMismatch("channels", () =>
+        makeSeedMat(reference, 2, 2, reference.CV_32FC2, [0, 1, 2, 3, 4, 5, 6, 7]),
+      ),
+    ],
+  };
+
+  const deletedCartX = makeF32([1, 2]);
+  const deletedCartY = makeF32([3, 4]);
+  const deletedCartMagnitude = new reference.Mat();
+  const deletedCartAngle = new reference.Mat();
+  deletedCartX.delete();
+  const deletedCartFirstInput = auditTypedMatCall(
+    () => reference.cartToPolar(deletedCartX, deletedCartY, deletedCartMagnitude, deletedCartAngle),
+    [
+      ["x", deletedCartX],
+      ["y", deletedCartY],
+      ["magnitude", deletedCartMagnitude],
+      ["angle", deletedCartAngle],
+    ],
+  );
+  safeDelete(deletedCartAngle);
+  safeDelete(deletedCartMagnitude);
+  safeDelete(deletedCartY);
+
+  const deletedCartOutputX = makeF32([1, 2]);
+  const deletedCartOutputY = makeF32([3, 4]);
+  const deletedCartOutputMagnitude = new reference.Mat();
+  const deletedCartOutputAngle = new reference.Mat();
+  deletedCartOutputMagnitude.delete();
+  const deletedCartOutput = auditTypedMatCall(
+    () =>
+      reference.cartToPolar(
+        deletedCartOutputX,
+        deletedCartOutputY,
+        deletedCartOutputMagnitude,
+        deletedCartOutputAngle,
+      ),
+    [
+      ["x", deletedCartOutputX],
+      ["y", deletedCartOutputY],
+      ["magnitude", deletedCartOutputMagnitude],
+      ["angle", deletedCartOutputAngle],
+    ],
+  );
+  safeDelete(deletedCartOutputAngle);
+  safeDelete(deletedCartOutputY);
+  safeDelete(deletedCartOutputX);
+
+  const deletedPolarMagnitude = makeF32([1, 2]);
+  const deletedPolarAngle = makeF32([0, 1]);
+  const deletedPolarX = new reference.Mat();
+  const deletedPolarY = new reference.Mat();
+  deletedPolarMagnitude.delete();
+  const deletedPolarFirstInput = auditTypedMatCall(
+    () =>
+      reference.polarToCart(deletedPolarMagnitude, deletedPolarAngle, deletedPolarX, deletedPolarY),
+    [
+      ["magnitude", deletedPolarMagnitude],
+      ["angle", deletedPolarAngle],
+      ["x", deletedPolarX],
+      ["y", deletedPolarY],
+    ],
+  );
+  safeDelete(deletedPolarY);
+  safeDelete(deletedPolarX);
+  safeDelete(deletedPolarAngle);
+
+  const deletedPolarOutputMagnitude = makeF32([1, 2]);
+  const deletedPolarOutputAngle = makeF32([0, 1]);
+  const deletedPolarOutputX = new reference.Mat();
+  const deletedPolarOutputY = new reference.Mat();
+  deletedPolarOutputX.delete();
+  const deletedPolarOutput = auditTypedMatCall(
+    () =>
+      reference.polarToCart(
+        deletedPolarOutputMagnitude,
+        deletedPolarOutputAngle,
+        deletedPolarOutputX,
+        deletedPolarOutputY,
+      ),
+    [
+      ["magnitude", deletedPolarOutputMagnitude],
+      ["angle", deletedPolarOutputAngle],
+      ["x", deletedPolarOutputX],
+      ["y", deletedPolarOutputY],
+    ],
+  );
+  safeDelete(deletedPolarOutputY);
+  safeDelete(deletedPolarOutputAngle);
+  safeDelete(deletedPolarOutputMagnitude);
+
+  const deleted = {
+    cart: { firstInput: deletedCartFirstInput, output: deletedCartOutput },
+    polar: { firstInput: deletedPolarFirstInput, output: deletedPolarOutput },
+  };
+
+  const cartSecondOutputParent = makeF32([0, 1, 0, -1, 99]);
+  const cartSecondOutputX = makeF32([1, 0, -1, 0]);
+  const cartSecondOutputY = cartSecondOutputParent.roi(new reference.Rect(0, 0, 4, 1));
+  const cartSecondOutputMagnitude = new reference.Mat();
+  const cartSecondOutputAngle = cartSecondOutputParent.roi(new reference.Rect(1, 0, 4, 1));
+  const cartSecondOutputOverlap = auditTypedMatCall(
+    () =>
+      reference.cartToPolar(
+        cartSecondOutputX,
+        cartSecondOutputY,
+        cartSecondOutputMagnitude,
+        cartSecondOutputAngle,
+      ),
+    [
+      ["parent", cartSecondOutputParent],
+      ["x", cartSecondOutputX],
+      ["y", cartSecondOutputY],
+      ["magnitude", cartSecondOutputMagnitude],
+      ["angle", cartSecondOutputAngle],
+    ],
+  );
+  safeDelete(cartSecondOutputAngle);
+  safeDelete(cartSecondOutputMagnitude);
+  safeDelete(cartSecondOutputY);
+  safeDelete(cartSecondOutputX);
+  safeDelete(cartSecondOutputParent);
+
+  const polarSecondOutputParent = makeF32([0, 90, 180, 270, 99]);
+  const polarSecondOutputMagnitude = makeF32([1, 1, 1, 1]);
+  const polarSecondOutputAngle = polarSecondOutputParent.roi(new reference.Rect(0, 0, 4, 1));
+  const polarSecondOutputX = new reference.Mat();
+  const polarSecondOutputY = polarSecondOutputParent.roi(new reference.Rect(1, 0, 4, 1));
+  const polarSecondOutputOverlap = auditTypedMatCall(
+    () =>
+      reference.polarToCart(
+        polarSecondOutputMagnitude,
+        polarSecondOutputAngle,
+        polarSecondOutputX,
+        polarSecondOutputY,
+      ),
+    [
+      ["parent", polarSecondOutputParent],
+      ["magnitude", polarSecondOutputMagnitude],
+      ["angle", polarSecondOutputAngle],
+      ["x", polarSecondOutputX],
+      ["y", polarSecondOutputY],
+    ],
+  );
+  safeDelete(polarSecondOutputY);
+  safeDelete(polarSecondOutputX);
+  safeDelete(polarSecondOutputAngle);
+  safeDelete(polarSecondOutputMagnitude);
+  safeDelete(polarSecondOutputParent);
+
   return {
     cartArity,
     polarArity,
     flagCases,
     replacement,
+    polarReplacement,
     empty,
-    aliases: { cartOverlap, polarOverlap, cartSharedOutput },
+    aliases: {
+      cartOverlap,
+      polarOverlap,
+      cartSharedOutput,
+      cartSecondOutputOverlap,
+      polarSecondOutputOverlap,
+    },
+    mismatches,
+    deleted,
     typeCases,
     typedEmptyCases,
     preciseCart,

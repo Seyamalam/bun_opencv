@@ -3083,13 +3083,274 @@
         disposePackageMat(precisePolarAngle);
         disposePackageMat(precisePolarMagnitude);
 
+        const polarReplacementMagnitude = makeF32([3, 2, 4, 5]);
+        const polarReplacementAngle = makeF32([0, 90, 180, 270]);
+        const polarReplacementX = makePackageSeedMat(
+          packageCv,
+          2,
+          2,
+          "f64",
+          2,
+          [99, 99, 99, 99, 99, 99, 99, 99],
+        );
+        const polarReplacementY = makePackageSeedMat(packageCv, 2, 2, "u8", 1, [99, 99, 99, 99]);
+        const polarReplacement = auditPackageTypedMatCall(
+          () =>
+            packageCv.polarToCart(
+              polarReplacementMagnitude,
+              polarReplacementAngle,
+              polarReplacementX,
+              polarReplacementY,
+              true,
+            ),
+          [
+            ["magnitude", polarReplacementMagnitude],
+            ["angle", polarReplacementAngle],
+            ["x", polarReplacementX],
+            ["y", polarReplacementY],
+          ],
+        );
+        disposePackageMat(polarReplacementY);
+        disposePackageMat(polarReplacementX);
+        disposePackageMat(polarReplacementAngle);
+        disposePackageMat(polarReplacementMagnitude);
+
+        const auditCartMismatch = (name, createY) => {
+          const mismatchX = makePackageSeedMat(packageCv, 2, 2, "f32", 1, [1, 2, 3, 4]);
+          const mismatchY = createY();
+          const mismatchMagnitude = packageCv.emptyMat();
+          const mismatchAngle = packageCv.emptyMat();
+          const audit = auditPackageTypedMatCall(
+            () => packageCv.cartToPolar(mismatchX, mismatchY, mismatchMagnitude, mismatchAngle),
+            [
+              ["x", mismatchX],
+              ["y", mismatchY],
+              ["magnitude", mismatchMagnitude],
+              ["angle", mismatchAngle],
+            ],
+          );
+          disposePackageMat(mismatchAngle);
+          disposePackageMat(mismatchMagnitude);
+          disposePackageMat(mismatchY);
+          disposePackageMat(mismatchX);
+          return { name, audit };
+        };
+        const auditPolarMismatch = (name, createAngle) => {
+          const mismatchMagnitude = makePackageSeedMat(packageCv, 2, 2, "f32", 1, [1, 2, 3, 4]);
+          const mismatchAngle = createAngle();
+          const mismatchX = packageCv.emptyMat();
+          const mismatchY = packageCv.emptyMat();
+          const audit = auditPackageTypedMatCall(
+            () => packageCv.polarToCart(mismatchMagnitude, mismatchAngle, mismatchX, mismatchY),
+            [
+              ["magnitude", mismatchMagnitude],
+              ["angle", mismatchAngle],
+              ["x", mismatchX],
+              ["y", mismatchY],
+            ],
+          );
+          disposePackageMat(mismatchY);
+          disposePackageMat(mismatchX);
+          disposePackageMat(mismatchAngle);
+          disposePackageMat(mismatchMagnitude);
+          return { name, audit };
+        };
+        const mismatches = {
+          cart: [
+            auditCartMismatch("shape", () =>
+              makePackageSeedMat(packageCv, 1, 4, "f32", 1, [1, 2, 3, 4]),
+            ),
+            auditCartMismatch("depth", () =>
+              makePackageSeedMat(packageCv, 2, 2, "f64", 1, [1, 2, 3, 4]),
+            ),
+            auditCartMismatch("channels", () =>
+              makePackageSeedMat(packageCv, 2, 2, "f32", 2, [1, 2, 3, 4, 5, 6, 7, 8]),
+            ),
+          ],
+          polar: [
+            auditPolarMismatch("shape", () =>
+              makePackageSeedMat(packageCv, 1, 4, "f32", 1, [0, 1, 2, 3]),
+            ),
+            auditPolarMismatch("depth", () =>
+              makePackageSeedMat(packageCv, 2, 2, "f64", 1, [0, 1, 2, 3]),
+            ),
+            auditPolarMismatch("channels", () =>
+              makePackageSeedMat(packageCv, 2, 2, "f32", 2, [0, 1, 2, 3, 4, 5, 6, 7]),
+            ),
+          ],
+        };
+
+        const deletedCartX = makeF32([1, 2]);
+        const deletedCartY = makeF32([3, 4]);
+        const deletedCartMagnitude = packageCv.emptyMat();
+        const deletedCartAngle = packageCv.emptyMat();
+        deletedCartX.dispose();
+        const deletedCartFirstInput = auditPackageTypedMatCall(
+          () =>
+            packageCv.cartToPolar(
+              deletedCartX,
+              deletedCartY,
+              deletedCartMagnitude,
+              deletedCartAngle,
+            ),
+          [
+            ["x", deletedCartX],
+            ["y", deletedCartY],
+            ["magnitude", deletedCartMagnitude],
+            ["angle", deletedCartAngle],
+          ],
+        );
+        disposePackageMat(deletedCartAngle);
+        disposePackageMat(deletedCartMagnitude);
+        disposePackageMat(deletedCartY);
+
+        const deletedCartOutputX = makeF32([1, 2]);
+        const deletedCartOutputY = makeF32([3, 4]);
+        const deletedCartOutputMagnitude = packageCv.emptyMat();
+        const deletedCartOutputAngle = packageCv.emptyMat();
+        deletedCartOutputMagnitude.dispose();
+        const deletedCartOutput = auditPackageTypedMatCall(
+          () =>
+            packageCv.cartToPolar(
+              deletedCartOutputX,
+              deletedCartOutputY,
+              deletedCartOutputMagnitude,
+              deletedCartOutputAngle,
+            ),
+          [
+            ["x", deletedCartOutputX],
+            ["y", deletedCartOutputY],
+            ["magnitude", deletedCartOutputMagnitude],
+            ["angle", deletedCartOutputAngle],
+          ],
+        );
+        disposePackageMat(deletedCartOutputAngle);
+        disposePackageMat(deletedCartOutputY);
+        disposePackageMat(deletedCartOutputX);
+
+        const deletedPolarMagnitude = makeF32([1, 2]);
+        const deletedPolarAngle = makeF32([0, 1]);
+        const deletedPolarX = packageCv.emptyMat();
+        const deletedPolarY = packageCv.emptyMat();
+        deletedPolarMagnitude.dispose();
+        const deletedPolarFirstInput = auditPackageTypedMatCall(
+          () =>
+            packageCv.polarToCart(
+              deletedPolarMagnitude,
+              deletedPolarAngle,
+              deletedPolarX,
+              deletedPolarY,
+            ),
+          [
+            ["magnitude", deletedPolarMagnitude],
+            ["angle", deletedPolarAngle],
+            ["x", deletedPolarX],
+            ["y", deletedPolarY],
+          ],
+        );
+        disposePackageMat(deletedPolarY);
+        disposePackageMat(deletedPolarX);
+        disposePackageMat(deletedPolarAngle);
+
+        const deletedPolarOutputMagnitude = makeF32([1, 2]);
+        const deletedPolarOutputAngle = makeF32([0, 1]);
+        const deletedPolarOutputX = packageCv.emptyMat();
+        const deletedPolarOutputY = packageCv.emptyMat();
+        deletedPolarOutputX.dispose();
+        const deletedPolarOutput = auditPackageTypedMatCall(
+          () =>
+            packageCv.polarToCart(
+              deletedPolarOutputMagnitude,
+              deletedPolarOutputAngle,
+              deletedPolarOutputX,
+              deletedPolarOutputY,
+            ),
+          [
+            ["magnitude", deletedPolarOutputMagnitude],
+            ["angle", deletedPolarOutputAngle],
+            ["x", deletedPolarOutputX],
+            ["y", deletedPolarOutputY],
+          ],
+        );
+        disposePackageMat(deletedPolarOutputY);
+        disposePackageMat(deletedPolarOutputAngle);
+        disposePackageMat(deletedPolarOutputMagnitude);
+
+        const deleted = {
+          cart: { firstInput: deletedCartFirstInput, output: deletedCartOutput },
+          polar: { firstInput: deletedPolarFirstInput, output: deletedPolarOutput },
+        };
+
+        const cartSecondOutputParent = makeF32([0, 1, 0, -1, 99]);
+        const cartSecondOutputX = makeF32([1, 0, -1, 0]);
+        const cartSecondOutputY = cartSecondOutputParent.roi(0, 0, 1, 4);
+        const cartSecondOutputMagnitude = packageCv.emptyMat();
+        const cartSecondOutputAngle = cartSecondOutputParent.roi(0, 1, 1, 4);
+        const cartSecondOutputOverlap = auditPackageTypedMatCall(
+          () =>
+            packageCv.cartToPolar(
+              cartSecondOutputX,
+              cartSecondOutputY,
+              cartSecondOutputMagnitude,
+              cartSecondOutputAngle,
+            ),
+          [
+            ["parent", cartSecondOutputParent],
+            ["x", cartSecondOutputX],
+            ["y", cartSecondOutputY],
+            ["magnitude", cartSecondOutputMagnitude],
+            ["angle", cartSecondOutputAngle],
+          ],
+        );
+        disposePackageMat(cartSecondOutputAngle);
+        disposePackageMat(cartSecondOutputMagnitude);
+        disposePackageMat(cartSecondOutputY);
+        disposePackageMat(cartSecondOutputX);
+        disposePackageMat(cartSecondOutputParent);
+
+        const polarSecondOutputParent = makeF32([0, 90, 180, 270, 99]);
+        const polarSecondOutputMagnitude = makeF32([1, 1, 1, 1]);
+        const polarSecondOutputAngle = polarSecondOutputParent.roi(0, 0, 1, 4);
+        const polarSecondOutputX = packageCv.emptyMat();
+        const polarSecondOutputY = polarSecondOutputParent.roi(0, 1, 1, 4);
+        const polarSecondOutputOverlap = auditPackageTypedMatCall(
+          () =>
+            packageCv.polarToCart(
+              polarSecondOutputMagnitude,
+              polarSecondOutputAngle,
+              polarSecondOutputX,
+              polarSecondOutputY,
+            ),
+          [
+            ["parent", polarSecondOutputParent],
+            ["magnitude", polarSecondOutputMagnitude],
+            ["angle", polarSecondOutputAngle],
+            ["x", polarSecondOutputX],
+            ["y", polarSecondOutputY],
+          ],
+        );
+        disposePackageMat(polarSecondOutputY);
+        disposePackageMat(polarSecondOutputX);
+        disposePackageMat(polarSecondOutputAngle);
+        disposePackageMat(polarSecondOutputMagnitude);
+        disposePackageMat(polarSecondOutputParent);
+
         return {
           cartArity,
           polarArity,
           flagCases,
           replacement,
+          polarReplacement,
           empty,
-          aliases: { cartOverlap, polarOverlap, cartSharedOutput },
+          aliases: {
+            cartOverlap,
+            polarOverlap,
+            cartSharedOutput,
+            cartSecondOutputOverlap,
+            polarSecondOutputOverlap,
+          },
+          mismatches,
+          deleted,
           typeCases,
           typedEmptyCases,
           preciseCart,
