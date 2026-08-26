@@ -5,8 +5,9 @@ The roadmap gives release order. This file lists concrete work that can be picke
 ## Before the first npm publish
 
 - [ ] Confirm the npm package name.
-- [ ] Replace the `OWNER` placeholders in `CHANGELOG.md` after creating the repository.
-- [ ] Add repository, homepage, bugs, author, and funding metadata to `package.json`.
+- [x] Replace the `OWNER` placeholders in `CHANGELOG.md` after creating the repository.
+- [x] Add repository, homepage, bugs, and author metadata to `package.json`.
+- [ ] Add funding metadata if the project opens a funding channel.
 - [ ] Configure npm trusted publishing for the release workflow.
 - [ ] Run the package in Vite, webpack, and a direct browser import-map fixture.
 - [ ] Record supported browser versions from those results.

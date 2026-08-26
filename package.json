@@ -2,6 +2,15 @@
   "name": "bun-opencv",
   "version": "0.1.0",
   "description": "Browser image processing primitives written in Rust and exposed through WebAssembly and TypeScript.",
+  "author": "Touhidul Alam Seyam (https://github.com/Seyamalam)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Seyamalam/bun_opencv.git"
+  },
+  "homepage": "https://github.com/Seyamalam/bun_opencv#readme",
+  "bugs": {
+    "url": "https://github.com/Seyamalam/bun_opencv/issues"
+  },
   "type": "module",
   "types": "./dist/index.d.ts",
   "exports": {

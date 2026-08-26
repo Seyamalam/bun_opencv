@@ -62,5 +62,5 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - Generated JSON and human-readable OpenCV parity ledgers.
 - CI, npm provenance release automation, documentation checks, and version consistency checks.
 
-[Unreleased]: https://github.com/OWNER/bun-opencv/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/OWNER/bun-opencv/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Seyamalam/bun_opencv/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Seyamalam/bun_opencv/releases/tag/v0.1.0
