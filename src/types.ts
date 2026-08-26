@@ -227,6 +227,18 @@ export interface OpenCvBackend {
   matTranspose(source: WasmMatHandle): WasmMatHandle;
   matTransposeInto(source: WasmMatHandle, destination: WasmMatHandle): void;
   matTrace(source: WasmMatHandle): number;
+  matTransform(source: WasmMatHandle, coefficients: WasmMatHandle): WasmMatHandle;
+  matTransformInto(
+    source: WasmMatHandle,
+    coefficients: WasmMatHandle,
+    destination: WasmMatHandle,
+  ): void;
+  matPerspectiveTransform(source: WasmMatHandle, coefficients: WasmMatHandle): WasmMatHandle;
+  matPerspectiveTransformInto(
+    source: WasmMatHandle,
+    coefficients: WasmMatHandle,
+    destination: WasmMatHandle,
+  ): void;
   matZerosF32(rows: number, columns: number, channels: number): WasmMatHandle;
   matZerosF64(rows: number, columns: number, channels: number): WasmMatHandle;
   matZerosI16(rows: number, columns: number, channels: number): WasmMatHandle;
@@ -314,6 +326,8 @@ export interface OpenCv {
     mask?: Mat,
   ): void;
   polarToCart(magnitude: Mat, angle: Mat, x: Mat, y: Mat, degrees?: boolean): void;
+  perspectiveTransform(source: Mat, coefficients: Mat): Mat;
+  perspectiveTransform(source: Mat, coefficients: Mat, destination: Mat): void;
   pow(source: Mat, exponent: number): Mat;
   randn(destination: Mat, mean: Scalar, standardDeviation: Scalar): void;
   randu(destination: Mat, lower: Scalar, upper: Scalar): void;
@@ -333,6 +347,8 @@ export interface OpenCv {
   transpose(source: Mat): Mat;
   transpose(source: Mat, destination: Mat): void;
   trace(source: Mat): number;
+  transform(source: Mat, coefficients: Mat): Mat;
+  transform(source: Mat, coefficients: Mat, destination: Mat): void;
   vconcat(
     sources: readonly [Mat, Mat] | readonly [Mat, Mat, Mat] | readonly [Mat, Mat, Mat, Mat],
   ): Mat;

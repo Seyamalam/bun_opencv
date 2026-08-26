@@ -449,6 +449,25 @@ class WasmOpenCv implements OpenCv {
     );
   }
 
+  perspectiveTransform(source: Mat, coefficients: Mat): Mat;
+  perspectiveTransform(source: Mat, coefficients: Mat, destination: Mat): void;
+  perspectiveTransform(source: Mat, coefficients: Mat, destination?: Mat): Mat | void {
+    if (destination !== undefined) {
+      this.#backend.matPerspectiveTransformInto(
+        source.handleForBackend(),
+        coefficients.handleForBackend(),
+        destination.handleForBackend(),
+      );
+      return;
+    }
+    return new Mat(
+      this.#backend.matPerspectiveTransform(
+        source.handleForBackend(),
+        coefficients.handleForBackend(),
+      ),
+    );
+  }
+
   pow(source: Mat, exponent: number): Mat {
     if (!Number.isFinite(exponent)) {
       throw new OpenCvInputError("exponent must be finite");
@@ -562,6 +581,22 @@ class WasmOpenCv implements OpenCv {
 
   trace(source: Mat): number {
     return this.#backend.matTrace(source.handleForBackend());
+  }
+
+  transform(source: Mat, coefficients: Mat): Mat;
+  transform(source: Mat, coefficients: Mat, destination: Mat): void;
+  transform(source: Mat, coefficients: Mat, destination?: Mat): Mat | void {
+    if (destination !== undefined) {
+      this.#backend.matTransformInto(
+        source.handleForBackend(),
+        coefficients.handleForBackend(),
+        destination.handleForBackend(),
+      );
+      return;
+    }
+    return new Mat(
+      this.#backend.matTransform(source.handleForBackend(), coefficients.handleForBackend()),
+    );
   }
 
   vconcat(

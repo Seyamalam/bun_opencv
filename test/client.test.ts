@@ -881,6 +881,53 @@ class CopyingBackend implements OpenCvBackend {
     return total;
   }
 
+  matTransform(source: WasmMatHandle, coefficients: WasmMatHandle): WasmMatHandle {
+    const input = source.toUint8Array();
+    const weights = coefficients.toFloat64Array();
+    const output = new Uint8Array(source.rows * source.columns * coefficients.rows);
+    for (let pixel = 0; pixel < source.rows * source.columns; pixel += 1) {
+      for (let outputChannel = 0; outputChannel < coefficients.rows; outputChannel += 1) {
+        let value = 0;
+        for (let inputChannel = 0; inputChannel < source.channels; inputChannel += 1) {
+          value +=
+            (input[pixel * source.channels + inputChannel] ?? 0) *
+            (weights[outputChannel * coefficients.columns + inputChannel] ?? 0);
+        }
+        if (coefficients.columns === source.channels + 1) {
+          value += weights[outputChannel * coefficients.columns + source.channels] ?? 0;
+        }
+        output[pixel * coefficients.rows + outputChannel] = Math.round(value);
+      }
+    }
+    return new CopyingMatHandle(source.rows, source.columns, coefficients.rows, output);
+  }
+
+  matTransformInto(
+    source: WasmMatHandle,
+    coefficients: WasmMatHandle,
+    destination: WasmMatHandle,
+  ): void {
+    destination.copyFromBytes(this.matTransform(source, coefficients).toUint8Array());
+  }
+
+  matPerspectiveTransform(source: WasmMatHandle, _coefficients: WasmMatHandle): WasmMatHandle {
+    return new CopyingMatHandle(
+      source.rows,
+      source.columns,
+      source.channels,
+      source.toUint8Array(),
+      source.depth,
+    );
+  }
+
+  matPerspectiveTransformInto(
+    source: WasmMatHandle,
+    coefficients: WasmMatHandle,
+    destination: WasmMatHandle,
+  ): void {
+    destination.copyFromBytes(this.matPerspectiveTransform(source, coefficients).toUint8Array());
+  }
+
   matRotate(source: WasmMatHandle, rotateCode: number): WasmMatHandle {
     if (rotateCode === 1) {
       return this.matFlip(source, -1);
@@ -1120,6 +1167,37 @@ describe("OpenCv client", () => {
 
     expect(() => client.setRNGSeed(2 ** 31)).toThrow(OpenCvInputError);
     for (const matrix of [normal, second, first, identity]) matrix.dispose();
+  });
+
+  test("applies linear and perspective transforms", () => {
+    const source = client.matFromU8(1, 2, 1, new Uint8Array([1, 2]));
+    const coefficients = client.matFromF64(1, 2, 1, new Float64Array([2, 1]));
+    const transformed = client.transform(source, coefficients);
+    const transformedDestination = client.zerosU8(1, 2, 1);
+    client.transform(source, coefficients, transformedDestination);
+    expect(transformed.toUint8Array()).toEqual(new Uint8Array([3, 5]));
+    expect(transformedDestination.toUint8Array()).toEqual(new Uint8Array([3, 5]));
+
+    const points = client.matFromF64(1, 2, 2, new Float64Array([1, 2, 3, 4]));
+    const identity = client.matFromF64(3, 3, 1, new Float64Array([1, 0, 0, 0, 1, 0, 0, 0, 1]));
+    const projected = client.perspectiveTransform(points, identity);
+    const projectedDestination = client.zerosF64(1, 2, 2);
+    client.perspectiveTransform(points, identity, projectedDestination);
+    expect(projected.toFloat64Array()).toEqual(new Float64Array([1, 2, 3, 4]));
+    expect(projectedDestination.toFloat64Array()).toEqual(new Float64Array([1, 2, 3, 4]));
+
+    for (const matrix of [
+      projectedDestination,
+      projected,
+      identity,
+      points,
+      transformedDestination,
+      transformed,
+      coefficients,
+      source,
+    ]) {
+      matrix.dispose();
+    }
   });
 
   test("exposes matrix-based core operations", () => {
