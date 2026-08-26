@@ -662,7 +662,9 @@ class CopyingBackend implements OpenCvBackend {
   #kazeFreeCount = 0;
   #logLevel = 3;
   #randomState = 0;
+  readonly cartToPolarDegreeFlags: boolean[] = [];
   readonly optimalDftSizeInputs: number[] = [];
+  readonly polarToCartDegreeFlags: boolean[] = [];
 
   readonly AKAZE: WasmAKAZEFactory = {
     create: (
@@ -1259,6 +1261,7 @@ class CopyingBackend implements OpenCvBackend {
     angle: WasmMatHandle,
     degrees: boolean,
   ): void {
+    this.cartToPolarDegreeFlags.push(degrees);
     magnitude.copyFromBytes(this.matMagnitude(x, y).toUint8Array());
     const scale = degrees ? 180 / Math.PI : 1;
     angle.copyFromBytes(
@@ -1273,6 +1276,7 @@ class CopyingBackend implements OpenCvBackend {
     y: WasmMatHandle,
     degrees: boolean,
   ): void {
+    this.polarToCartDegreeFlags.push(degrees);
     const scale = degrees ? Math.PI / 180 : 1;
     x.copyFromBytes(
       zipFloatHandles(
@@ -2812,6 +2816,48 @@ describe("OpenCv client", () => {
     destination.dispose();
     other.dispose();
     source.dispose();
+  });
+
+  test("matches coordinate-conversion overloads and boolean coercion", () => {
+    const backend = new CopyingBackend();
+    const localClient = createOpenCv(backend);
+    const first = localClient.matFromF32(1, 1, 1, new Float32Array([1]));
+    const second = localClient.matFromF32(1, 1, 1, new Float32Array([0]));
+    const firstOutput = localClient.zerosF32(1, 1, 1);
+    const secondOutput = localClient.zerosF32(1, 1, 1);
+
+    expect(localClient.cartToPolar.length).toBe(0);
+    expect(localClient.polarToCart.length).toBe(0);
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a missing output.
+      localClient.cartToPolar(first, second, firstOutput);
+    }).toThrow(BindingError);
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing an extra argument.
+      localClient.cartToPolar(first, second, firstOutput, secondOutput, true, 1);
+    }).toThrow(BindingError);
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a missing output.
+      localClient.polarToCart(first, second, firstOutput);
+    }).toThrow(BindingError);
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing an extra argument.
+      localClient.polarToCart(first, second, firstOutput, secondOutput, true, 1);
+    }).toThrow(BindingError);
+
+    localClient.cartToPolar(first, second, firstOutput, secondOutput);
+    // @ts-expect-error Runtime parity requires JavaScript boolean coercion.
+    localClient.cartToPolar(first, second, firstOutput, secondOutput, "degrees");
+    localClient.polarToCart(first, second, firstOutput, secondOutput);
+    // @ts-expect-error Runtime parity requires JavaScript boolean coercion.
+    localClient.polarToCart(first, second, firstOutput, secondOutput, 0);
+    expect(backend.cartToPolarDegreeFlags).toEqual([false, true]);
+    expect(backend.polarToCartDegreeFlags).toEqual([false, false]);
+
+    secondOutput.dispose();
+    firstOutput.dispose();
+    second.dispose();
+    first.dispose();
   });
 
   test("concatenates matrices in both axes", () => {

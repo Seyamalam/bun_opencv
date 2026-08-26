@@ -147,13 +147,17 @@ class WasmOpenCv implements OpenCv {
     return new Mat(this.#backend.matCompareEqU8(left.handleForBackend(), right.handleForBackend()));
   }
 
-  cartToPolar(x: Mat, y: Mat, magnitude: Mat, angle: Mat, degrees = false): void {
+  cartToPolar(
+    ...arguments_: [x: Mat, y: Mat, magnitude: Mat, angle: Mat, degrees?: boolean]
+  ): void {
+    requireOverloadArity(arguments_.length, 4, 5, "cartToPolar");
+    const [x, y, magnitude, angle, degrees = false] = arguments_;
     this.#backend.matCartToPolar(
       x.handleForBackend(),
       y.handleForBackend(),
       magnitude.handleForBackend(),
       angle.handleForBackend(),
-      degrees,
+      Boolean(degrees),
     );
   }
 
@@ -712,13 +716,17 @@ class WasmOpenCv implements OpenCv {
     );
   }
 
-  polarToCart(magnitude: Mat, angle: Mat, x: Mat, y: Mat, degrees = false): void {
+  polarToCart(
+    ...arguments_: [magnitude: Mat, angle: Mat, x: Mat, y: Mat, degrees?: boolean]
+  ): void {
+    requireOverloadArity(arguments_.length, 4, 5, "polarToCart");
+    const [magnitude, angle, x, y, degrees = false] = arguments_;
     this.#backend.matPolarToCart(
       magnitude.handleForBackend(),
       angle.handleForBackend(),
       x.handleForBackend(),
       y.handleForBackend(),
-      degrees,
+      Boolean(degrees),
     );
   }
 
@@ -1155,6 +1163,19 @@ function requireExactArity(actual: number, expected: number, method: string): vo
   if (actual !== expected) {
     throw new BindingError(
       `function ${method} called with ${actual} arguments, expected ${expected} args!`,
+    );
+  }
+}
+
+function requireOverloadArity(
+  actual: number,
+  firstExpected: number,
+  secondExpected: number,
+  method: string,
+): void {
+  if (actual !== firstExpected && actual !== secondExpected) {
+    throw new BindingError(
+      `Function '${method}' called with an invalid number of arguments (${actual}); expected ${firstExpected} or ${secondExpected}`,
     );
   }
 }
