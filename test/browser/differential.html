@@ -62,13 +62,262 @@
         }
       }
 
-      function callThrows(callback) {
-        try {
-          callback();
-          return false;
-        } catch {
-          return true;
+      function encodeValue(value) {
+        if (value === undefined) {
+          return { type: "undefined" };
         }
+        if (value === null) {
+          return { type: "null" };
+        }
+        if (typeof value === "number") {
+          if (Number.isNaN(value)) {
+            return { type: "nan" };
+          }
+          if (value === Number.POSITIVE_INFINITY) {
+            return { type: "positive-infinity" };
+          }
+          if (value === Number.NEGATIVE_INFINITY) {
+            return { type: "negative-infinity" };
+          }
+          if (Object.is(value, -0)) {
+            return { type: "negative-zero" };
+          }
+          return { type: "number", value };
+        }
+        return { type: typeof value, value };
+      }
+
+      function captureCall(callback) {
+        try {
+          return { threw: false, returnValue: encodeValue(callback()) };
+        } catch (error) {
+          return {
+            threw: true,
+            error: {
+              name: error?.name,
+              constructor: error?.constructor?.name,
+              message: error?.message,
+              text: String(error),
+              instanceofError: error instanceof Error,
+            },
+          };
+        }
+      }
+
+      function safeDelete(detector) {
+        try {
+          detector.delete();
+        } catch {
+          // The audit records delete failures at their call site.
+        }
+      }
+
+      function auditSetterCases(createDetector, setter, getter, cases) {
+        return cases.map(([label, value]) => {
+          const detector = createDetector();
+          const call = captureCall(() => detector[setter](value));
+          const state = captureCall(() => detector[getter]());
+          safeDelete(detector);
+          return { label, input: encodeValue(value), call, state };
+        });
+      }
+
+      function auditGftt(createDetector) {
+        const getters = [
+          "getBlockSize",
+          "getDefaultName",
+          "getHarrisDetector",
+          "getK",
+          "getMaxFeatures",
+          "getMinDistance",
+          "getQualityLevel",
+        ];
+        const setters = [
+          ["setBlockSize", "getBlockSize", 7],
+          ["setHarrisDetector", "getHarrisDetector", true],
+          ["setK", "getK", 0.5],
+          ["setMaxFeatures", "getMaxFeatures", 77],
+          ["setMinDistance", "getMinDistance", 2.5],
+          ["setQualityLevel", "getQualityLevel", 0.5],
+        ];
+        const i32Cases = [
+          ["positive fraction", 1.9],
+          ["negative fraction", -1.9],
+          ["NaN", Number.NaN],
+          ["positive infinity", Number.POSITIVE_INFINITY],
+          ["negative infinity", Number.NEGATIVE_INFINITY],
+          ["i32 maximum", 2_147_483_647],
+          ["i32 maximum plus one", 2_147_483_648],
+          ["i32 minimum", -2_147_483_648],
+          ["i32 minimum minus one", -2_147_483_649],
+          ["u32 maximum", 4_294_967_295],
+          ["u32 modulus", 4_294_967_296],
+          ["null", null],
+          ["true", true],
+          ["false", false],
+          ["numeric string", "42"],
+          ["fraction string", "-1.9"],
+          ["empty string", ""],
+          ["non-numeric string", "opencv"],
+          ["explicit undefined", undefined],
+        ];
+        const f64Cases = [
+          ["negative zero", -0],
+          ["NaN", Number.NaN],
+          ["positive infinity", Number.POSITIVE_INFINITY],
+          ["negative infinity", Number.NEGATIVE_INFINITY],
+          ["null", null],
+          ["true", true],
+          ["false", false],
+          ["numeric string", "1.25"],
+          ["empty string", ""],
+          ["non-numeric string", "opencv"],
+          ["explicit undefined", undefined],
+        ];
+        const booleanCases = [
+          ["true", true],
+          ["false", false],
+          ["zero", 0],
+          ["one", 1],
+          ["negative one", -1],
+          ["two", 2],
+          ["NaN", Number.NaN],
+          ["positive infinity", Number.POSITIVE_INFINITY],
+          ["negative infinity", Number.NEGATIVE_INFINITY],
+          ["null", null],
+          ["empty string", ""],
+          ["zero string", "0"],
+          ["false string", "false"],
+          ["non-empty string", "opencv"],
+          ["object", {}],
+          ["explicit undefined", undefined],
+        ];
+
+        const arityDetector = createDetector();
+        const arity = {
+          getters: getters.map((method) => ({
+            method,
+            length: arityDetector[method].length,
+            exact: captureCall(() => arityDetector[method]()),
+            extraOne: captureCall(() => arityDetector[method](1)),
+            extraTwo: captureCall(() => arityDetector[method](1, 2)),
+          })),
+          setters: setters.map(([method, getter, value]) => ({
+            method,
+            length: arityDetector[method].length,
+            missing: captureCall(() => arityDetector[method]()),
+            exact: captureCall(() => arityDetector[method](value)),
+            stateAfterExact: captureCall(() => arityDetector[getter]()),
+            extraOne: captureCall(() => arityDetector[method](value, 1)),
+            extraTwo: captureCall(() => arityDetector[method](value, 1, 2)),
+          })),
+        };
+        safeDelete(arityDetector);
+
+        const deadDetector = createDetector();
+        const firstDelete = captureCall(() => deadDetector.delete());
+        const postDelete = {
+          getters: getters.map((method) => ({
+            method,
+            call: captureCall(() => deadDetector[method]()),
+          })),
+          setters: setters.map(([method, , value]) => ({
+            method,
+            call: captureCall(() => deadDetector[method](value)),
+          })),
+          secondDelete: captureCall(() => deadDetector.delete()),
+        };
+
+        const deleteExtraOneDetector = createDetector();
+        const deleteExtraOne = captureCall(() => deleteExtraOneDetector.delete(1));
+        safeDelete(deleteExtraOneDetector);
+        const deleteExtraTwoDetector = createDetector();
+        const deleteExtraTwo = captureCall(() => deleteExtraTwoDetector.delete(1, 2));
+        safeDelete(deleteExtraTwoDetector);
+        const deleteLengthDetector = createDetector();
+        const deleteLength = deleteLengthDetector.delete.length;
+        safeDelete(deleteLengthDetector);
+
+        return {
+          arity,
+          i32: {
+            blockSize: auditSetterCases(createDetector, "setBlockSize", "getBlockSize", i32Cases),
+            maxFeatures: auditSetterCases(
+              createDetector,
+              "setMaxFeatures",
+              "getMaxFeatures",
+              i32Cases,
+            ),
+          },
+          f64: {
+            k: auditSetterCases(createDetector, "setK", "getK", f64Cases),
+            minDistance: auditSetterCases(
+              createDetector,
+              "setMinDistance",
+              "getMinDistance",
+              f64Cases,
+            ),
+            qualityLevel: auditSetterCases(
+              createDetector,
+              "setQualityLevel",
+              "getQualityLevel",
+              f64Cases,
+            ),
+          },
+          boolean: auditSetterCases(
+            createDetector,
+            "setHarrisDetector",
+            "getHarrisDetector",
+            booleanCases,
+          ),
+          lifetime: {
+            deleteLength,
+            firstDelete,
+            postDelete,
+            deleteExtraOne,
+            deleteExtraTwo,
+          },
+        };
+      }
+
+      function findDifference(actual, expected, path = "GFTT audit") {
+        if (Object.is(actual, expected)) {
+          return undefined;
+        }
+        if (typeof actual !== typeof expected || actual === null || expected === null) {
+          return `${path}: package=${JSON.stringify(actual)} OpenCV.js=${JSON.stringify(expected)}`;
+        }
+        if (typeof actual !== "object") {
+          return `${path}: package=${JSON.stringify(actual)} OpenCV.js=${JSON.stringify(expected)}`;
+        }
+        if (Array.isArray(actual) !== Array.isArray(expected)) {
+          return `${path}: package and OpenCV.js have different container types`;
+        }
+        if (Array.isArray(actual)) {
+          if (actual.length !== expected.length) {
+            return `${path}.length: package=${actual.length} OpenCV.js=${expected.length}`;
+          }
+          for (let index = 0; index < actual.length; index += 1) {
+            const difference = findDifference(actual[index], expected[index], `${path}[${index}]`);
+            if (difference !== undefined) {
+              return difference;
+            }
+          }
+          return undefined;
+        }
+        const actualKeys = Object.keys(actual).sort();
+        const expectedKeys = Object.keys(expected).sort();
+        const keyDifference = findDifference(actualKeys, expectedKeys, `${path} keys`);
+        if (keyDifference !== undefined) {
+          return keyDifference;
+        }
+        for (const key of actualKeys) {
+          const difference = findDifference(actual[key], expected[key], `${path}.${key}`);
+          if (difference !== undefined) {
+            return difference;
+          }
+        }
+        return undefined;
       }
 
       function runReference(input) {
@@ -375,88 +624,11 @@
         );
         packageGftt.dispose();
 
-        const packageGfttAudit = packageCv.createGFTTDetector();
-        const packageGfttGetterLengths = [
-          packageGfttAudit.getBlockSize.length,
-          packageGfttAudit.getDefaultName.length,
-          packageGfttAudit.getHarrisDetector.length,
-          packageGfttAudit.getK.length,
-          packageGfttAudit.getMaxFeatures.length,
-          packageGfttAudit.getMinDistance.length,
-          packageGfttAudit.getQualityLevel.length,
-        ];
-        const packageGfttSetterLengths = [
-          packageGfttAudit.setBlockSize.length,
-          packageGfttAudit.setHarrisDetector.length,
-          packageGfttAudit.setK.length,
-          packageGfttAudit.setMaxFeatures.length,
-          packageGfttAudit.setMinDistance.length,
-          packageGfttAudit.setQualityLevel.length,
-        ];
-        const packageBlockFractionReturnsUndefined =
-          packageGfttAudit.setBlockSize(1.9) === undefined;
-        const packageBlockFractionValue = packageGfttAudit.getBlockSize();
-        const packageMaxNaNReturnsUndefined =
-          packageGfttAudit.setMaxFeatures(Number.NaN) === undefined;
-        const packageMaxNaNValue = packageGfttAudit.getMaxFeatures();
-        const packageKNaNReturnsUndefined = packageGfttAudit.setK(Number.NaN) === undefined;
-        const packageKNaNPreserved = Number.isNaN(packageGfttAudit.getK());
-        const packageHarrisZeroReturnsUndefined =
-          packageGfttAudit.setHarrisDetector(0) === undefined;
-        const packageHarrisZeroValue = packageGfttAudit.getHarrisDetector();
-        const packageHarrisOneReturnsUndefined =
-          packageGfttAudit.setHarrisDetector(1) === undefined;
-        const packageHarrisOneValue = packageGfttAudit.getHarrisDetector();
-        const packageExtraGetterThrows = callThrows(() => packageGfttAudit.getBlockSize(123));
-        const packageMissingSetterThrows = callThrows(() => packageGfttAudit.setBlockSize());
-        const packageExtraSetterThrows = callThrows(() => packageGfttAudit.setBlockSize(7, 99));
-        const packageDeleteReturnsUndefined = packageGfttAudit.delete() === undefined;
-        const packagePostDeleteThrows = callThrows(() => packageGfttAudit.getBlockSize());
-        const packageSecondDeleteThrows = callThrows(() => packageGfttAudit.delete());
-        sameNumbers(
-          [
-            ...packageGfttGetterLengths,
-            ...packageGfttSetterLengths,
-            packageBlockFractionReturnsUndefined,
-            packageBlockFractionValue,
-            packageMaxNaNReturnsUndefined,
-            packageMaxNaNValue,
-            packageKNaNReturnsUndefined,
-            packageKNaNPreserved,
-            packageHarrisZeroReturnsUndefined,
-            packageHarrisZeroValue,
-            packageHarrisOneReturnsUndefined,
-            packageHarrisOneValue,
-            packageExtraGetterThrows,
-            packageMissingSetterThrows,
-            packageExtraSetterThrows,
-            packageDeleteReturnsUndefined,
-            packagePostDeleteThrows,
-            packageSecondDeleteThrows,
-          ],
-          [
-            ...referenceOutputs.gfttAudit.getterLengths,
-            ...referenceOutputs.gfttAudit.setterLengths,
-            referenceOutputs.gfttAudit.blockFractionReturnsUndefined,
-            referenceOutputs.gfttAudit.blockFractionValue,
-            referenceOutputs.gfttAudit.maxNaNReturnsUndefined,
-            referenceOutputs.gfttAudit.maxNaNValue,
-            referenceOutputs.gfttAudit.kNaNReturnsUndefined,
-            referenceOutputs.gfttAudit.kNaNPreserved,
-            referenceOutputs.gfttAudit.harrisZeroReturnsUndefined,
-            referenceOutputs.gfttAudit.harrisZeroValue,
-            referenceOutputs.gfttAudit.harrisOneReturnsUndefined,
-            referenceOutputs.gfttAudit.harrisOneValue,
-            referenceOutputs.gfttAudit.extraGetterThrows,
-            referenceOutputs.gfttAudit.missingSetterThrows,
-            referenceOutputs.gfttAudit.extraSetterThrows,
-            referenceOutputs.gfttAudit.deleteReturnsUndefined,
-            referenceOutputs.gfttAudit.postDeleteThrows,
-            referenceOutputs.gfttAudit.secondDeleteThrows,
-          ],
-          "GFTT call contract",
-          0,
-        );
+        const packageGfttAudit = auditGftt(() => packageCv.createGFTTDetector());
+        const gfttDifference = findDifference(packageGfttAudit, referenceOutputs.gfttAudit);
+        if (gfttDifference !== undefined) {
+          throw new Error(gfttDifference);
+        }
 
         packageSource.dispose();
         result.value =

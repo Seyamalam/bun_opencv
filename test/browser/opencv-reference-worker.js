@@ -1,5 +1,5 @@
 /* global importScripts, cv */
-/* oxlint-disable unicorn/require-post-message-target-origin */
+/* oxlint-disable unicorn/require-post-message-target-origin, anti-slop/no-runtime-typeof */
 
 function copyBytes(matrix) {
   return new Uint8Array(matrix.data);
@@ -7,6 +7,214 @@ function copyBytes(matrix) {
 
 function copyF64(matrix) {
   return Array.from(matrix.data64F);
+}
+
+function encodeValue(value) {
+  if (value === undefined) {
+    return { type: "undefined" };
+  }
+  if (value === null) {
+    return { type: "null" };
+  }
+  if (typeof value === "number") {
+    if (Number.isNaN(value)) {
+      return { type: "nan" };
+    }
+    if (value === Number.POSITIVE_INFINITY) {
+      return { type: "positive-infinity" };
+    }
+    if (value === Number.NEGATIVE_INFINITY) {
+      return { type: "negative-infinity" };
+    }
+    if (Object.is(value, -0)) {
+      return { type: "negative-zero" };
+    }
+    return { type: "number", value };
+  }
+  return { type: typeof value, value };
+}
+
+function captureCall(callback) {
+  try {
+    return { threw: false, returnValue: encodeValue(callback()) };
+  } catch (error) {
+    return {
+      threw: true,
+      error: {
+        name: error?.name,
+        constructor: error?.constructor?.name,
+        message: error?.message,
+        text: String(error),
+        instanceofError: error instanceof Error,
+      },
+    };
+  }
+}
+
+function safeDelete(detector) {
+  try {
+    detector.delete();
+  } catch {
+    // The audit records delete failures at their call site.
+  }
+}
+
+function auditSetterCases(createDetector, setter, getter, cases) {
+  return cases.map(([label, value]) => {
+    const detector = createDetector();
+    const call = captureCall(() => detector[setter](value));
+    const state = captureCall(() => detector[getter]());
+    safeDelete(detector);
+    return { label, input: encodeValue(value), call, state };
+  });
+}
+
+function auditGftt(createDetector) {
+  const getters = [
+    "getBlockSize",
+    "getDefaultName",
+    "getHarrisDetector",
+    "getK",
+    "getMaxFeatures",
+    "getMinDistance",
+    "getQualityLevel",
+  ];
+  const setters = [
+    ["setBlockSize", "getBlockSize", 7],
+    ["setHarrisDetector", "getHarrisDetector", true],
+    ["setK", "getK", 0.5],
+    ["setMaxFeatures", "getMaxFeatures", 77],
+    ["setMinDistance", "getMinDistance", 2.5],
+    ["setQualityLevel", "getQualityLevel", 0.5],
+  ];
+  const i32Cases = [
+    ["positive fraction", 1.9],
+    ["negative fraction", -1.9],
+    ["NaN", Number.NaN],
+    ["positive infinity", Number.POSITIVE_INFINITY],
+    ["negative infinity", Number.NEGATIVE_INFINITY],
+    ["i32 maximum", 2_147_483_647],
+    ["i32 maximum plus one", 2_147_483_648],
+    ["i32 minimum", -2_147_483_648],
+    ["i32 minimum minus one", -2_147_483_649],
+    ["u32 maximum", 4_294_967_295],
+    ["u32 modulus", 4_294_967_296],
+    ["null", null],
+    ["true", true],
+    ["false", false],
+    ["numeric string", "42"],
+    ["fraction string", "-1.9"],
+    ["empty string", ""],
+    ["non-numeric string", "opencv"],
+    ["explicit undefined", undefined],
+  ];
+  const f64Cases = [
+    ["negative zero", -0],
+    ["NaN", Number.NaN],
+    ["positive infinity", Number.POSITIVE_INFINITY],
+    ["negative infinity", Number.NEGATIVE_INFINITY],
+    ["null", null],
+    ["true", true],
+    ["false", false],
+    ["numeric string", "1.25"],
+    ["empty string", ""],
+    ["non-numeric string", "opencv"],
+    ["explicit undefined", undefined],
+  ];
+  const booleanCases = [
+    ["true", true],
+    ["false", false],
+    ["zero", 0],
+    ["one", 1],
+    ["negative one", -1],
+    ["two", 2],
+    ["NaN", Number.NaN],
+    ["positive infinity", Number.POSITIVE_INFINITY],
+    ["negative infinity", Number.NEGATIVE_INFINITY],
+    ["null", null],
+    ["empty string", ""],
+    ["zero string", "0"],
+    ["false string", "false"],
+    ["non-empty string", "opencv"],
+    ["object", {}],
+    ["explicit undefined", undefined],
+  ];
+
+  const arityDetector = createDetector();
+  const arity = {
+    getters: getters.map((method) => ({
+      method,
+      length: arityDetector[method].length,
+      exact: captureCall(() => arityDetector[method]()),
+      extraOne: captureCall(() => arityDetector[method](1)),
+      extraTwo: captureCall(() => arityDetector[method](1, 2)),
+    })),
+    setters: setters.map(([method, getter, value]) => ({
+      method,
+      length: arityDetector[method].length,
+      missing: captureCall(() => arityDetector[method]()),
+      exact: captureCall(() => arityDetector[method](value)),
+      stateAfterExact: captureCall(() => arityDetector[getter]()),
+      extraOne: captureCall(() => arityDetector[method](value, 1)),
+      extraTwo: captureCall(() => arityDetector[method](value, 1, 2)),
+    })),
+  };
+  safeDelete(arityDetector);
+
+  const deadDetector = createDetector();
+  const firstDelete = captureCall(() => deadDetector.delete());
+  const postDelete = {
+    getters: getters.map((method) => ({
+      method,
+      call: captureCall(() => deadDetector[method]()),
+    })),
+    setters: setters.map(([method, , value]) => ({
+      method,
+      call: captureCall(() => deadDetector[method](value)),
+    })),
+    secondDelete: captureCall(() => deadDetector.delete()),
+  };
+
+  const deleteExtraOneDetector = createDetector();
+  const deleteExtraOne = captureCall(() => deleteExtraOneDetector.delete(1));
+  safeDelete(deleteExtraOneDetector);
+  const deleteExtraTwoDetector = createDetector();
+  const deleteExtraTwo = captureCall(() => deleteExtraTwoDetector.delete(1, 2));
+  safeDelete(deleteExtraTwoDetector);
+  const deleteLengthDetector = createDetector();
+  const deleteLength = deleteLengthDetector.delete.length;
+  safeDelete(deleteLengthDetector);
+
+  return {
+    arity,
+    i32: {
+      blockSize: auditSetterCases(createDetector, "setBlockSize", "getBlockSize", i32Cases),
+      maxFeatures: auditSetterCases(createDetector, "setMaxFeatures", "getMaxFeatures", i32Cases),
+    },
+    f64: {
+      k: auditSetterCases(createDetector, "setK", "getK", f64Cases),
+      minDistance: auditSetterCases(createDetector, "setMinDistance", "getMinDistance", f64Cases),
+      qualityLevel: auditSetterCases(
+        createDetector,
+        "setQualityLevel",
+        "getQualityLevel",
+        f64Cases,
+      ),
+    },
+    boolean: auditSetterCases(
+      createDetector,
+      "setHarrisDetector",
+      "getHarrisDetector",
+      booleanCases,
+    ),
+    lifetime: {
+      deleteLength,
+      firstDelete,
+      postDelete,
+      deleteExtraOne,
+      deleteExtraTwo,
+    },
+  };
 }
 
 async function loadOpenCv() {
@@ -206,93 +414,7 @@ self.addEventListener("message", async ({ data: input }) => {
     ];
     gftt.delete();
 
-    const gfttAudit = new reference.GFTTDetector();
-    const audit = {
-      getterLengths: [
-        gfttAudit.getBlockSize.length,
-        gfttAudit.getDefaultName.length,
-        gfttAudit.getHarrisDetector.length,
-        gfttAudit.getK.length,
-        gfttAudit.getMaxFeatures.length,
-        gfttAudit.getMinDistance.length,
-        gfttAudit.getQualityLevel.length,
-      ],
-      setterLengths: [
-        gfttAudit.setBlockSize.length,
-        gfttAudit.setHarrisDetector.length,
-        gfttAudit.setK.length,
-        gfttAudit.setMaxFeatures.length,
-        gfttAudit.setMinDistance.length,
-        gfttAudit.setQualityLevel.length,
-      ],
-    };
-    audit.blockFractionReturnsUndefined = gfttAudit.setBlockSize(1.9) === undefined;
-    audit.blockFractionValue = gfttAudit.getBlockSize();
-    audit.maxNaNReturnsUndefined = gfttAudit.setMaxFeatures(Number.NaN) === undefined;
-    audit.maxNaNValue = gfttAudit.getMaxFeatures();
-    audit.kNaNReturnsUndefined = gfttAudit.setK(Number.NaN) === undefined;
-    audit.kNaNPreserved = Number.isNaN(gfttAudit.getK());
-    audit.harrisZeroReturnsUndefined = gfttAudit.setHarrisDetector(0) === undefined;
-    audit.harrisZeroValue = gfttAudit.getHarrisDetector();
-    audit.harrisOneReturnsUndefined = gfttAudit.setHarrisDetector(1) === undefined;
-    audit.harrisOneValue = gfttAudit.getHarrisDetector();
-    try {
-      gfttAudit.getBlockSize(123);
-      audit.extraGetterThrows = false;
-    } catch (error) {
-      audit.extraGetterThrows = true;
-      audit.extraGetterError = {
-        name: error?.name,
-        message: error?.message,
-        text: String(error),
-      };
-    }
-    try {
-      gfttAudit.setBlockSize();
-      audit.missingSetterThrows = false;
-    } catch (error) {
-      audit.missingSetterThrows = true;
-      audit.missingSetterError = {
-        name: error?.name,
-        message: error?.message,
-        text: String(error),
-      };
-    }
-    try {
-      gfttAudit.setBlockSize(7, 99);
-      audit.extraSetterThrows = false;
-    } catch (error) {
-      audit.extraSetterThrows = true;
-      audit.extraSetterError = {
-        name: error?.name,
-        message: error?.message,
-        text: String(error),
-      };
-    }
-    audit.deleteReturnsUndefined = gfttAudit.delete() === undefined;
-    try {
-      gfttAudit.getBlockSize();
-      audit.postDeleteThrows = false;
-    } catch (error) {
-      audit.postDeleteThrows = true;
-      audit.postDeleteError = {
-        name: error?.name,
-        message: error?.message,
-        text: String(error),
-      };
-    }
-    try {
-      gfttAudit.delete();
-      audit.secondDeleteThrows = false;
-    } catch (error) {
-      audit.secondDeleteThrows = true;
-      audit.secondDeleteError = {
-        name: error?.name,
-        message: error?.message,
-        text: String(error),
-      };
-    }
-    outputs.gfttAudit = audit;
+    outputs.gfttAudit = auditGftt(() => new reference.GFTTDetector());
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });
