@@ -60,6 +60,7 @@ const AUDITED_BINDING_FORMS: Readonly<Record<string, AuditedBindingForm>> = Obje
   "core.function.cart-to-polar": { overloadCount: 2, runtimeArity: 0 },
   "core.function.convert-scale-abs": { overloadCount: 3, runtimeArity: 0 },
   "core.function.count-non-zero": { overloadCount: 1, runtimeArity: 1 },
+  "core.function.determinant": { overloadCount: 1, runtimeArity: 1 },
   "core.function.divide": { overloadCount: 3, runtimeArity: 0 },
   "core.function.exp": { overloadCount: 1, runtimeArity: 2 },
   "core.function.flip": { overloadCount: 1, runtimeArity: 3 },

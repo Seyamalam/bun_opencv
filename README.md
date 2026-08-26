@@ -80,7 +80,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | core       | `countNonZero`                              | `cv.countNonZero`                              | Full    | Exact all-depth single-channel reduction |
 | core       | `convertScaleAbs`                           | `cv.convertScaleAbs`                           | Full    | Exact all-depth mutable-output contract  |
 | core       | `copyMakeBorder`                            | `cv.copyMakeBorder`                            | Partial | All depths and five border modes         |
-| core       | `determinant`                               | `cv.determinant`                               | Partial | Square single-channel matrices           |
+| core       | `determinant`                               | `cv.determinant`                               | Full    | Exact F32/F64 square-matrix contract     |
 | core       | `divide`                                    | `cv.divide`                                    | Full    | Exact all-depth mutable-output contract  |
 | core       | `cartToPolar`                               | `cv.cartToPolar`                               | Full    | Exact paired F32/F64 output contract     |
 | core       | `exp`                                       | `cv.exp`                                       | Full    | Exact F32/F64 mutable-output contract    |
@@ -203,7 +203,9 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `findContours`                              | `cv.findContours`                              | Planned | Not started                              |
 | imgproc    | `warpPerspective`                           | `cv.warpPerspective`                           | Planned | Not started                              |
 
-Current full parity is **78 of 488 (15.98%)**. There are **51 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+Current full parity is **79 of 488 (16.19%)**. There are **50 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+
+The fixture passes the complete pinned browser contract for `determinant`. The function requires exactly one live `Mat` and accepts only nonempty square single-channel F32 or F64 matrices, including non-contiguous regions. It preserves the input, matches the direct 1x1, 2x2, and 3x3 paths with signed-zero and non-finite propagation, and keeps F32 and F64 arithmetic distinct during elimination for larger matrices. The audit locks the absolute pivot cutoffs, exact cutoff acceptance, row-swap signs, singular positive zero, stored-F32 widening in the small formulas, and Hilbert precision. Integer, multichannel, nonsquare, empty, deleted, and non-Mat inputs reject before computation.
 
 The fixture passes the complete pinned browser contract for `exp`, `log`, `sqrt`, `pow`, and `magnitude`. It checks exact arity and Mat conversion, Embind F64 power conversion, typed and canonical empty matrices, destination replacement, detached and shared regions, live overlapping traversal, all valid scalar depths, integer saturation and wrapping, and floating-point bit patterns. The package rejects native calls that expose unsafe uninitialized output while preserving the observable rejection and unchanged-state contract.
 

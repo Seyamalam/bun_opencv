@@ -940,10 +940,10 @@ export const PARITY_MANIFEST = {
       method: "determinant",
       module: "core",
       notes:
-        "Square single-channel matrices at every scalar depth with F64 partial-pivoted computation; integer inputs are a package extension, non-finite inputs are rejected, and differential fixtures remain.",
+        "Matches the exact one-argument Mat binding for nonempty square single-channel F32/F64 sources, including compact and strided input preservation, direct 1x1 through 3x3 signed-zero and non-finite results, depth-specific elimination and pivot cutoffs for larger matrices, and invalid, empty, or deleted input errors.",
       patentReview: "required",
       sources: [CORE_ARRAY_SOURCE],
-      status: "partial",
+      status: "implemented",
       upstream: "cv.determinant",
       upstreamId: "core.function.determinant",
       wasmExport: "matDeterminant",

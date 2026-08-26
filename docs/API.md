@@ -241,9 +241,11 @@ The pinned OpenCV.js 4.13.0 browser fixture passes the complete audited contract
 
 ### Dense matrix algebra
 
-- `determinant(source)` returns an F64 determinant for a square, single-channel matrix. It accepts every scalar depth and uses partial-pivoted elimination.
+- `determinant(source)` requires exactly one live `Mat` and returns a JavaScript number. The source must be a nonempty square single-channel F32 or F64 matrix. Compact matrices and non-contiguous regions are accepted, and the call does not change the source or its parent allocation. Integer depths, multiple channels, nonsquare matrices, empty matrices, deleted handles, and non-Mat values throw.
 - `invert(source, destination, method)` writes an inverse into an exact single-channel F32 or F64 destination. It returns `1` on success and `0` for a singular or rank-deficient source.
 - `solve(coefficients, rightHandSides, destination, method)` solves one or more right-hand sides. It returns `false` on rank loss.
+
+For orders one through three, `determinant` follows the pinned direct formulas. F32 inputs use their stored float32 values widened for those products. This preserves the reference runtime's signed-zero and non-finite results. For orders four and larger, F32 elimination stays in float32 while F64 elimination stays in float64. Both use partial pivoting and accumulate the returned product as F64. A pivot below `10 * 2^-23` for F32 or `100 * Number.EPSILON` for F64 returns positive zero; a pivot exactly at the cutoff remains valid. The browser audit covers both cutoff boundaries, row-swap signs, singular matrices, and Hilbert precision.
 
 The decomposition method defaults to `0` for LU. Method `3` selects Cholesky and method `4` selects QR. LU and Cholesky require square coefficient matrices. QR also accepts overdetermined systems. SVD, eigen, normal-equation flags, pseudo-inverses, and underdetermined systems remain. Failed inverse and solve calls leave the destination unchanged. Inputs must be single-channel and finite. Inverse and solve destinations must use F32 or F64.
 
