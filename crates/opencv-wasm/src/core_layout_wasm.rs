@@ -100,6 +100,9 @@ pub fn mat_flip_into(source: &Mat, destination: &Mat, flip_code: i32) -> Result<
 /// Returns an error when the output shape or allocation exceeds the WASM matrix limit.
 #[wasm_bindgen(js_name = matTranspose)]
 pub fn mat_transpose(source: &Mat) -> Result<Mat, JsError> {
+    if source.rows() == 0 && source.columns() == 0 {
+        return Ok(crate::mat::mat_empty());
+    }
     apply_layout(source, transpose_bytes).map_err(JsError::from)
 }
 
@@ -110,6 +113,11 @@ pub fn mat_transpose(source: &Mat) -> Result<Mat, JsError> {
 /// Returns an error when the output cannot be allocated.
 #[wasm_bindgen(js_name = matTransposeInto)]
 pub fn mat_transpose_into(source: &Mat, destination: &Mat) -> Result<(), JsError> {
+    if source.rows() == 0 && source.columns() == 0 {
+        return destination
+            .write_output(Vec::new(), 0, 0, 1, MatDepth::U8)
+            .map_err(JsError::from);
+    }
     apply_layout_into(source, destination, transpose_bytes).map_err(JsError::from)
 }
 
@@ -364,6 +372,24 @@ mod tests {
             output.to_u8_array(),
             [3, 4, 9, 10, 15, 16, 5, 6, 11, 12, 17, 18]
         );
+    }
+
+    #[test]
+    fn transpose_accepts_the_canonical_empty_matrix() {
+        let source = crate::mat::mat_empty();
+        let allocated = mat_transpose(&source).expect("transpose empty matrix");
+        let destination = u8_matrix(vec![1, 2, 3, 4], 2, 2, 1);
+
+        mat_transpose_into(&source, &destination).expect("transpose empty into destination");
+
+        for output in [&allocated, &destination] {
+            assert_eq!(
+                (output.rows(), output.columns(), output.channels()),
+                (0, 0, 1)
+            );
+            assert_eq!(output.depth(), MatDepth::U8);
+            assert!(output.to_u8_array().is_empty());
+        }
     }
 
     #[test]

@@ -285,6 +285,18 @@ impl Mat {
         channels: u16,
         depth: MatDepth,
     ) -> Result<(), MatError> {
+        if rows == 0 || columns == 0 {
+            if rows != 0
+                || columns != 0
+                || !data.is_empty()
+                || channels != 1
+                || depth != MatDepth::U8
+            {
+                return Err(MatError::EmptyDimensions);
+            }
+            self.header.replace(Self::empty().header.into_inner());
+            return Ok(());
+        }
         let replacement = Self::from_owned_bytes(data, rows, columns, channels, depth)?;
         let replacement_header = replacement.header.into_inner();
         let current = self.header.borrow();
