@@ -21,6 +21,8 @@ mod core_reductions;
 mod core_reductions_wasm;
 mod core_stats;
 mod core_stats_wasm;
+mod core_transform;
+mod core_transform_wasm;
 mod core_wasm;
 mod imgproc_border;
 mod imgproc_border_wasm;
