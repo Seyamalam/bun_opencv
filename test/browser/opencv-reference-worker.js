@@ -1514,6 +1514,1029 @@ function auditCountNonZero(reference) {
   };
 }
 
+const FLOAT_UNARY_METHODS = ["exp", "log", "sqrt"];
+const FLOAT_INTEGER_TYPES = [
+  ["CV_8UC1", "u8", 1, [0, 1, 2, 3, 4, 5]],
+  ["CV_8SC1", "i8", 1, [-3, -2, -1, 0, 1, 2]],
+  ["CV_16UC1", "u16", 1, [0, 1, 2, 3, 4, 5]],
+  ["CV_16SC1", "i16", 1, [-3, -2, -1, 0, 1, 2]],
+  ["CV_32SC1", "i32", 1, [-3, -2, -1, 0, 1, 2]],
+];
+const FLOAT_VALID_TYPES = [
+  ["CV_32FC1", "f32", 1, [-1.5, 2.25, -3.5, 4.75, -5.5, 6.25]],
+  ["CV_32FC3", "f32", 3, [-1, 2, 3, -4, 5, 6, -7, 8, 9, -10, 11, 12, -13, 14, 15, -16, 17, 18]],
+  ["CV_64FC1", "f64", 1, [-1.5, 2.25, -3.5, 4.75, -5.5, 6.25]],
+  ["CV_64FC2", "f64", 2, [-1, 2, -3, 4, -5, 6, -7, 8, -9, 10, -11, 12]],
+];
+
+function referenceTypeFromName(reference, name) {
+  return reference[name];
+}
+
+function auditReferenceFloatDestination(reference, method, name, createDestination) {
+  const source = makeSeedMat(
+    reference,
+    2,
+    3,
+    reference.CV_32FC2,
+    [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3],
+  );
+  const destination = createDestination();
+  const audit = auditTypedMatCall(
+    () => reference[method](source, destination),
+    [
+      ["source", source],
+      ["destination", destination],
+    ],
+  );
+  safeDelete(destination);
+  safeDelete(source);
+  return { name, audit };
+}
+
+function auditReferenceUnaryRoi(
+  reference,
+  method,
+  name,
+  sourceRect,
+  destinationRect,
+  sameParent,
+  destinationType = reference.CV_32FC1,
+) {
+  const sourceParent = makeSeedMat(
+    reference,
+    4,
+    7,
+    reference.CV_32FC1,
+    Array.from({ length: 28 }, (_, index) => (index + 1) / 10),
+  );
+  const destinationParent = sameParent
+    ? sourceParent
+    : makeSeedMat(
+        reference,
+        4,
+        7,
+        destinationType,
+        Array.from({ length: 28 }, () => 99),
+      );
+  const source = sourceParent.roi(new reference.Rect(...sourceRect));
+  const destination = destinationParent.roi(new reference.Rect(...destinationRect));
+  const audit = auditTypedMatCall(
+    () => reference[method](source, destination),
+    [
+      ["source", source],
+      ["destination", destination],
+      ["sourceParent", sourceParent],
+      ["destinationParent", destinationParent],
+    ],
+  );
+  safeDelete(destination);
+  safeDelete(source);
+  if (!sameParent) safeDelete(destinationParent);
+  safeDelete(sourceParent);
+  return { name, sameParent, audit };
+}
+
+function auditReferenceUnaryType(reference, method, name, type, values) {
+  const source = makeSeedMat(reference, 2, 3, type, values);
+  const destination = new reference.Mat();
+  const audit = auditTypedMatCall(
+    () => reference[method](source, destination),
+    [
+      ["source", source],
+      ["destination", destination],
+    ],
+  );
+  safeDelete(destination);
+  safeDelete(source);
+  return { name, available: true, audit };
+}
+
+function auditReferenceUnary(reference, method) {
+  const source = makeSeedMat(reference, 1, 2, reference.CV_32FC1, [1, 4]);
+  const destination = new reference.Mat();
+  const arity = {
+    functionLength: capturePrimitive(() => reference[method].length),
+    zero: captureCall(() => reference[method]()),
+    one: captureCall(() => reference[method](source)),
+    two: captureCall(() => reference[method](source, destination)),
+    three: captureCall(() => reference[method](source, destination, 1)),
+    destinationAfter: capturePrimitive(() => summarizeTypedMat(destination)),
+  };
+  const argumentTypes = {
+    source: {
+      null: captureCall(() => reference[method](null, destination)),
+      undefined: captureCall(() => reference[method](undefined, destination)),
+      object: captureCall(() => reference[method]({}, destination)),
+      number: captureCall(() => reference[method](1, destination)),
+      string: captureCall(() => reference[method]("x", destination)),
+    },
+    destination: {
+      null: captureCall(() => reference[method](source, null)),
+      undefined: captureCall(() => reference[method](source, undefined)),
+      object: captureCall(() => reference[method](source, {})),
+      number: captureCall(() => reference[method](source, 1)),
+      string: captureCall(() => reference[method](source, "x")),
+    },
+  };
+  safeDelete(destination);
+  safeDelete(source);
+
+  const deletedSource = makeSeedMat(reference, 1, 1, reference.CV_32FC1, [1]);
+  const liveDestination = new reference.Mat();
+  deletedSource.delete();
+  const deletedSourceAudit = auditTypedMatCall(
+    () => reference[method](deletedSource, liveDestination),
+    [
+      ["source", deletedSource],
+      ["destination", liveDestination],
+    ],
+  );
+  safeDelete(liveDestination);
+  const liveSource = makeSeedMat(reference, 1, 1, reference.CV_32FC1, [1]);
+  const deletedDestination = new reference.Mat();
+  deletedDestination.delete();
+  const deletedDestinationAudit = auditTypedMatCall(
+    () => reference[method](liveSource, deletedDestination),
+    [
+      ["source", liveSource],
+      ["destination", deletedDestination],
+    ],
+  );
+  safeDelete(liveSource);
+
+  const freshEmptySource = new reference.Mat();
+  const freshEmptyDestination = new reference.Mat();
+  const freshEmpty = auditTypedMatCall(
+    () => reference[method](freshEmptySource, freshEmptyDestination),
+    [
+      ["source", freshEmptySource],
+      ["destination", freshEmptyDestination],
+    ],
+  );
+  safeDelete(freshEmptyDestination);
+  safeDelete(freshEmptySource);
+  const freshEmptyIntoFullSource = new reference.Mat();
+  const populatedDestination = makeSeedMat(reference, 1, 2, reference.CV_32FC1, [7, 8]);
+  const freshEmptyIntoFull = auditTypedMatCall(
+    () => reference[method](freshEmptyIntoFullSource, populatedDestination),
+    [
+      ["source", freshEmptyIntoFullSource],
+      ["destination", populatedDestination],
+    ],
+  );
+  safeDelete(populatedDestination);
+  safeDelete(freshEmptyIntoFullSource);
+
+  const typedEmpty = [
+    ["0x0-F32C1", 0, 0, reference.CV_32FC1],
+    ["0x3-F32C2", 0, 3, reference.CV_32FC2],
+    ["3x0-F64C1", 3, 0, reference.CV_64FC1],
+  ].map(([name, rows, columns, type]) => {
+    const typedSource = new reference.Mat(rows, columns, type);
+    const typedDestination = new reference.Mat();
+    const audit = auditTypedMatCall(
+      () => reference[method](typedSource, typedDestination),
+      [
+        ["source", typedSource],
+        ["destination", typedDestination],
+      ],
+    );
+    safeDelete(typedDestination);
+    safeDelete(typedSource);
+    return { name, audit };
+  });
+
+  const validTypes = FLOAT_VALID_TYPES.map(([name, , , values]) =>
+    auditReferenceUnaryType(
+      reference,
+      method,
+      name,
+      referenceTypeFromName(reference, name),
+      values,
+    ),
+  );
+  const unsupportedIntegerTypes =
+    method === "sqrt"
+      ? []
+      : FLOAT_INTEGER_TYPES.map(([name, , , values]) =>
+          auditReferenceUnaryType(
+            reference,
+            method,
+            name,
+            referenceTypeFromName(reference, name),
+            values,
+          ),
+        );
+  const numericEdges = [
+    [
+      "F32",
+      reference.CV_32FC1,
+      [
+        Number.NEGATIVE_INFINITY,
+        -4,
+        -1.401298464324817e-45,
+        -0,
+        0,
+        1.401298464324817e-45,
+        4,
+        Number.POSITIVE_INFINITY,
+        Number.NaN,
+      ],
+    ],
+    [
+      "F64",
+      reference.CV_64FC1,
+      [
+        Number.NEGATIVE_INFINITY,
+        -4,
+        -Number.MIN_VALUE,
+        -0,
+        0,
+        Number.MIN_VALUE,
+        4,
+        Number.POSITIVE_INFINITY,
+        Number.NaN,
+      ],
+    ],
+  ].map(([name, type, values]) => {
+    const edgeSource = makeSeedMat(reference, 1, values.length, type, values);
+    const edgeDestination = new reference.Mat();
+    const audit = auditTypedMatCall(
+      () => reference[method](edgeSource, edgeDestination),
+      [
+        ["source", edgeSource],
+        ["destination", edgeDestination],
+      ],
+    );
+    safeDelete(edgeDestination);
+    safeDelete(edgeSource);
+    return { name, audit };
+  });
+
+  return {
+    method,
+    arity,
+    argumentTypes,
+    destinationReplacement: [
+      auditReferenceFloatDestination(reference, method, "empty", () => new reference.Mat()),
+      auditReferenceFloatDestination(reference, method, "correct-metadata", () =>
+        makeSeedMat(
+          reference,
+          2,
+          3,
+          reference.CV_32FC2,
+          Array.from({ length: 12 }, () => 99),
+        ),
+      ),
+      auditReferenceFloatDestination(reference, method, "wrong-shape", () =>
+        makeSeedMat(
+          reference,
+          3,
+          2,
+          reference.CV_32FC2,
+          Array.from({ length: 12 }, () => 99),
+        ),
+      ),
+      auditReferenceFloatDestination(reference, method, "wrong-type-and-channels", () =>
+        makeSeedMat(
+          reference,
+          2,
+          3,
+          reference.CV_64FC1,
+          Array.from({ length: 6 }, () => 99),
+        ),
+      ),
+    ],
+    roi: [
+      auditReferenceUnaryRoi(
+        reference,
+        method,
+        "compatible-separate",
+        [1, 1, 3, 2],
+        [2, 1, 3, 2],
+        false,
+      ),
+      auditReferenceUnaryRoi(
+        reference,
+        method,
+        "incompatible-detach",
+        [1, 1, 3, 2],
+        [2, 1, 2, 3],
+        false,
+      ),
+      auditReferenceUnaryRoi(
+        reference,
+        method,
+        "wrong-type-detach",
+        [1, 1, 3, 2],
+        [2, 1, 3, 2],
+        false,
+        reference.CV_64FC1,
+      ),
+      auditReferenceUnaryRoi(reference, method, "exact-alias", [1, 1, 3, 2], [1, 1, 3, 2], true),
+      auditReferenceUnaryRoi(reference, method, "overlap-right", [0, 1, 3, 2], [1, 1, 3, 2], true),
+      auditReferenceUnaryRoi(reference, method, "overlap-down", [1, 0, 3, 2], [1, 1, 3, 2], true),
+    ],
+    empty: { fresh: freshEmpty, freshIntoFull: freshEmptyIntoFull, typed: typedEmpty },
+    deleted: { source: deletedSourceAudit, destination: deletedDestinationAudit },
+    validTypes,
+    unsupportedIntegerTypes,
+    numericEdges,
+    excludedUnsafeIntegerTypes: method === "sqrt" ? FLOAT_INTEGER_TYPES.map(([name]) => name) : [],
+  };
+}
+
+function auditReferencePowCall(reference, power, matrices, source, destination) {
+  return auditTypedMatCall(() => reference.pow(source, power, destination), matrices);
+}
+
+function auditReferencePowRoi(reference, name, sourceRect, destinationRect, sameParent) {
+  const sourceParent = makeSeedMat(
+    reference,
+    4,
+    7,
+    reference.CV_32FC1,
+    Array.from({ length: 28 }, (_, index) => index + 1),
+  );
+  const destinationParent = sameParent
+    ? sourceParent
+    : makeSeedMat(
+        reference,
+        4,
+        7,
+        reference.CV_32FC1,
+        Array.from({ length: 28 }, () => 99),
+      );
+  const source = sourceParent.roi(new reference.Rect(...sourceRect));
+  const destination = destinationParent.roi(new reference.Rect(...destinationRect));
+  const audit = auditReferencePowCall(
+    reference,
+    2,
+    [
+      ["source", source],
+      ["destination", destination],
+      ["sourceParent", sourceParent],
+      ["destinationParent", destinationParent],
+    ],
+    source,
+    destination,
+  );
+  safeDelete(destination);
+  safeDelete(source);
+  if (!sameParent) safeDelete(destinationParent);
+  safeDelete(sourceParent);
+  return { name, sameParent, audit };
+}
+
+function auditReferencePow(reference) {
+  const source = makeSeedMat(reference, 1, 5, reference.CV_64FC1, [4, -4, 0, -0, 2]);
+  const destination = new reference.Mat();
+  const arity = {
+    functionLength: capturePrimitive(() => reference.pow.length),
+    zero: captureCall(() => reference.pow()),
+    one: captureCall(() => reference.pow(source)),
+    two: captureCall(() => reference.pow(source, 2)),
+    three: captureCall(() => reference.pow(source, 2, destination)),
+    four: captureCall(() => reference.pow(source, 2, destination, 1)),
+    destinationAfter: capturePrimitive(() => summarizeTypedMat(destination)),
+  };
+  const argumentTypes = {
+    source: {
+      null: captureCall(() => reference.pow(null, 2, destination)),
+      undefined: captureCall(() => reference.pow(undefined, 2, destination)),
+      object: captureCall(() => reference.pow({}, 2, destination)),
+      number: captureCall(() => reference.pow(1, 2, destination)),
+      string: captureCall(() => reference.pow("x", 2, destination)),
+    },
+    power: [
+      ["negative-zero", -0],
+      ["half", 0.5],
+      ["f64-precision", 1.0000000000000002],
+      ["NaN", Number.NaN],
+      ["positive-infinity", Number.POSITIVE_INFINITY],
+      ["negative-infinity", Number.NEGATIVE_INFINITY],
+      ["true", true],
+      ["false", false],
+      ["null", null],
+      ["undefined", undefined],
+      ["string", "2"],
+      ["object", {}],
+      ["array", []],
+    ].map(([label, power]) => {
+      const scalarDestination = new reference.Mat();
+      const audit = auditReferencePowCall(
+        reference,
+        power,
+        [
+          ["source", source],
+          ["destination", scalarDestination],
+        ],
+        source,
+        scalarDestination,
+      );
+      safeDelete(scalarDestination);
+      return { label, audit };
+    }),
+    destination: {
+      null: captureCall(() => reference.pow(source, 2, null)),
+      undefined: captureCall(() => reference.pow(source, 2, undefined)),
+      object: captureCall(() => reference.pow(source, 2, {})),
+      number: captureCall(() => reference.pow(source, 2, 1)),
+      string: captureCall(() => reference.pow(source, 2, "x")),
+    },
+  };
+  safeDelete(destination);
+  safeDelete(source);
+
+  const destinationReplacement = [
+    ["empty", () => new reference.Mat()],
+    [
+      "correct-metadata",
+      () =>
+        makeSeedMat(
+          reference,
+          2,
+          3,
+          reference.CV_32FC2,
+          Array.from({ length: 12 }, () => 99),
+        ),
+    ],
+    [
+      "wrong-shape",
+      () =>
+        makeSeedMat(
+          reference,
+          3,
+          2,
+          reference.CV_32FC2,
+          Array.from({ length: 12 }, () => 99),
+        ),
+    ],
+    [
+      "wrong-type-and-channels",
+      () =>
+        makeSeedMat(
+          reference,
+          2,
+          3,
+          reference.CV_64FC1,
+          Array.from({ length: 6 }, () => 99),
+        ),
+    ],
+  ].map(([name, createDestination]) => {
+    const replacementSource = makeSeedMat(
+      reference,
+      2,
+      3,
+      reference.CV_32FC2,
+      [1, -2, 3, -4, 5, -6, 7, -8, 9, -10, 11, -12],
+    );
+    const replacementDestination = createDestination();
+    const audit = auditReferencePowCall(
+      reference,
+      2,
+      [
+        ["source", replacementSource],
+        ["destination", replacementDestination],
+      ],
+      replacementSource,
+      replacementDestination,
+    );
+    safeDelete(replacementDestination);
+    safeDelete(replacementSource);
+    return { name, audit };
+  });
+
+  const types = [...FLOAT_INTEGER_TYPES, ...FLOAT_VALID_TYPES].map(([name, , , values]) => {
+    const typedSource = makeSeedMat(
+      reference,
+      2,
+      3,
+      referenceTypeFromName(reference, name),
+      values,
+    );
+    const typedDestination = new reference.Mat();
+    const audit = auditReferencePowCall(
+      reference,
+      2,
+      [
+        ["source", typedSource],
+        ["destination", typedDestination],
+      ],
+      typedSource,
+      typedDestination,
+    );
+    safeDelete(typedDestination);
+    safeDelete(typedSource);
+    return { name, available: true, audit };
+  });
+
+  const integerPowers = FLOAT_INTEGER_TYPES.map(([name]) => {
+    const signed = name.includes("8S") || name.includes("16S") || name.includes("32S");
+    const values = signed ? [-3, -2, -1, 0, 1, 2, 3] : [0, 1, 2, 3, 4];
+    return {
+      name,
+      input: values,
+      powers: [0, 1, 2, 3, -1, -2].map((power) => {
+        const integerSource = makeSeedMat(
+          reference,
+          1,
+          values.length,
+          referenceTypeFromName(reference, name),
+          values,
+        );
+        const integerDestination = new reference.Mat();
+        const audit = auditReferencePowCall(
+          reference,
+          power,
+          [
+            ["source", integerSource],
+            ["destination", integerDestination],
+          ],
+          integerSource,
+          integerDestination,
+        );
+        safeDelete(integerDestination);
+        safeDelete(integerSource);
+        return { power, audit };
+      }),
+    };
+  });
+
+  const numericEdges = [
+    ["F32", reference.CV_32FC1],
+    ["F64", reference.CV_64FC1],
+  ].map(([name, type]) => ({
+    name,
+    powers: [-1, -0.5, -0, 0, 0.5, 1, 2, 3].map((power) => {
+      const edgeSource = makeSeedMat(reference, 1, 9, type, [
+        Number.NEGATIVE_INFINITY,
+        -4,
+        -0,
+        0,
+        4,
+        Number.POSITIVE_INFINITY,
+        Number.NaN,
+        1,
+        -1,
+      ]);
+      const edgeDestination = new reference.Mat();
+      const audit = auditReferencePowCall(
+        reference,
+        power,
+        [
+          ["source", edgeSource],
+          ["destination", edgeDestination],
+        ],
+        edgeSource,
+        edgeDestination,
+      );
+      safeDelete(edgeDestination);
+      safeDelete(edgeSource);
+      return { power: encodeValue(power), audit };
+    }),
+  }));
+
+  const emptySource = new reference.Mat();
+  const emptyDestination = new reference.Mat();
+  const freshEmpty = auditReferencePowCall(
+    reference,
+    2,
+    [
+      ["source", emptySource],
+      ["destination", emptyDestination],
+    ],
+    emptySource,
+    emptyDestination,
+  );
+  safeDelete(emptyDestination);
+  safeDelete(emptySource);
+  const emptyIntoFullSource = new reference.Mat();
+  const fullDestination = makeSeedMat(reference, 1, 2, reference.CV_32FC1, [7, 8]);
+  const freshEmptyIntoFull = auditReferencePowCall(
+    reference,
+    2,
+    [
+      ["source", emptyIntoFullSource],
+      ["destination", fullDestination],
+    ],
+    emptyIntoFullSource,
+    fullDestination,
+  );
+  safeDelete(fullDestination);
+  safeDelete(emptyIntoFullSource);
+
+  const deletedSource = makeSeedMat(reference, 1, 1, reference.CV_32FC1, [1]);
+  const liveDestination = new reference.Mat();
+  deletedSource.delete();
+  const deletedSourceAudit = auditReferencePowCall(
+    reference,
+    2,
+    [
+      ["source", deletedSource],
+      ["destination", liveDestination],
+    ],
+    deletedSource,
+    liveDestination,
+  );
+  safeDelete(liveDestination);
+  const liveSource = makeSeedMat(reference, 1, 1, reference.CV_32FC1, [1]);
+  const deletedDestination = new reference.Mat();
+  deletedDestination.delete();
+  const deletedDestinationAudit = auditReferencePowCall(
+    reference,
+    2,
+    [
+      ["source", liveSource],
+      ["destination", deletedDestination],
+    ],
+    liveSource,
+    deletedDestination,
+  );
+  safeDelete(liveSource);
+
+  return {
+    arity,
+    argumentTypes,
+    destinationReplacement,
+    roi: [
+      auditReferencePowRoi(reference, "compatible-separate", [1, 1, 3, 2], [2, 1, 3, 2], false),
+      auditReferencePowRoi(reference, "incompatible-detach", [1, 1, 3, 2], [2, 1, 2, 3], false),
+      auditReferencePowRoi(reference, "exact-alias", [1, 1, 3, 2], [1, 1, 3, 2], true),
+      auditReferencePowRoi(reference, "overlap-right", [0, 1, 3, 2], [1, 1, 3, 2], true),
+      auditReferencePowRoi(reference, "overlap-down", [1, 0, 3, 2], [1, 1, 3, 2], true),
+    ],
+    empty: { fresh: freshEmpty, freshIntoFull: freshEmptyIntoFull },
+    deleted: { source: deletedSourceAudit, destination: deletedDestinationAudit },
+    types,
+    integerPowers,
+    numericEdges,
+    excludedUnsafeIntegerPowers: ["fractional", "NaN", "positive-infinity", "negative-infinity"],
+  };
+}
+
+function auditReferenceMagnitudeRoi(reference, name, aliasInput, sourceRect, destinationRect) {
+  const aliasParent = makeSeedMat(
+    reference,
+    4,
+    7,
+    reference.CV_32FC1,
+    Array.from({ length: 28 }, (_, index) => index + 1),
+  );
+  const other = makeSeedMat(reference, 2, 3, reference.CV_32FC1, [0, 0, 0, 0, 0, 0]);
+  const aliasedInput = aliasParent.roi(new reference.Rect(...sourceRect));
+  const destination = aliasParent.roi(new reference.Rect(...destinationRect));
+  const x = aliasInput === "x" ? aliasedInput : other;
+  const y = aliasInput === "y" ? aliasedInput : other;
+  const audit = auditTypedMatCall(
+    () => reference.magnitude(x, y, destination),
+    [
+      ["x", x],
+      ["y", y],
+      ["destination", destination],
+      ["aliasParent", aliasParent],
+    ],
+  );
+  safeDelete(destination);
+  safeDelete(aliasedInput);
+  safeDelete(other);
+  safeDelete(aliasParent);
+  return { name, aliasInput, audit };
+}
+
+function auditReferenceMagnitude(reference) {
+  const x = makeSeedMat(reference, 1, 2, reference.CV_32FC1, [3, 4]);
+  const y = makeSeedMat(reference, 1, 2, reference.CV_32FC1, [4, 3]);
+  const destination = new reference.Mat();
+  const arity = {
+    functionLength: capturePrimitive(() => reference.magnitude.length),
+    zero: captureCall(() => reference.magnitude()),
+    one: captureCall(() => reference.magnitude(x)),
+    two: captureCall(() => reference.magnitude(x, y)),
+    three: captureCall(() => reference.magnitude(x, y, destination)),
+    four: captureCall(() => reference.magnitude(x, y, destination, 1)),
+    destinationAfter: capturePrimitive(() => summarizeTypedMat(destination)),
+  };
+  const invalidMat = (position, value) =>
+    captureCall(() =>
+      reference.magnitude(
+        position === "x" ? value : x,
+        position === "y" ? value : y,
+        position === "destination" ? value : destination,
+      ),
+    );
+  const argumentTypes = Object.fromEntries(
+    ["x", "y", "destination"].map((position) => [
+      position,
+      Object.fromEntries(
+        [
+          ["null", null],
+          ["undefined", undefined],
+          ["object", {}],
+          ["number", 1],
+          ["string", "x"],
+        ].map(([name, value]) => [name, invalidMat(position, value)]),
+      ),
+    ]),
+  );
+  safeDelete(destination);
+  safeDelete(y);
+  safeDelete(x);
+
+  const destinationReplacement = [
+    ["empty", () => new reference.Mat()],
+    [
+      "correct-metadata",
+      () =>
+        makeSeedMat(
+          reference,
+          2,
+          3,
+          reference.CV_32FC1,
+          Array.from({ length: 6 }, () => 99),
+        ),
+    ],
+    [
+      "wrong-shape",
+      () =>
+        makeSeedMat(
+          reference,
+          3,
+          2,
+          reference.CV_32FC1,
+          Array.from({ length: 6 }, () => 99),
+        ),
+    ],
+    [
+      "wrong-type-and-channels",
+      () =>
+        makeSeedMat(
+          reference,
+          2,
+          3,
+          reference.CV_64FC2,
+          Array.from({ length: 12 }, () => 99),
+        ),
+    ],
+  ].map(([name, createDestination]) => {
+    const left = makeSeedMat(reference, 2, 3, reference.CV_32FC1, [1, -2, 3, -4, 5, -6]);
+    const right = makeSeedMat(reference, 2, 3, reference.CV_32FC1, [6, 5, 4, 3, 2, 1]);
+    const output = createDestination();
+    const audit = auditTypedMatCall(
+      () => reference.magnitude(left, right, output),
+      [
+        ["x", left],
+        ["y", right],
+        ["destination", output],
+      ],
+    );
+    safeDelete(output);
+    safeDelete(right);
+    safeDelete(left);
+    return { name, audit };
+  });
+
+  const validTypes = FLOAT_VALID_TYPES.map(([name, , , values]) => {
+    const type = referenceTypeFromName(reference, name);
+    const left = makeSeedMat(reference, 2, 3, type, values);
+    const right = makeSeedMat(
+      reference,
+      2,
+      3,
+      type,
+      values.map((value) => Math.abs(value) + 1),
+    );
+    const output = new reference.Mat();
+    const audit = auditTypedMatCall(
+      () => reference.magnitude(left, right, output),
+      [
+        ["x", left],
+        ["y", right],
+        ["destination", output],
+      ],
+    );
+    safeDelete(output);
+    safeDelete(right);
+    safeDelete(left);
+    return { name, available: true, audit };
+  });
+  const unsupportedIntegerTypes = FLOAT_INTEGER_TYPES.map(([name, , , values]) => {
+    const type = referenceTypeFromName(reference, name);
+    const left = makeSeedMat(reference, 2, 3, type, values);
+    const right = makeSeedMat(
+      reference,
+      2,
+      3,
+      type,
+      values.map((value) => Math.abs(value) + 1),
+    );
+    const output = new reference.Mat();
+    const audit = auditTypedMatCall(
+      () => reference.magnitude(left, right, output),
+      [
+        ["x", left],
+        ["y", right],
+        ["destination", output],
+      ],
+    );
+    safeDelete(output);
+    safeDelete(right);
+    safeDelete(left);
+    return { name, audit };
+  });
+
+  const mismatchBase = makeSeedMat(reference, 2, 2, reference.CV_32FC1, [1, 2, 3, 4]);
+  const mismatches = [
+    ["shape", makeSeedMat(reference, 1, 4, reference.CV_32FC1, [1, 2, 3, 4])],
+    ["depth", makeSeedMat(reference, 2, 2, reference.CV_64FC1, [1, 2, 3, 4])],
+    ["channels", makeSeedMat(reference, 2, 2, reference.CV_32FC2, [1, 2, 3, 4, 5, 6, 7, 8])],
+    ["empty", new reference.Mat()],
+  ].map(([name, right]) => {
+    const output = new reference.Mat();
+    const audit = auditTypedMatCall(
+      () => reference.magnitude(mismatchBase, right, output),
+      [
+        ["x", mismatchBase],
+        ["y", right],
+        ["destination", output],
+      ],
+    );
+    safeDelete(output);
+    safeDelete(right);
+    return { name, audit };
+  });
+  safeDelete(mismatchBase);
+
+  const numericEdges = [
+    [
+      "F32",
+      reference.CV_32FC1,
+      [
+        0,
+        -0,
+        3,
+        -3,
+        3.4028234663852886e38,
+        3.4028234663852886e38,
+        1.1754943508222875e-38,
+        1.401298464324817e-45,
+        Infinity,
+        -Infinity,
+        NaN,
+        1,
+        Infinity,
+        NaN,
+      ],
+      [
+        0,
+        0,
+        4,
+        4,
+        0,
+        3.4028234663852886e38,
+        0,
+        1.401298464324817e-45,
+        1,
+        Infinity,
+        1,
+        NaN,
+        NaN,
+        Infinity,
+      ],
+    ],
+    [
+      "F64",
+      reference.CV_64FC1,
+      [
+        0,
+        -0,
+        3,
+        -3,
+        Number.MAX_VALUE,
+        Number.MAX_VALUE,
+        Number.MIN_VALUE,
+        2.2250738585072014e-308,
+        Infinity,
+        -Infinity,
+        NaN,
+        1,
+        Infinity,
+        NaN,
+      ],
+      [0, 0, 4, 4, 0, Number.MAX_VALUE, 0, Number.MIN_VALUE, 1, Infinity, 1, NaN, NaN, Infinity],
+    ],
+  ].map(([name, type, xValues, yValues]) => {
+    const left = makeSeedMat(reference, 1, xValues.length, type, xValues);
+    const right = makeSeedMat(reference, 1, yValues.length, type, yValues);
+    const output = new reference.Mat();
+    const audit = auditTypedMatCall(
+      () => reference.magnitude(left, right, output),
+      [
+        ["x", left],
+        ["y", right],
+        ["destination", output],
+      ],
+    );
+    safeDelete(output);
+    safeDelete(right);
+    safeDelete(left);
+    return { name, audit };
+  });
+
+  const emptyX = new reference.Mat();
+  const emptyY = new reference.Mat();
+  const emptyDestination = new reference.Mat();
+  const empty = auditTypedMatCall(
+    () => reference.magnitude(emptyX, emptyY, emptyDestination),
+    [
+      ["x", emptyX],
+      ["y", emptyY],
+      ["destination", emptyDestination],
+    ],
+  );
+  safeDelete(emptyDestination);
+  safeDelete(emptyY);
+  safeDelete(emptyX);
+
+  const deletedX = makeSeedMat(reference, 1, 1, reference.CV_32FC1, [1]);
+  const liveY = makeSeedMat(reference, 1, 1, reference.CV_32FC1, [2]);
+  const liveOutput = new reference.Mat();
+  deletedX.delete();
+  const deletedXAudit = auditTypedMatCall(
+    () => reference.magnitude(deletedX, liveY, liveOutput),
+    [
+      ["x", deletedX],
+      ["y", liveY],
+      ["destination", liveOutput],
+    ],
+  );
+  safeDelete(liveOutput);
+  safeDelete(liveY);
+  const liveX = makeSeedMat(reference, 1, 1, reference.CV_32FC1, [1]);
+  const deletedY = makeSeedMat(reference, 1, 1, reference.CV_32FC1, [2]);
+  const secondOutput = new reference.Mat();
+  deletedY.delete();
+  const deletedYAudit = auditTypedMatCall(
+    () => reference.magnitude(liveX, deletedY, secondOutput),
+    [
+      ["x", liveX],
+      ["y", deletedY],
+      ["destination", secondOutput],
+    ],
+  );
+  safeDelete(secondOutput);
+  safeDelete(liveX);
+  const thirdX = makeSeedMat(reference, 1, 1, reference.CV_32FC1, [1]);
+  const thirdY = makeSeedMat(reference, 1, 1, reference.CV_32FC1, [2]);
+  const deletedOutput = new reference.Mat();
+  deletedOutput.delete();
+  const deletedDestinationAudit = auditTypedMatCall(
+    () => reference.magnitude(thirdX, thirdY, deletedOutput),
+    [
+      ["x", thirdX],
+      ["y", thirdY],
+      ["destination", deletedOutput],
+    ],
+  );
+  safeDelete(thirdY);
+  safeDelete(thirdX);
+
+  return {
+    arity,
+    argumentTypes,
+    destinationReplacement,
+    aliases: [
+      auditReferenceMagnitudeRoi(reference, "exact-x", "x", [1, 1, 3, 2], [1, 1, 3, 2]),
+      auditReferenceMagnitudeRoi(reference, "exact-y", "y", [1, 1, 3, 2], [1, 1, 3, 2]),
+      auditReferenceMagnitudeRoi(reference, "x-overlap-right", "x", [0, 1, 3, 2], [1, 1, 3, 2]),
+      auditReferenceMagnitudeRoi(reference, "x-overlap-down", "x", [1, 0, 3, 2], [1, 1, 3, 2]),
+      auditReferenceMagnitudeRoi(reference, "y-overlap-right", "y", [0, 1, 3, 2], [1, 1, 3, 2]),
+      auditReferenceMagnitudeRoi(reference, "y-overlap-down", "y", [1, 0, 3, 2], [1, 1, 3, 2]),
+    ],
+    empty,
+    deleted: { x: deletedXAudit, y: deletedYAudit, destination: deletedDestinationAudit },
+    validTypes,
+    unsupportedIntegerTypes,
+    mismatches,
+    numericEdges,
+  };
+}
+
+function auditFloatMath(reference) {
+  return {
+    unary: Object.fromEntries(
+      FLOAT_UNARY_METHODS.map((method) => [method, auditReferenceUnary(reference, method)]),
+    ),
+    pow: auditReferencePow(reference),
+    magnitude: auditReferenceMagnitude(reference),
+    halfFloatConstants: {
+      CV_16F: encodeValue(reference.CV_16F),
+      CV_16FC1: encodeValue(reference.CV_16FC1),
+    },
+  };
+}
+
 function encodeValue(value) {
   if (value === undefined) {
     return { type: "undefined" };
@@ -2690,6 +3713,10 @@ self.addEventListener("message", async ({ data: input }) => {
       self.postMessage({ outputs: { countNonZeroAudit: auditCountNonZero(reference) } });
       return;
     }
+    if (request === "float-math") {
+      self.postMessage({ outputs: { floatMathAudit: auditFloatMath(reference) } });
+      return;
+    }
     const source = reference.matFromArray(2, 3, reference.CV_8UC1, sourceInput);
     const outputs = {};
     const operations = [
@@ -2865,6 +3892,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.rotateAudit = auditRotate(reference);
     outputs.transposeAudit = auditTranspose(reference);
     outputs.countNonZeroAudit = auditCountNonZero(reference);
+    outputs.floatMathAudit = auditFloatMath(reference);
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });
