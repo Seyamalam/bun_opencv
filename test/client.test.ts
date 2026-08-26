@@ -2079,6 +2079,29 @@ describe("OpenCv client", () => {
     floating.dispose();
   });
 
+  test("constructs typed empty matrix headers", () => {
+    const zeroRows = client.matFromF32(0, 3, 2, new Float32Array());
+    expect([zeroRows.rows, zeroRows.columns, zeroRows.channels, zeroRows.depth]).toEqual([
+      0,
+      3,
+      2,
+      "f32",
+    ]);
+    expect(zeroRows.byteLength).toBe(0);
+
+    const zeroColumns = client.matFromF64(2, 0, 3, new Float64Array());
+    expect([
+      zeroColumns.rows,
+      zeroColumns.columns,
+      zeroColumns.channels,
+      zeroColumns.depth,
+    ]).toEqual([2, 0, 3, "f64"]);
+    expect(zeroColumns.byteLength).toBe(0);
+
+    zeroColumns.dispose();
+    zeroRows.dispose();
+  });
+
   test("initializes matrices and controls deterministic random fills", () => {
     const identity = client.zerosU8(2, 3, 1);
     client.setIdentity(identity);

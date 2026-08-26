@@ -171,8 +171,19 @@ impl Mat {
         columns: u32,
         channels: u16,
     ) -> Result<Self, MatError> {
-        let expected = checked_buffer_length(rows, columns, channels, T::DEPTH)?;
         let actual = data.len().saturating_mul(T::DEPTH.byte_width());
+        if rows == 0 || columns == 0 {
+            let empty = Self::empty_with_layout(rows, columns, channels, T::DEPTH, true)?;
+            if actual != 0 {
+                return Err(MatError::IncorrectBufferLength {
+                    expected: 0,
+                    actual,
+                });
+            }
+            return Ok(empty);
+        }
+
+        let expected = checked_buffer_length(rows, columns, channels, T::DEPTH)?;
         if actual != expected {
             return Err(MatError::IncorrectBufferLength { expected, actual });
         }
@@ -1093,7 +1104,7 @@ mod tests {
     }
 
     #[test]
-    fn empty_matrix_has_canonical_header_without_relaxing_constructors() {
+    fn empty_matrix_has_canonical_header() {
         let matrix = mat_empty();
 
         assert_eq!(
@@ -1109,10 +1120,43 @@ mod tests {
             Mat::zeros_u8(0, 1, 1),
             Err(MatError::EmptyDimensions)
         ));
-        assert!(matches!(
-            Mat::from_u8_slice(&[], 0, 1, 1),
-            Err(MatError::EmptyDimensions)
-        ));
+    }
+
+    #[test]
+    fn typed_constructors_preserve_empty_shape_depth_and_channels() {
+        let matrices = [
+            Mat::from_typed_slice::<u8>(&[], 0, 3, 2),
+            Mat::from_typed_slice::<i8>(&[], 3, 0, 2),
+            Mat::from_typed_slice::<u16>(&[], 0, 0, 3),
+            Mat::from_typed_slice::<i16>(&[], 0, 3, 4),
+            Mat::from_typed_slice::<i32>(&[], 3, 0, 5),
+            Mat::from_typed_slice::<f32>(&[], 0, 0, 6),
+            Mat::from_typed_slice::<f64>(&[], 0, 3, 7),
+        ];
+        let expected = [
+            (0, 3, 2, MatDepth::U8),
+            (3, 0, 2, MatDepth::I8),
+            (0, 0, 3, MatDepth::U16),
+            (0, 3, 4, MatDepth::I16),
+            (3, 0, 5, MatDepth::I32),
+            (0, 0, 6, MatDepth::F32),
+            (0, 3, 7, MatDepth::F64),
+        ];
+
+        for (matrix, (rows, columns, channels, depth)) in
+            matrices.into_iter().zip(expected)
+        {
+            let matrix = matrix.expect("typed empty matrix");
+            assert_eq!(
+                (matrix.rows(), matrix.columns(), matrix.channels()),
+                (rows, columns, channels)
+            );
+            assert_eq!(matrix.depth(), depth);
+            assert_eq!(matrix.row_stride(), 0);
+            assert_eq!(matrix.byte_length(), 0);
+            assert!(matrix.is_continuous());
+            assert!(matrix.to_u8_array().is_empty());
+        }
     }
 
     #[test]

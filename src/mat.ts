@@ -153,8 +153,8 @@ export function validateMatrixInput(
   byteLength: number,
   byteWidth = 1,
 ): void {
-  validateMatrixDimension(rows, "rows");
-  validateMatrixDimension(columns, "columns");
+  validateMatrixExtent(rows, "rows");
+  validateMatrixExtent(columns, "columns");
   if (!Number.isSafeInteger(channels) || channels <= 0 || channels > MAX_CHANNELS) {
     throw new OpenCvInputError(`channels must be an integer from 1 through ${MAX_CHANNELS}`);
   }
@@ -196,6 +196,12 @@ function depthName(depth: number): MatDepth {
 export function validateMatrixDimension(value: number, label: string): void {
   if (!Number.isSafeInteger(value) || value <= 0 || value > MAX_WASM_BYTE_LENGTH) {
     throw new OpenCvInputError(`${label} must be a positive 32-bit integer`);
+  }
+}
+
+function validateMatrixExtent(value: number, label: string): void {
+  if (!Number.isSafeInteger(value) || value < 0 || value > MAX_WASM_BYTE_LENGTH) {
+    throw new OpenCvInputError(`${label} must be a non-negative 32-bit integer`);
   }
 }
 
