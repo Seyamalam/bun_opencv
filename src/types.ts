@@ -19,6 +19,9 @@ export type NormType = 1 | 2 | 4 | 5 | 6 | 7 | 9 | 10 | 12 | 13;
 /** Norm modes accepted by normalization. */
 export type NormalizeType = 1 | 2 | 4 | 32;
 
+/** OpenCV reduce mode: sum, average, maximum, or minimum. */
+export type ReduceKind = 0 | 1 | 2 | 3;
+
 /** Zero-based matrix coordinate. */
 export interface Point {
   readonly x: number;
@@ -104,6 +107,23 @@ export interface OpenCvBackend {
     beta: number,
     normType: number,
     mask: WasmMatHandle,
+  ): void;
+  matMeanStdDevInto(
+    source: WasmMatHandle,
+    means: WasmMatHandle,
+    standardDeviations: WasmMatHandle,
+  ): void;
+  matMeanStdDevMaskedInto(
+    source: WasmMatHandle,
+    means: WasmMatHandle,
+    standardDeviations: WasmMatHandle,
+    mask: WasmMatHandle,
+  ): void;
+  matReduceInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    axis: number,
+    kind: number,
   ): void;
   matHconcat2(first: WasmMatHandle, second: WasmMatHandle): WasmMatHandle;
   matHconcat3(first: WasmMatHandle, second: WasmMatHandle, third: WasmMatHandle): WasmMatHandle;
@@ -271,6 +291,7 @@ export interface OpenCv {
   magnitude(x: Mat, y: Mat): Mat;
   max(left: Mat, right: Mat): Mat;
   mean(source: Mat): Scalar;
+  meanStdDev(source: Mat, means: Mat, standardDeviations: Mat, mask?: Mat): void;
   merge(
     sources: readonly [Mat, Mat] | readonly [Mat, Mat, Mat] | readonly [Mat, Mat, Mat, Mat],
   ): Mat;
@@ -295,6 +316,7 @@ export interface OpenCv {
   repeat(source: Mat, rowRepeats: number, columnRepeats: number, destination: Mat): void;
   rotate(source: Mat, rotateCode: 0 | 1 | 2): Mat;
   rotate(source: Mat, destination: Mat, rotateCode: 0 | 1 | 2): void;
+  reduce(source: Mat, destination: Mat, axis: 0 | 1, kind: ReduceKind): void;
   threshold(image: RgbaImage, threshold: number): RgbaImage;
   subtract(left: Mat, right: Mat): Mat;
   split(source: Mat): Mat[];

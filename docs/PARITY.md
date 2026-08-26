@@ -25,7 +25,7 @@ Desktop modules that the official OpenCV.js build disables are outside this pari
 
 ## Working partial families
 
-Forty-one families have useful original Rust/WASM slices. None yet satisfies the full-family definition, so full parity remains 0 of 488.
+Forty-three families have useful original Rust/WASM slices. None yet satisfies the full-family definition, so full parity remains 0 of 488.
 
 | Package methods                                        | OpenCV.js families                                                    | Current limit                                |
 | ------------------------------------------------------ | --------------------------------------------------------------------- | -------------------------------------------- |
@@ -41,6 +41,7 @@ Forty-one families have useful original Rust/WASM slices. None yet satisfies the
 | `copyMakeBorder`                                       | `cv.copyMakeBorder`                                                   | All depths and five border modes             |
 | `lut`                                                  | `cv.LUT`                                                              | Byte sources and every table depth           |
 | `norm`, `normalize`                                    | `cv.norm`, `cv.normalize`                                             | All depths, masks, and major norm modes      |
+| `meanStdDev`, `reduce`                                 | `cv.meanStdDev`, `cv.reduce`                                          | All depths and mutable outputs               |
 | `mean`, `minMaxLoc`, `trace`                           | `cv.mean`, `cv.minMaxLoc`, `cv.trace`                                 | Masks or multi-channel trace remain          |
 | `grayscale`, `resizeNearest`, `threshold`              | `cv.cvtColor`, `cv.resize`, `cv.threshold`                            | One RGBA or luma-derived specialization each |
 

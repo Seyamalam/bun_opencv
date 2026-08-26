@@ -37,6 +37,32 @@ export const PARITY_MANIFEST = {
   entries: [
     {
       implementationOrigin: "original",
+      method: "meanStdDev",
+      module: "core",
+      notes:
+        "All source depths, per-channel F64 outputs, optional U8 masks, strided regions, and mutable outputs; differential fixtures remain.",
+      patentReview: "required",
+      sources: [CORE_ARRAY_SOURCE],
+      status: "partial",
+      upstream: "cv.meanStdDev",
+      upstreamId: "core.function.mean-std-dev",
+      wasmExport: "matMeanStdDevInto",
+    },
+    {
+      implementationOrigin: "original",
+      method: "reduce",
+      module: "core",
+      notes:
+        "Both axes, SUM/AVG/MAX/MIN, all source and destination depths, strided regions, and mutable outputs; differential fixtures remain.",
+      patentReview: "required",
+      sources: [CORE_ARRAY_SOURCE],
+      status: "partial",
+      upstream: "cv.reduce",
+      upstreamId: "core.function.reduce",
+      wasmExport: "matReduceInto",
+    },
+    {
+      implementationOrigin: "original",
       method: "norm",
       module: "core",
       notes:

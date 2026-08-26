@@ -217,6 +217,34 @@ function maskedBytes(source: WasmMatHandle, mask: WasmMatHandle): Uint8Array {
   return Uint8Array.from(output);
 }
 
+function writeMeanStdDev(
+  source: WasmMatHandle,
+  means: WasmMatHandle,
+  deviations: WasmMatHandle,
+  mask?: WasmMatHandle,
+): void {
+  const input = source.toUint8Array();
+  const selected = mask?.toUint8Array();
+  const channels: number[][] = Array.from({ length: source.channels }, () => []);
+  for (let pixel = 0; pixel < source.rows * source.columns; pixel += 1) {
+    if (selected !== undefined && selected[pixel] === 0) continue;
+    for (let channel = 0; channel < source.channels; channel += 1) {
+      channels[channel]?.push(input[pixel * source.channels + channel] ?? 0);
+    }
+  }
+  const average = channels.map((values) =>
+    values.length === 0 ? 0 : values.reduce((sum, value) => sum + value, 0) / values.length,
+  );
+  const standardDeviation = channels.map((values, channel) => {
+    const mean = average[channel] ?? 0;
+    return values.length === 0
+      ? 0
+      : Math.sqrt(values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length);
+  });
+  means.copyFromBytes(copyViewBytes(new Float64Array(average)));
+  deviations.copyFromBytes(copyViewBytes(new Float64Array(standardDeviation)));
+}
+
 class CopyingBackend implements OpenCvBackend {
   grayscaleRgba(data: Uint8Array): Uint8Array {
     return new Uint8Array(data);
@@ -412,6 +440,56 @@ class CopyingBackend implements OpenCvBackend {
       before.set(normalized.subarray(offset, offset + source.channels), offset);
     }
     destination.copyFromBytes(before);
+  }
+
+  matMeanStdDevInto(
+    source: WasmMatHandle,
+    means: WasmMatHandle,
+    standardDeviations: WasmMatHandle,
+  ): void {
+    writeMeanStdDev(source, means, standardDeviations);
+  }
+
+  matMeanStdDevMaskedInto(
+    source: WasmMatHandle,
+    means: WasmMatHandle,
+    standardDeviations: WasmMatHandle,
+    mask: WasmMatHandle,
+  ): void {
+    writeMeanStdDev(source, means, standardDeviations, mask);
+  }
+
+  matReduceInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    axis: number,
+    kind: number,
+  ): void {
+    const input = source.toUint8Array();
+    const output: number[] = [];
+    const major = axis === 0 ? source.columns : source.rows;
+    const count = axis === 0 ? source.rows : source.columns;
+    for (let position = 0; position < major; position += 1) {
+      for (let channel = 0; channel < source.channels; channel += 1) {
+        const values: number[] = [];
+        for (let index = 0; index < count; index += 1) {
+          const row = axis === 0 ? index : position;
+          const column = axis === 0 ? position : index;
+          values.push(input[(row * source.columns + column) * source.channels + channel] ?? 0);
+        }
+        const sum = values.reduce((total, value) => total + value, 0);
+        output.push(
+          kind === 0
+            ? sum
+            : kind === 1
+              ? Math.round(sum / values.length)
+              : kind === 2
+                ? Math.max(...values)
+                : Math.min(...values),
+        );
+      }
+    }
+    destination.copyFromBytes(Uint8Array.from(output));
   }
 
   matHconcat2(first: WasmMatHandle, second: WasmMatHandle): WasmMatHandle {
@@ -1222,6 +1300,22 @@ describe("OpenCv client", () => {
     expect(destination.toUint8Array()).toEqual(new Uint8Array([6, 8]));
     destination.dispose();
     other.dispose();
+    source.dispose();
+  });
+
+  test("writes channel statistics and dimensional reductions", () => {
+    const source = client.matFromU8(2, 2, 1, new Uint8Array([1, 3, 5, 7]));
+    const means = client.zerosF64(1, 1, 1);
+    const deviations = client.zerosF64(1, 1, 1);
+    client.meanStdDev(source, means, deviations);
+    expect(means.toFloat64Array()[0]).toBe(4);
+    expect(deviations.toFloat64Array()[0]).toBeCloseTo(Math.sqrt(5), 12);
+    const reduced = client.zerosU8(1, 2, 1);
+    client.reduce(source, reduced, 0, 0);
+    expect(reduced.toUint8Array()).toEqual(new Uint8Array([6, 10]));
+    reduced.dispose();
+    deviations.dispose();
+    means.dispose();
     source.dispose();
   });
 });

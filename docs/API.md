@@ -119,6 +119,10 @@ Integer outputs use nearest-even rounding and saturation. Integer division by ze
 
 `norm` supports one matrix or a matrix difference, optional U8 masks, numeric norms, Hamming norms, and relative flags. `normalize(source, destination, alpha, beta, type, mask)` writes INF, L1, L2, or MINMAX normalization into a caller-owned matrix. It converts between all scalar depths and preserves unselected destination pixels when a mask is present.
 
+### Statistics and dimensional reduction
+
+`meanStdDev(source, means, standardDeviations, mask)` writes one F64 mean and population standard deviation per channel. `reduce(source, destination, axis, kind)` reduces rows or columns with sum, average, maximum, or minimum. Reduction converts between every scalar depth and uses nearest-even saturated integer output.
+
 ### Matrix reductions
 
 - `countNonZero(source)` supports every scalar depth and requires one channel.

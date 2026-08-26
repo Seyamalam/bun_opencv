@@ -14,6 +14,7 @@ import type {
   OpenCv,
   OpenCvBackend,
   RgbaImage,
+  ReduceKind,
   Scalar,
 } from "./types.js";
 
@@ -310,6 +311,23 @@ class WasmOpenCv implements OpenCv {
     return scalarFromArray(this.#backend.matMean(source.handleForBackend()));
   }
 
+  meanStdDev(source: Mat, means: Mat, standardDeviations: Mat, mask?: Mat): void {
+    if (mask === undefined) {
+      this.#backend.matMeanStdDevInto(
+        source.handleForBackend(),
+        means.handleForBackend(),
+        standardDeviations.handleForBackend(),
+      );
+      return;
+    }
+    this.#backend.matMeanStdDevMaskedInto(
+      source.handleForBackend(),
+      means.handleForBackend(),
+      standardDeviations.handleForBackend(),
+      mask.handleForBackend(),
+    );
+  }
+
   merge(
     sources: readonly [Mat, Mat] | readonly [Mat, Mat, Mat] | readonly [Mat, Mat, Mat, Mat],
   ): Mat {
@@ -471,6 +489,15 @@ class WasmOpenCv implements OpenCv {
       return;
     }
     return new Mat(this.#backend.matRepeat(source.handleForBackend(), rowRepeats, columnRepeats));
+  }
+
+  reduce(source: Mat, destination: Mat, axis: 0 | 1, kind: ReduceKind): void {
+    this.#backend.matReduceInto(
+      source.handleForBackend(),
+      destination.handleForBackend(),
+      axis,
+      kind,
+    );
   }
 
   threshold(image: RgbaImage, threshold: number): RgbaImage {

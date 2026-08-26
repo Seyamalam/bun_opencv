@@ -17,6 +17,7 @@ export type {
   OpenCvBackend,
   Point,
   RgbaImage,
+  ReduceKind,
   Scalar,
 } from "./types.js";
 
