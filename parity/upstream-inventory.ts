@@ -56,6 +56,34 @@ interface AuditedBindingForm {
 }
 
 const AUDITED_BINDING_FORMS: Readonly<Record<string, AuditedBindingForm>> = Object.freeze({
+  "features2d.agast-feature-detector.get-default-name": {
+    overloadCount: 1,
+    runtimeArity: 0,
+  },
+  "features2d.agast-feature-detector.get-nonmax-suppression": {
+    overloadCount: 1,
+    runtimeArity: 0,
+  },
+  "features2d.agast-feature-detector.get-threshold": { overloadCount: 1, runtimeArity: 0 },
+  "features2d.agast-feature-detector.set-nonmax-suppression": {
+    overloadCount: 1,
+    runtimeArity: 1,
+  },
+  "features2d.agast-feature-detector.set-threshold": { overloadCount: 1, runtimeArity: 1 },
+  "features2d.fast-feature-detector.get-default-name": {
+    overloadCount: 1,
+    runtimeArity: 0,
+  },
+  "features2d.fast-feature-detector.get-nonmax-suppression": {
+    overloadCount: 1,
+    runtimeArity: 0,
+  },
+  "features2d.fast-feature-detector.get-threshold": { overloadCount: 1, runtimeArity: 0 },
+  "features2d.fast-feature-detector.set-nonmax-suppression": {
+    overloadCount: 1,
+    runtimeArity: 1,
+  },
+  "features2d.fast-feature-detector.set-threshold": { overloadCount: 1, runtimeArity: 1 },
   "features2d.gfttdetector.get-block-size": { overloadCount: 1, runtimeArity: 0 },
   "features2d.gfttdetector.get-default-name": { overloadCount: 1, runtimeArity: 0 },
   "features2d.gfttdetector.get-harris-detector": { overloadCount: 1, runtimeArity: 0 },
