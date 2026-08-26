@@ -372,11 +372,11 @@ class WasmOpenCv implements OpenCv {
 
   rotate(source: Mat, destination: Mat, rotateCode: number): void {
     requireExactArity(arguments.length, 3, "rotate");
-    this.#backend.matRotateInto(
-      matHandleForBinding(source),
-      matHandleForBinding(destination),
-      toWasmI32(rotateCode),
-    );
+    const sourceHandle = matHandleForBinding(source);
+    const destinationHandle = matHandleForBinding(destination);
+    const code = toWasmI32(rotateCode);
+    if (code < 0 || code > 2) return;
+    this.#backend.matRotateInto(sourceHandle, destinationHandle, code);
   }
 
   rotateAlloc(source: Mat, rotateCode: number): Mat {
