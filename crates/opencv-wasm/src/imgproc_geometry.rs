@@ -25,9 +25,7 @@ pub(crate) struct BoundingRect {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum GeometryError {
     EmptyContour,
-    TooFewPolygonPoints { actual: usize },
     NonFinitePoint { index: usize },
-    NonFiniteQueryPoint,
     NumericOverflow,
     BoundingRectOutOfRange,
 }
@@ -36,18 +34,11 @@ impl fmt::Display for GeometryError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::EmptyContour => formatter.write_str("contour must contain at least one point"),
-            Self::TooFewPolygonPoints { actual } => write!(
-                formatter,
-                "polygon operation requires at least three points; contour has {actual}"
-            ),
             Self::NonFinitePoint { index } => {
                 write!(
                     formatter,
                     "contour point {index} contains a non-finite coordinate"
                 )
-            }
-            Self::NonFiniteQueryPoint => {
-                formatter.write_str("query point coordinates must be finite")
             }
             Self::NumericOverflow => {
                 formatter.write_str("geometry result exceeds finite floating-point range")
@@ -156,16 +147,14 @@ pub(crate) fn is_contour_convex(points: &[Point]) -> Result<bool, GeometryError>
         } else if cross < 0.0 {
             -1
         } else {
-            0
+            return Ok(false);
         };
-        if turn != 0 {
-            if direction != 0 && direction != turn {
-                return Ok(false);
-            }
-            direction = turn;
+        if direction != 0 && direction != turn {
+            return Ok(false);
         }
+        direction = turn;
     }
-    Ok(direction != 0)
+    Ok(true)
 }
 
 /// Classifies a point against a polygon or returns its signed nearest-edge distance.
@@ -177,13 +166,12 @@ pub(crate) fn point_polygon_test(
     measure_distance: bool,
 ) -> Result<f64, GeometryError> {
     validate_points(points)?;
-    if points.len() < 3 {
-        return Err(GeometryError::TooFewPolygonPoints {
-            actual: points.len(),
-        });
-    }
     if !query.x.is_finite() || !query.y.is_finite() {
-        return Err(GeometryError::NonFiniteQueryPoint);
+        return Ok(if measure_distance {
+            -f64::from(f32::MAX).sqrt()
+        } else {
+            -1.0
+        });
     }
 
     let mut inside = false;
@@ -197,7 +185,7 @@ pub(crate) fn point_polygon_test(
         }
         nearest_squared = nearest_squared.min(squared);
         if squared == 0.0 {
-            return Ok(0.0);
+            return Ok(if measure_distance { -0.0 } else { 0.0 });
         }
 
         let crosses_y = (first.y > query.y) != (second.y > query.y);
@@ -322,7 +310,7 @@ mod tests {
     }
 
     #[test]
-    fn convexity_accepts_collinear_edges_but_rejects_concavity_and_lines() {
+    fn convexity_requires_every_turn_to_be_strict_and_consistent() {
         let with_collinear = [
             Point { x: 0.0, y: 0.0 },
             Point { x: 2.0, y: 0.0 },
@@ -337,7 +325,27 @@ mod tests {
             Point { x: 4.0, y: 3.0 },
             Point { x: 0.0, y: 3.0 },
         ];
-        assert_eq!(is_contour_convex(&with_collinear), Ok(true));
+        let duplicate = [
+            RECTANGLE[0],
+            RECTANGLE[1],
+            RECTANGLE[1],
+            RECTANGLE[2],
+            RECTANGLE[3],
+        ];
+        let repeated_close = [
+            RECTANGLE[0],
+            RECTANGLE[1],
+            RECTANGLE[2],
+            RECTANGLE[3],
+            RECTANGLE[0],
+        ];
+        let clockwise: Vec<_> = RECTANGLE.iter().copied().rev().collect();
+
+        assert_eq!(is_contour_convex(&RECTANGLE), Ok(true));
+        assert_eq!(is_contour_convex(&clockwise), Ok(true));
+        assert_eq!(is_contour_convex(&with_collinear), Ok(false));
+        assert_eq!(is_contour_convex(&duplicate), Ok(false));
+        assert_eq!(is_contour_convex(&repeated_close), Ok(false));
         assert_eq!(is_contour_convex(&concave), Ok(false));
         assert_eq!(is_contour_convex(&with_collinear[..2]), Ok(false));
     }
@@ -354,7 +362,33 @@ mod tests {
         );
         assert_eq!(
             point_polygon_test(&RECTANGLE, Point { x: 4.0, y: 1.0 }, false),
+            Ok(-0.0)
+        );
+    }
+
+    #[test]
+    fn point_polygon_test_accepts_points_and_segments() {
+        let point = [Point { x: 0.0, y: 0.0 }];
+        let segment = [Point { x: 0.0, y: 0.0 }, Point { x: 4.0, y: 0.0 }];
+
+        assert_eq!(
+            point_polygon_test(&point, Point { x: 2.0, y: 1.0 }, false),
+            Ok(-1.0)
+        );
+        assert_eq!(
+            point_polygon_test(&point, Point { x: 2.0, y: 1.0 }, true),
+            Ok(-5.0_f64.sqrt())
+        );
+        assert_eq!(
+            point_polygon_test(&segment, Point { x: 2.0, y: 0.0 }, false),
             Ok(0.0)
+        );
+        let measured_boundary =
+            point_polygon_test(&segment, Point { x: 2.0, y: 0.0 }, true).unwrap();
+        assert_eq!(measured_boundary.to_bits(), (-0.0_f64).to_bits());
+        assert_eq!(
+            point_polygon_test(&segment, Point { x: 2.0, y: 1.0 }, true),
+            Ok(-1.0)
         );
     }
 
@@ -394,13 +428,20 @@ mod tests {
                     x: f64::INFINITY,
                     y: 0.0
                 },
-                true
+                false
             ),
-            Err(GeometryError::NonFiniteQueryPoint)
+            Ok(-1.0)
         );
         assert_eq!(
-            point_polygon_test(&RECTANGLE[..2], Point { x: 0.0, y: 0.0 }, false),
-            Err(GeometryError::TooFewPolygonPoints { actual: 2 })
+            point_polygon_test(
+                &RECTANGLE,
+                Point {
+                    x: f64::INFINITY,
+                    y: 0.0
+                },
+                true
+            ),
+            Ok(-f64::from(f32::MAX).sqrt())
         );
     }
 }

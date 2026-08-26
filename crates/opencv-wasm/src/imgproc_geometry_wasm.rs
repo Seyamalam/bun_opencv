@@ -1,8 +1,7 @@
 //! WebAssembly matrix adapters for two-dimensional contour geometry.
 //!
-//! Browser-matched contour measurements accept I32 and F32 contours stored as `Nx1C2`, `1xNC2`,
-//! or `Nx2C1`. The convexity and point-polygon extensions also accept F64 contours. Other curve
-//! containers and higher-dimensional points are not supported.
+//! Browser-matched contour operations accept I32 and F32 contours stored as `Nx1C2`, `1xNC2`, or
+//! `Nx2C1`. Other curve containers and higher-dimensional points are not supported.
 
 use std::{error::Error, fmt};
 
@@ -20,6 +19,7 @@ use crate::{
 enum GeometryWasmError {
     Kernel(GeometryError),
     UnsupportedDepth(MatDepth),
+    NonContinuousContour,
     InvalidContourLayout {
         rows: u32,
         columns: u32,
@@ -37,6 +37,9 @@ impl fmt::Display for GeometryWasmError {
                     "contour depth {depth:?} is unsupported by this operation"
                 )
             }
+            Self::NonContinuousContour => {
+                formatter.write_str("contour must use continuous matrix storage")
+            }
             Self::InvalidContourLayout {
                 rows,
                 columns,
@@ -53,7 +56,9 @@ impl Error for GeometryWasmError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             Self::Kernel(error) => Some(error),
-            Self::UnsupportedDepth(_) | Self::InvalidContourLayout { .. } => None,
+            Self::UnsupportedDepth(_)
+            | Self::NonContinuousContour
+            | Self::InvalidContourLayout { .. } => None,
         }
     }
 }
@@ -104,11 +109,12 @@ pub fn mat_bounding_rect(contour: &Mat) -> Result<Vec<i32>, JsError> {
 
 /// Reports whether a contour has one consistent nonzero turn direction.
 ///
-/// Collinear points along an otherwise convex boundary are accepted. Fewer than three points or an
-/// entirely collinear contour returns false. Self-intersection is not separately diagnosed.
+/// Every turn must be nonzero and have the same direction. Fewer than three points, collinear edge
+/// points, duplicate vertices, concavity, and self-intersection return false.
 ///
 /// # Errors
-/// Returns an error for unsupported layout or depth, non-finite coordinates, or numeric overflow.
+/// Returns an error for unsupported layout, depth, storage continuity, non-finite contour
+/// coordinates, or numeric overflow.
 #[wasm_bindgen(js_name = matIsContourConvex)]
 pub fn mat_is_contour_convex(contour: &Mat) -> Result<bool, JsError> {
     is_contour_convex_adapter(contour).map_err(JsError::from)
@@ -118,10 +124,12 @@ pub fn mat_is_contour_convex(contour: &Mat) -> Result<bool, JsError> {
 ///
 /// Positive results are inside, negative results are outside, and zero lies on the boundary. When
 /// `measureDistance` is false, nonzero results are exactly 1 or -1.
+/// One-point and two-point contours are valid. Non-finite query coordinates follow the pinned
+/// browser sentinel behavior.
 ///
 /// # Errors
-/// Returns an error for fewer than three contour points, unsupported input, non-finite values, or
-/// numeric overflow.
+/// Returns an error for empty contours, unsupported layout, depth, storage continuity, non-finite
+/// contour coordinates, or numeric overflow.
 #[wasm_bindgen(js_name = matPointPolygonTest)]
 pub fn mat_point_polygon_test(
     contour: &Mat,
@@ -161,7 +169,7 @@ fn bounding_rect_adapter(contour: &Mat) -> Result<BoundingRect, GeometryWasmErro
 }
 
 fn is_contour_convex_adapter(contour: &Mat) -> Result<bool, GeometryWasmError> {
-    let points = decode_contour(contour)?;
+    let points = decode_browser_contour_query(contour)?;
     is_contour_convex(&points).map_err(GeometryWasmError::from)
 }
 
@@ -170,8 +178,15 @@ fn point_polygon_test_adapter(
     query: Point,
     measure_distance: bool,
 ) -> Result<f64, GeometryWasmError> {
-    let points = decode_contour(contour)?;
+    let points = decode_browser_contour_query(contour)?;
     point_polygon_test(&points, query, measure_distance).map_err(GeometryWasmError::from)
+}
+
+fn decode_browser_contour_query(contour: &Mat) -> Result<Vec<Point>, GeometryWasmError> {
+    if !contour.is_continuous() {
+        return Err(GeometryWasmError::NonContinuousContour);
+    }
+    decode_browser_contour(contour)
 }
 
 fn decode_browser_contour(contour: &Mat) -> Result<Vec<Point>, GeometryWasmError> {
@@ -300,14 +315,13 @@ mod tests {
     fn adapters_accept_documented_depths_and_layouts() {
         let i32_points = i32_contour(&[0, 0, 4, 0, 4, 3, 0, 3], 4, 1, 2);
         let f32_points = f32_contour(&[0.0, 0.0, 4.0, 0.0, 4.0, 3.0, 0.0, 3.0], 1, 4, 2);
-        let f64_points = f64_contour(&[0.0, 0.0, 4.0, 0.0, 4.0, 3.0, 0.0, 3.0], 4, 2, 1);
         assert_eq!(arc_length_adapter(&i32_points, true), Ok(14.0));
         assert_eq!(contour_area_adapter(&f32_points, false), Ok(12.0));
-        assert_eq!(is_contour_convex_adapter(&f64_points), Ok(true));
+        assert_eq!(is_contour_convex_adapter(&f32_points), Ok(true));
     }
 
     #[test]
-    fn browser_contour_measurements_reject_f64_without_removing_f64_extensions() {
+    fn browser_contour_operations_reject_f64() {
         let contour = f64_contour(&[0.0, 0.0, 4.0, 0.0, 4.0, 3.0, 0.0, 3.0], 4, 1, 2);
         assert_eq!(
             arc_length_adapter(&contour, true),
@@ -321,10 +335,13 @@ mod tests {
             bounding_rect_adapter(&contour),
             Err(GeometryWasmError::UnsupportedDepth(MatDepth::F64))
         );
-        assert_eq!(is_contour_convex_adapter(&contour), Ok(true));
+        assert_eq!(
+            is_contour_convex_adapter(&contour),
+            Err(GeometryWasmError::UnsupportedDepth(MatDepth::F64))
+        );
         assert_eq!(
             point_polygon_test_adapter(&contour, Point { x: 2.0, y: 1.0 }, false),
-            Ok(1.0)
+            Err(GeometryWasmError::UnsupportedDepth(MatDepth::F64))
         );
     }
 
@@ -364,6 +381,8 @@ mod tests {
         assert!(!contour.is_continuous());
         assert_eq!(contour_area_adapter(&contour, false), Ok(12.0));
         assert_eq!(arc_length_adapter(&contour, false), Ok(11.0));
+        assert!(is_contour_convex_adapter(&contour).is_err());
+        assert!(point_polygon_test_adapter(&contour, Point { x: 2.0, y: 1.0 }, false).is_err());
     }
 
     #[test]
