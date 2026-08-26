@@ -143,6 +143,32 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.fastMutated = [fast.getNonmaxSuppression(), fast.getThreshold(), fast.getType().value];
     agast.delete();
     fast.delete();
+
+    const kaze = new reference.KAZE();
+    outputs.kazeDefaultName = kaze.getDefaultName();
+    outputs.kazeDefaults = [
+      kaze.getDiffusivity().value,
+      kaze.getExtended(),
+      kaze.getNOctaveLayers(),
+      kaze.getNOctaves(),
+      kaze.getThreshold(),
+      kaze.getUpright(),
+    ];
+    kaze.setDiffusivity(reference.KAZE_DiffusivityType.DIFF_WEICKERT);
+    kaze.setExtended(true);
+    kaze.setNOctaveLayers(6);
+    kaze.setNOctaves(5);
+    kaze.setThreshold(-1);
+    kaze.setUpright(true);
+    outputs.kazeMutated = [
+      kaze.getDiffusivity().value,
+      kaze.getExtended(),
+      kaze.getNOctaveLayers(),
+      kaze.getNOctaves(),
+      kaze.getThreshold(),
+      kaze.getUpright(),
+    ];
+    kaze.delete();
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });

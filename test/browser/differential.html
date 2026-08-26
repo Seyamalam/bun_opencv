@@ -263,9 +263,49 @@
         );
         packageFast.dispose();
 
+        const packageKaze = packageCv.createKAZE();
+        if (packageKaze.getDefaultName() !== referenceOutputs.kazeDefaultName) {
+          throw new Error(
+            `KAZE default name differs: package=${packageKaze.getDefaultName()} OpenCV.js=${referenceOutputs.kazeDefaultName}`,
+          );
+        }
+        sameNumbers(
+          [
+            packageKaze.getDiffusivity(),
+            packageKaze.getExtended(),
+            packageKaze.getNOctaveLayers(),
+            packageKaze.getNOctaves(),
+            packageKaze.getThreshold(),
+            packageKaze.getUpright(),
+          ],
+          referenceOutputs.kazeDefaults,
+          "KAZE defaults",
+          1e-9,
+        );
+        packageKaze.setDiffusivity(2);
+        packageKaze.setExtended(true);
+        packageKaze.setNOctaveLayers(6);
+        packageKaze.setNOctaves(5);
+        packageKaze.setThreshold(-1);
+        packageKaze.setUpright(true);
+        sameNumbers(
+          [
+            packageKaze.getDiffusivity(),
+            packageKaze.getExtended(),
+            packageKaze.getNOctaveLayers(),
+            packageKaze.getNOctaves(),
+            packageKaze.getThreshold(),
+            packageKaze.getUpright(),
+          ],
+          referenceOutputs.kazeMutated,
+          "KAZE mutations",
+          0,
+        );
+        packageKaze.dispose();
+
         packageSource.dispose();
         result.value =
-          "PASS OpenCV.js 4.13.0 layout, geometry, helper, DFT, AKAZE, AGAST, and FAST differential";
+          "PASS OpenCV.js 4.13.0 layout, geometry, helper, DFT, AKAZE, AGAST, FAST, and KAZE differential";
         document.body.dataset.status = "passed";
       } catch (error) {
         result.value = `FAIL ${String(error)}`;
