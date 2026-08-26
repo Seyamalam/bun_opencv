@@ -6,6 +6,8 @@
 
 use std::{error::Error, fmt};
 
+use crate::mat::MatDepth;
+
 /// Validation failure for a compact floating-point operation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum FloatMathError {
@@ -23,6 +25,8 @@ pub(crate) enum FloatMathError {
         /// Scalar count in the second input.
         right: usize,
     },
+    /// Integer matrices require a finite integral exponent in the signed or unsigned 32-bit range.
+    InvalidIntegerExponent,
 }
 
 impl fmt::Display for FloatMathError {
@@ -39,6 +43,8 @@ impl fmt::Display for FloatMathError {
                 formatter,
                 "floating-point inputs have different lengths: {left} and {right} elements"
             ),
+            Self::InvalidIntegerExponent => formatter
+                .write_str("integer matrix power requires a finite integral 32-bit exponent"),
         }
     }
 }
@@ -75,14 +81,187 @@ pub(crate) fn sqrt_f64(input: &[u8]) -> Result<Vec<u8>, FloatMathError> {
     map_f64(input, f64::sqrt)
 }
 
-/// Raises every compact F32 value to one scalar exponent.
-pub(crate) fn pow_f32(input: &[u8], exponent: f32) -> Result<Vec<u8>, FloatMathError> {
-    map_f32(input, |value| value.powf(exponent))
+/// Raises every scalar to one exponent while retaining its storage depth.
+pub(crate) fn pow_depth(
+    input: &[u8],
+    depth: MatDepth,
+    exponent: f64,
+) -> Result<Vec<u8>, FloatMathError> {
+    validate_pow_depth(depth, exponent)?;
+    let scalar_width = depth.byte_width();
+    validate_width(input, scalar_width)?;
+    let mut output = vec![0; input.len()];
+    for (input, output) in input
+        .chunks_exact(scalar_width)
+        .zip(output.chunks_exact_mut(scalar_width))
+    {
+        pow_scalar(input, output, depth, exponent)?;
+    }
+    Ok(output)
 }
 
-/// Raises every compact F64 value to one scalar exponent.
-pub(crate) fn pow_f64(input: &[u8], exponent: f64) -> Result<Vec<u8>, FloatMathError> {
-    map_f64(input, |value| value.powf(exponent))
+pub(crate) fn validate_pow_depth(depth: MatDepth, exponent: f64) -> Result<(), FloatMathError> {
+    if matches!(
+        depth,
+        MatDepth::U8 | MatDepth::I8 | MatDepth::U16 | MatDepth::I16 | MatDepth::I32
+    ) {
+        integer_exponent(exponent)?;
+    }
+    Ok(())
+}
+
+#[allow(clippy::cast_possible_truncation)]
+pub(crate) fn pow_scalar(
+    input: &[u8],
+    output: &mut [u8],
+    depth: MatDepth,
+    exponent: f64,
+) -> Result<(), FloatMathError> {
+    match depth {
+        MatDepth::U8 => {
+            let exponent = integer_exponent(exponent)?;
+            output[0] = u8::try_from(unsigned_integer_power(
+                u128::from(input[0]),
+                exponent,
+                u128::from(u8::MAX),
+            ))
+            .expect("U8 power is saturated before conversion");
+        }
+        MatDepth::I8 => {
+            let exponent = integer_exponent(exponent)?;
+            let value = i8::from_ne_bytes([input[0]]);
+            output.copy_from_slice(
+                &i8::try_from(signed_integer_power(
+                    i128::from(value),
+                    exponent,
+                    i128::from(i8::MIN),
+                    i128::from(i8::MAX),
+                ))
+                .expect("I8 power is saturated before conversion")
+                .to_ne_bytes(),
+            );
+        }
+        MatDepth::U16 => {
+            let exponent = integer_exponent(exponent)?;
+            let value = u16::from_ne_bytes(input.try_into().expect("U16 scalar width"));
+            output.copy_from_slice(
+                &u16::try_from(unsigned_integer_power(
+                    u128::from(value),
+                    exponent,
+                    u128::from(u16::MAX),
+                ))
+                .expect("U16 power is saturated before conversion")
+                .to_ne_bytes(),
+            );
+        }
+        MatDepth::I16 => {
+            let exponent = integer_exponent(exponent)?;
+            let value = i16::from_ne_bytes(input.try_into().expect("I16 scalar width"));
+            output.copy_from_slice(
+                &i16::try_from(signed_integer_power(
+                    i128::from(value),
+                    exponent,
+                    i128::from(i16::MIN),
+                    i128::from(i16::MAX),
+                ))
+                .expect("I16 power is saturated before conversion")
+                .to_ne_bytes(),
+            );
+        }
+        MatDepth::I32 => {
+            let exponent = integer_exponent(exponent)?;
+            let value = i32::from_ne_bytes(input.try_into().expect("I32 scalar width"));
+            let powered = if exponent >= 0 {
+                value.wrapping_pow(
+                    u32::try_from(exponent).expect("nonnegative integer exponent fits U32"),
+                )
+            } else {
+                i32::try_from(signed_integer_power(
+                    i128::from(value),
+                    exponent,
+                    i128::from(i32::MIN),
+                    i128::from(i32::MAX),
+                ))
+                .expect("negative I32 power is saturated before conversion")
+            };
+            output.copy_from_slice(&powered.to_ne_bytes());
+        }
+        MatDepth::F32 => {
+            let value = f32::from_ne_bytes(input.try_into().expect("F32 scalar width"));
+            output.copy_from_slice(&pow_value_f32(value, exponent as f32).to_ne_bytes());
+        }
+        MatDepth::F64 => {
+            let value = f64::from_ne_bytes(input.try_into().expect("F64 scalar width"));
+            output.copy_from_slice(&pow_value_f64(value, exponent).to_ne_bytes());
+        }
+    }
+    Ok(())
+}
+
+fn pow_value_f32(value: f32, exponent: f32) -> f32 {
+    if value == 0.0 && value.is_sign_negative() && exponent.fract() != 0.0 {
+        value.abs().powf(exponent).copysign(value)
+    } else {
+        value.powf(exponent)
+    }
+}
+
+fn pow_value_f64(value: f64, exponent: f64) -> f64 {
+    if value == 0.0 && value.is_sign_negative() && exponent.fract() != 0.0 {
+        value.abs().powf(exponent).copysign(value)
+    } else {
+        value.powf(exponent)
+    }
+}
+
+#[allow(clippy::cast_possible_truncation)]
+fn integer_exponent(exponent: f64) -> Result<i64, FloatMathError> {
+    if !exponent.is_finite()
+        || exponent.fract() != 0.0
+        || exponent < f64::from(i32::MIN)
+        || exponent > f64::from(u32::MAX)
+    {
+        return Err(FloatMathError::InvalidIntegerExponent);
+    }
+    Ok(exponent as i64)
+}
+
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss
+)]
+fn unsigned_integer_power(value: u128, exponent: i64, maximum: u128) -> u128 {
+    if exponent >= 0 {
+        return value
+            .checked_pow(u32::try_from(exponent).expect("nonnegative exponent fits U32"))
+            .unwrap_or(maximum)
+            .min(maximum);
+    }
+    let powered = (value as f64).powf(exponent as f64);
+    powered.round().clamp(0.0, maximum as f64) as u128
+}
+
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss
+)]
+fn signed_integer_power(value: i128, exponent: i64, minimum: i128, maximum: i128) -> i128 {
+    if exponent >= 0 {
+        return value
+            .checked_pow(u32::try_from(exponent).expect("nonnegative exponent fits U32"))
+            .unwrap_or_else(|| {
+                if value.is_negative() && exponent % 2 != 0 {
+                    minimum
+                } else {
+                    maximum
+                }
+            })
+            .clamp(minimum, maximum);
+    }
+    let powered = (value as f64).powf(exponent as f64);
+    powered.round().clamp(minimum as f64, maximum as f64) as i128
 }
 
 /// Computes `sqrt(x*x + y*y)` for matching compact F32 inputs.
@@ -299,6 +478,7 @@ fn require_matching_lengths(left: usize, right: usize) -> Result<(), FloatMathEr
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::mat::MatDepth;
     use std::{
         f32::consts::SQRT_2 as SQRT_2_F32,
         f64::consts::{FRAC_PI_2, FRAC_PI_3, SQRT_2 as SQRT_2_F64},
@@ -349,7 +529,8 @@ mod tests {
             1e-6,
         );
         close_f32(
-            &decode_f32(&pow_f32(&f32_bytes(&[4.0, 9.0, 16.0]), 0.5).unwrap()).unwrap(),
+            &decode_f32(&pow_depth(&f32_bytes(&[4.0, 9.0, 16.0]), MatDepth::F32, 0.5).unwrap())
+                .unwrap(),
             &[2.0, 3.0, 4.0],
             1e-6,
         );
@@ -373,10 +554,57 @@ mod tests {
             1e-12,
         );
         close_f64(
-            &decode_f64(&pow_f64(&f64_bytes(&[8.0, 27.0]), 1.0 / 3.0).unwrap()).unwrap(),
+            &decode_f64(&pow_depth(&f64_bytes(&[8.0, 27.0]), MatDepth::F64, 1.0 / 3.0).unwrap())
+                .unwrap(),
             &[2.0, 3.0],
             1e-12,
         );
+    }
+
+    #[test]
+    fn integer_power_matches_saturation_wrapping_and_negative_sentinels() {
+        assert_eq!(
+            pow_depth(&[0, 1, 2, 3, 4], MatDepth::U8, -1.0).unwrap(),
+            [255, 1, 1, 0, 0]
+        );
+        let signed = [-3_i8, -2, -1, 0, 1, 2, 3]
+            .into_iter()
+            .flat_map(i8::to_ne_bytes)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            pow_depth(&signed, MatDepth::I8, -1.0).unwrap(),
+            [0_i8, -1, -1, 127, 1, 1, 0]
+                .into_iter()
+                .flat_map(i8::to_ne_bytes)
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(pow_depth(&[20], MatDepth::U8, 2.0).unwrap(), [u8::MAX]);
+        let wrapped = pow_depth(&i32::MAX.to_ne_bytes(), MatDepth::I32, 2.0).unwrap();
+        assert_eq!(i32::from_ne_bytes(wrapped.try_into().unwrap()), 1);
+    }
+
+    #[test]
+    fn floating_power_preserves_pinned_negative_zero_rules() {
+        let inverse_root =
+            decode_f32(&pow_depth(&f32_bytes(&[-0.0]), MatDepth::F32, -0.5).unwrap()).unwrap()[0];
+        assert!(inverse_root.is_infinite() && inverse_root.is_sign_negative());
+
+        let root =
+            decode_f64(&pow_depth(&f64_bytes(&[-0.0]), MatDepth::F64, 0.5).unwrap()).unwrap()[0];
+        assert_eq!(root.to_bits(), (-0.0_f64).to_bits());
+
+        for exponent in [0.0, -0.0] {
+            let values = decode_f64(
+                &pow_depth(
+                    &f64_bytes(&[f64::NAN, f64::INFINITY, f64::NEG_INFINITY]),
+                    MatDepth::F64,
+                    exponent,
+                )
+                .unwrap(),
+            )
+            .unwrap();
+            assert_eq!(values, [1.0, 1.0, 1.0]);
+        }
     }
 
     #[test]
@@ -406,7 +634,7 @@ mod tests {
         .unwrap();
 
         assert!(output[0].is_infinite() && output[0].is_sign_positive());
-        assert_eq!(output[1], 0.0);
+        assert!(output[1].abs() <= f32::EPSILON);
         assert!(output[2].is_nan());
     }
 
@@ -449,7 +677,10 @@ mod tests {
         let exp =
             decode_f64(&exp_f64(&f64_bytes(&[f64::NEG_INFINITY, f64::INFINITY])).unwrap()).unwrap();
         assert_eq!(exp, [0.0, f64::INFINITY]);
-        assert!(decode_f32(&pow_f32(&f32_bytes(&[-4.0]), 0.5).unwrap()).unwrap()[0].is_nan());
+        assert!(
+            decode_f32(&pow_depth(&f32_bytes(&[-4.0]), MatDepth::F32, 0.5).unwrap()).unwrap()[0]
+                .is_nan()
+        );
     }
 
     #[test]

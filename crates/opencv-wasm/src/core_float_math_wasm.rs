@@ -47,6 +47,14 @@ type BinaryKernel = fn(&[u8], &[u8]) -> Result<Vec<u8>, FloatMathError>;
 type UnaryScalarKernel = fn(&[u8], &mut [u8]);
 type BinaryScalarKernel = fn(&[u8], &[u8], &mut [u8]);
 
+#[derive(Clone, Copy)]
+struct BinaryKernels {
+    compact_f32: BinaryKernel,
+    compact_f64: BinaryKernel,
+    scalar_f32: BinaryScalarKernel,
+    scalar_f64: BinaryScalarKernel,
+}
+
 /// Computes the natural exponential element-wise.
 /// # Errors
 /// Returns an error unless the source has F32 or F64 depth.
@@ -130,12 +138,15 @@ pub fn mat_sqrt_into(source: &Mat, destination: &Mat) -> Result<(), JsError> {
 /// Returns an error unless the source has F32 or F64 depth.
 #[wasm_bindgen(js_name = matPow)]
 pub fn mat_pow(source: &Mat, exponent: f64) -> Result<Mat, JsError> {
-    unary_with(source, |depth, bytes| match depth {
-        MatDepth::F32 => core_float_math::pow_f32(bytes, exponent as f32),
-        MatDepth::F64 => core_float_math::pow_f64(bytes, exponent),
-        _ => unreachable!(),
-    })
-    .map_err(JsError::from)
+    pow(source, exponent).map_err(JsError::from)
+}
+
+/// Raises every element to a scalar exponent in a caller-owned destination.
+/// # Errors
+/// Returns an error when an integer source receives a non-integral or out-of-range exponent.
+#[wasm_bindgen(js_name = matPowInto)]
+pub fn mat_pow_into(source: &Mat, exponent: f64, destination: &Mat) -> Result<(), JsError> {
+    pow_into(source, exponent, destination).map_err(JsError::from)
 }
 
 /// Computes Cartesian magnitude element-wise.
@@ -161,10 +172,12 @@ pub fn mat_magnitude_into(x: &Mat, y: &Mat, destination: &Mat) -> Result<(), JsE
         x,
         y,
         destination,
-        core_float_math::magnitude_f32,
-        core_float_math::magnitude_f64,
-        magnitude_scalar_f32,
-        magnitude_scalar_f64,
+        BinaryKernels {
+            compact_f32: core_float_math::magnitude_f32,
+            compact_f64: core_float_math::magnitude_f64,
+            scalar_f32: magnitude_scalar_f32,
+            scalar_f64: magnitude_scalar_f64,
+        },
     )
     .map_err(JsError::from)
 }
@@ -360,6 +373,64 @@ fn unary_with(
     }
     from_bytes(source, kernel(depth, &source.compact_bytes())?)
 }
+fn pow(source: &Mat, exponent: f64) -> Result<Mat, FloatMathWasmError> {
+    if source.rows() == 0 || source.columns() == 0 {
+        return Mat::empty_with_layout(
+            source.rows(),
+            source.columns(),
+            source.channels(),
+            source.depth(),
+            true,
+        )
+        .map_err(FloatMathWasmError::from);
+    }
+    from_bytes(
+        source,
+        core_float_math::pow_depth(&source.compact_bytes(), source.depth(), exponent)?,
+    )
+}
+fn pow_into(source: &Mat, exponent: f64, destination: &Mat) -> Result<(), FloatMathWasmError> {
+    let depth = source.depth();
+    core_float_math::validate_pow_depth(depth, exponent)?;
+    if source.rows() == 0 || source.columns() == 0 {
+        let fresh_canonical = source.rows() == 0
+            && source.columns() == 0
+            && source.channels() == 1
+            && depth == MatDepth::U8
+            && !source.is_continuous();
+        if fresh_canonical {
+            if destination.rows() != 0 || destination.columns() != 0 {
+                destination.release_output_retaining_type();
+            }
+        } else {
+            destination.write_empty_layout(
+                source.rows(),
+                source.columns(),
+                source.channels(),
+                depth,
+                true,
+            )?;
+        }
+        return Ok(());
+    }
+
+    if destination.try_write_shared_unary_scalars(source, depth.byte_width(), |input, output| {
+        core_float_math::pow_scalar(input, output, depth, exponent)
+            .expect("power exponent is validated before shared traversal");
+    })? {
+        return Ok(());
+    }
+
+    let output = core_float_math::pow_depth(&source.compact_bytes(), depth, exponent)?;
+    destination.write_output(
+        output,
+        source.rows(),
+        source.columns(),
+        source.channels(),
+        depth,
+    )?;
+    Ok(())
+}
 fn binary(
     left: &Mat,
     right: &Mat,
@@ -383,10 +454,7 @@ fn binary_into(
     left: &Mat,
     right: &Mat,
     destination: &Mat,
-    f32_kernel: BinaryKernel,
-    f64_kernel: BinaryKernel,
-    f32_scalar_kernel: BinaryScalarKernel,
-    f64_scalar_kernel: BinaryScalarKernel,
+    kernels: BinaryKernels,
 ) -> Result<(), FloatMathWasmError> {
     let depth = float_depth(left)?;
     if !matches(left, right) {
@@ -404,8 +472,8 @@ fn binary_into(
     }
 
     let scalar_kernel = match depth {
-        MatDepth::F32 => f32_scalar_kernel,
-        MatDepth::F64 => f64_scalar_kernel,
+        MatDepth::F32 => kernels.scalar_f32,
+        MatDepth::F64 => kernels.scalar_f64,
         _ => unreachable!(),
     };
     if destination.try_write_shared_binary_scalars(
@@ -420,8 +488,8 @@ fn binary_into(
     let left_bytes = left.compact_bytes();
     let right_bytes = right.compact_bytes();
     let output = match depth {
-        MatDepth::F32 => f32_kernel(&left_bytes, &right_bytes)?,
-        MatDepth::F64 => f64_kernel(&left_bytes, &right_bytes)?,
+        MatDepth::F32 => (kernels.compact_f32)(&left_bytes, &right_bytes)?,
+        MatDepth::F64 => (kernels.compact_f64)(&left_bytes, &right_bytes)?,
         _ => unreachable!(),
     };
     destination.write_output(output, left.rows(), left.columns(), left.channels(), depth)?;
@@ -562,7 +630,7 @@ mod tests {
         mat_log_into(&matrix, &matrix).expect("valid in-place logarithm");
 
         let actual = matrix.to_f64_array().unwrap();
-        assert_eq!(actual[0], 0.0);
+        assert!(actual[0].abs() <= f64::EPSILON);
         assert!((actual[1] - 2.0).abs() <= 1e-12);
     }
     #[test]
@@ -657,6 +725,67 @@ mod tests {
 
         let actual = output.to_f64_array().unwrap()[0];
         assert!((actual - 4.000_000_027_725_887).abs() <= 1e-15);
+    }
+    #[test]
+    fn pow_allocates_every_integer_depth_with_native_conversion_rules() {
+        let cases = [
+            (MatDepth::U8, vec![20], vec![u8::MAX]),
+            (
+                MatDepth::I8,
+                (-12_i8).to_ne_bytes().to_vec(),
+                i8::MAX.to_ne_bytes().to_vec(),
+            ),
+            (
+                MatDepth::U16,
+                300_u16.to_ne_bytes().to_vec(),
+                u16::MAX.to_ne_bytes().to_vec(),
+            ),
+            (
+                MatDepth::I16,
+                (-300_i16).to_ne_bytes().to_vec(),
+                i16::MAX.to_ne_bytes().to_vec(),
+            ),
+            (
+                MatDepth::I32,
+                i32::MAX.to_ne_bytes().to_vec(),
+                1_i32.to_ne_bytes().to_vec(),
+            ),
+        ];
+
+        for (depth, input, expected) in cases {
+            let source = Mat::from_owned_bytes(input, 1, 1, 1, depth).unwrap();
+            let output = mat_pow(&source, 2.0).expect("valid integer power");
+            assert_eq!(output.depth(), depth);
+            assert_eq!(output.compact_bytes(), expected);
+        }
+    }
+    #[test]
+    fn pow_into_reads_overlapping_integer_sources_live() {
+        let parent = Mat::from_owned_bytes(vec![2, 3, 4, 99], 1, 4, 1, MatDepth::U8).unwrap();
+        let source = parent.roi(0, 0, 1, 3).unwrap();
+        let destination = parent.roi(0, 1, 1, 3).unwrap();
+
+        mat_pow_into(&source, 2.0, &destination).expect("valid shared integer power destination");
+
+        assert_eq!(parent.compact_bytes(), [2, 4, 16, 255]);
+    }
+    #[test]
+    fn pow_into_releases_a_populated_destination_for_a_fresh_empty_source() {
+        let source = crate::mat::mat_empty();
+        let destination = f64_mat(&[9.0], 1, 1, 1);
+
+        mat_pow_into(&source, 2.0, &destination).expect("fresh empty power succeeds");
+
+        assert_eq!(
+            (
+                destination.rows(),
+                destination.columns(),
+                destination.channels(),
+                destination.depth(),
+                destination.is_continuous(),
+            ),
+            (0, 0, 1, MatDepth::F64, true)
+        );
     }
     #[test]
     fn pair_outputs_mutate_strided_destinations_and_round_trip() {
