@@ -324,6 +324,36 @@ impl Mat {
         Ok(())
     }
 
+    pub(crate) fn try_write_shared_transpose(&self, source: &Self) -> Result<bool, MatError> {
+        let source_header = source.header.borrow();
+        let destination_header = self.header.borrow();
+        let compatible = destination_header.rows == source_header.columns
+            && destination_header.columns == source_header.rows
+            && destination_header.channels == source_header.channels
+            && destination_header.depth == source_header.depth;
+        if !compatible {
+            return Ok(false);
+        }
+
+        let Some(source_storage) = source_header.storage.as_ref() else {
+            return Ok(false);
+        };
+        let Some(destination_storage) = destination_header.storage.as_ref() else {
+            return Ok(false);
+        };
+        if !source_storage.shares_allocation_with(destination_storage)
+            || source_storage.describes_same_view_as(destination_storage)
+        {
+            return Ok(false);
+        }
+
+        let pixel_bytes = usize::from(source_header.channels)
+            .checked_mul(source_header.depth.byte_width())
+            .ok_or(MatError::BufferSizeOverflow)?;
+        destination_storage.write_transpose_from_shared(source_storage, pixel_bytes)?;
+        Ok(true)
+    }
+
     fn compact_u8(&self) -> Vec<u8> {
         self.compact_bytes()
     }

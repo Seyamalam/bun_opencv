@@ -118,6 +118,12 @@ pub fn mat_transpose_into(source: &Mat, destination: &Mat) -> Result<(), JsError
             .write_output(Vec::new(), 0, 0, 1, MatDepth::U8)
             .map_err(JsError::from);
     }
+    if destination
+        .try_write_shared_transpose(source)
+        .map_err(JsError::from)?
+    {
+        return Ok(());
+    }
     apply_layout_into(source, destination, transpose_bytes).map_err(JsError::from)
 }
 
@@ -390,6 +396,38 @@ mod tests {
             assert_eq!(output.depth(), MatDepth::U8);
             assert!(output.to_u8_array().is_empty());
         }
+    }
+
+    #[test]
+    fn transpose_matches_opencv_for_overlapping_regions_on_one_parent() {
+        let parent = u8_matrix((1..=20).collect(), 4, 5, 1);
+        let source = parent.roi(0, 0, 2, 3).expect("valid source region");
+        let destination = parent
+            .roi(0, 1, 3, 2)
+            .expect("valid overlapping destination region");
+
+        mat_transpose_into(&source, &destination).expect("transpose overlapping regions");
+
+        assert_eq!(
+            parent.to_u8_array(),
+            [
+                1, 1, 6, 4, 5, 6, 1, 1, 9, 10, 11, 6, 1, 14, 15, 16, 17, 18, 19, 20
+            ]
+        );
+        assert_eq!(source.to_u8_array(), [1, 1, 6, 6, 1, 1]);
+        assert_eq!(destination.to_u8_array(), [1, 6, 1, 1, 6, 1]);
+    }
+
+    #[test]
+    fn transpose_keeps_exact_in_place_matrices_on_the_safe_path() {
+        let square = u8_matrix((1..=9).collect(), 3, 3, 1);
+        mat_transpose_into(&square, &square).expect("transpose square in place");
+        assert_eq!(square.to_u8_array(), [1, 4, 7, 2, 5, 8, 3, 6, 9]);
+
+        let rectangular = u8_matrix((1..=6).collect(), 2, 3, 1);
+        mat_transpose_into(&rectangular, &rectangular).expect("transpose rectangle in place");
+        assert_eq!((rectangular.rows(), rectangular.columns()), (3, 2));
+        assert_eq!(rectangular.to_u8_array(), [1, 4, 2, 5, 3, 6]);
     }
 
     #[test]

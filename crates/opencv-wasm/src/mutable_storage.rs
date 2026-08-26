@@ -44,6 +44,58 @@ pub(crate) struct MutableStorage {
 }
 
 impl MutableStorage {
+    pub(crate) fn shares_allocation_with(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.data, &other.data)
+    }
+
+    pub(crate) fn describes_same_view_as(&self, other: &Self) -> bool {
+        self.shares_allocation_with(other)
+            && self.rows == other.rows
+            && self.row_bytes == other.row_bytes
+            && self.row_stride == other.row_stride
+            && self.offset == other.offset
+    }
+
+    pub(crate) fn write_transpose_from_shared(
+        &self,
+        source: &Self,
+        pixel_bytes: usize,
+    ) -> Result<(), MutableStorageError> {
+        let expected_source_row_bytes = self
+            .rows
+            .checked_mul(pixel_bytes)
+            .ok_or(MutableStorageError::SizeOverflow)?;
+        let expected_destination_row_bytes = source
+            .rows
+            .checked_mul(pixel_bytes)
+            .ok_or(MutableStorageError::SizeOverflow)?;
+        if !self.shares_allocation_with(source)
+            || source.row_bytes != expected_source_row_bytes
+            || self.row_bytes != expected_destination_row_bytes
+        {
+            return Err(MutableStorageError::IncorrectBufferLength {
+                expected: expected_destination_row_bytes,
+                actual: self.row_bytes,
+            });
+        }
+
+        let mut data = self.data.borrow_mut();
+        let mut pixel = vec![0; pixel_bytes];
+        for destination_row in 0..self.rows {
+            for destination_column in 0..source.rows {
+                let source_start = source.offset
+                    + destination_column * source.row_stride
+                    + destination_row * pixel_bytes;
+                pixel.copy_from_slice(&data[source_start..source_start + pixel_bytes]);
+                let destination_start = self.offset
+                    + destination_row * self.row_stride
+                    + destination_column * pixel_bytes;
+                data[destination_start..destination_start + pixel_bytes].copy_from_slice(&pixel);
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) fn from_compact(
         data: Vec<u8>,
         rows: usize,
