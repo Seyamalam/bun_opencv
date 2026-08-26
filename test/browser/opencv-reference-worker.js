@@ -27,6 +27,24 @@ function summarizeMat(matrix) {
   };
 }
 
+function summarizeTypedMat(matrix) {
+  const summary = summarizeMat(matrix);
+  const pointerMethod = [
+    "ucharPtr",
+    "charPtr",
+    "ushortPtr",
+    "shortPtr",
+    "intPtr",
+    "floatPtr",
+    "doublePtr",
+  ][summary.depth];
+  const rowScalarLength = summary.cols * summary.channels;
+  const values = Array.from({ length: summary.rows }, (_, row) =>
+    Array.from(matrix[pointerMethod](row).subarray(0, rowScalarLength)),
+  ).flat();
+  return { ...summary, values };
+}
+
 function makeSeedMat(reference, rows, cols, type, values) {
   return reference.matFromArray(rows, cols, type, values);
 }
@@ -39,6 +57,14 @@ function auditTransposeCall(callback, matrices) {
   const after = Object.fromEntries(
     matrices.map(([name, matrix]) => [name, capturePrimitive(() => summarizeMat(matrix))]),
   );
+  return { before, call, after };
+}
+
+function auditTypedMatCall(callback, matrices) {
+  const summarize = ([name, matrix]) => [name, capturePrimitive(() => summarizeTypedMat(matrix))];
+  const before = Object.fromEntries(matrices.map(summarize));
+  const call = captureCall(callback);
+  const after = Object.fromEntries(matrices.map(summarize));
   return { before, call, after };
 }
 
@@ -332,6 +358,44 @@ function auditFlipRoi(reference, name, sourceRect, destinationRect, sameParent, 
   return result;
 }
 
+function auditFlipTypeRoi(reference) {
+  const sourceParent = makeSeedMat(
+    reference,
+    5,
+    6,
+    reference.CV_8UC1,
+    Array.from({ length: 30 }, (_, index) => index + 1),
+  );
+  const destinationParent = makeSeedMat(
+    reference,
+    5,
+    6,
+    reference.CV_32FC2,
+    new Float32Array(60).fill(99),
+  );
+  const source = sourceParent.roi(new reference.Rect(1, 1, 3, 2));
+  const destination = destinationParent.roi(new reference.Rect(1, 1, 3, 2));
+  const result = {
+    name: "incompatible-type-separate",
+    sameParent: false,
+    code: 1,
+    audit: auditTransposeCall(
+      () => reference.flip(source, destination, 1),
+      [
+        ["source", source],
+        ["destination", destination],
+        ["sourceParent", sourceParent],
+        ["destinationParent", destinationParent],
+      ],
+    ),
+  };
+  safeDelete(destination);
+  safeDelete(source);
+  safeDelete(destinationParent);
+  safeDelete(sourceParent);
+  return result;
+}
+
 function auditFlipType(reference, name, type, values) {
   if (typeof type !== "number") return { name, available: false };
   let source;
@@ -342,7 +406,7 @@ function auditFlipType(reference, name, type, values) {
     return {
       name,
       available: true,
-      audit: auditTransposeCall(
+      audit: auditTypedMatCall(
         () => reference.flip(source, destination, -1),
         [
           ["source", source],
@@ -383,9 +447,11 @@ function auditFlip(reference) {
     ["negative two", -2],
     ["negative one", -1],
     ["negative fraction", -1.9],
+    ["negative subunit fraction", -0.9],
     ["negative zero", -0],
     ["zero", 0],
     ["positive fraction", 1.9],
+    ["positive subunit fraction", 0.9],
     ["one", 1],
     ["two", 2],
     ["i32 maximum", 2_147_483_647],
@@ -402,6 +468,19 @@ function auditFlip(reference) {
     ["explicit undefined", undefined],
   ].map(([label, value]) => auditFlipCode(reference, label, value));
 
+  const argumentSource = makeSeedMat(reference, 1, 1, reference.CV_8UC1, [1]);
+  const argumentDestination = new reference.Mat();
+  const argumentTypes = {
+    nullSource: captureCall(() => reference.flip(null, argumentDestination, 1)),
+    undefinedSource: captureCall(() => reference.flip(undefined, argumentDestination, 1)),
+    objectSource: captureCall(() => reference.flip({}, argumentDestination, 1)),
+    nullDestination: captureCall(() => reference.flip(argumentSource, null, 1)),
+    undefinedDestination: captureCall(() => reference.flip(argumentSource, undefined, 1)),
+    objectDestination: captureCall(() => reference.flip(argumentSource, {}, 1)),
+  };
+  safeDelete(argumentDestination);
+  safeDelete(argumentSource);
+
   const emptySource = new reference.Mat();
   const emptyDestination = new reference.Mat();
   const empty = auditTransposeCall(
@@ -413,6 +492,18 @@ function auditFlip(reference) {
   );
   safeDelete(emptyDestination);
   safeDelete(emptySource);
+
+  const secondEmptySource = new reference.Mat();
+  const fullEmptyDestination = makeSeedMat(reference, 2, 3, reference.CV_8UC1, [1, 2, 3, 4, 5, 6]);
+  const emptyIntoFull = auditTransposeCall(
+    () => reference.flip(secondEmptySource, fullEmptyDestination, -1),
+    [
+      ["source", secondEmptySource],
+      ["destination", fullEmptyDestination],
+    ],
+  );
+  safeDelete(fullEmptyDestination);
+  safeDelete(secondEmptySource);
 
   const deletedSource = makeSeedMat(reference, 1, 1, reference.CV_8UC1, [7]);
   const liveDestination = new reference.Mat();
@@ -460,6 +551,7 @@ function auditFlip(reference) {
 
   return {
     arity,
+    argumentTypes,
     codes,
     destinationReplacement: [
       auditFlipDestination(reference, "empty", () => new reference.Mat()),
@@ -477,6 +569,7 @@ function auditFlip(reference) {
     roi: [
       auditFlipRoi(reference, "compatible-separate", [1, 1, 3, 2], [1, 1, 3, 2], false, 1),
       auditFlipRoi(reference, "incompatible-shape-separate", [1, 1, 3, 2], [0, 0, 2, 3], false, 1),
+      auditFlipTypeRoi(reference),
       auditFlipRoi(
         reference,
         "compatible-same-parent-non-overlap",
@@ -484,6 +577,14 @@ function auditFlip(reference) {
         [3, 2, 2, 2],
         true,
         -1,
+      ),
+      auditFlipRoi(
+        reference,
+        "compatible-same-parent-exact-view",
+        [0, 0, 3, 2],
+        [0, 0, 3, 2],
+        true,
+        1,
       ),
       auditFlipRoi(
         reference,
@@ -501,8 +602,17 @@ function auditFlip(reference) {
         true,
         0,
       ),
+      auditFlipRoi(
+        reference,
+        "compatible-same-parent-overlap-both",
+        [0, 0, 3, 3],
+        [1, 1, 3, 3],
+        true,
+        -1,
+      ),
     ],
     empty,
+    emptyIntoFull,
     deleted: { source: deletedSourceAudit, destination: deletedDestinationAudit },
     types,
     halfFloatConstants: {
