@@ -527,10 +527,6 @@ pub(crate) fn repeat_bytes(
 }
 
 /// Concatenates compact matrices horizontally.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "awaits the JavaScript matrix-vector adapter")
-)]
 pub(crate) fn hconcat_bytes(sources: &[ByteMatrix<'_>]) -> Result<OwnedByteMatrix, LayoutError> {
     let first = *sources.first().ok_or(LayoutError::EmptySources)?;
     let mut columns = 0_u32;
@@ -578,10 +574,6 @@ pub(crate) fn hconcat_bytes(sources: &[ByteMatrix<'_>]) -> Result<OwnedByteMatri
 }
 
 /// Concatenates compact matrices vertically.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "awaits the JavaScript matrix-vector adapter")
-)]
 pub(crate) fn vconcat_bytes(sources: &[ByteMatrix<'_>]) -> Result<OwnedByteMatrix, LayoutError> {
     let first = *sources.first().ok_or(LayoutError::EmptySources)?;
     let mut rows = 0_u32;

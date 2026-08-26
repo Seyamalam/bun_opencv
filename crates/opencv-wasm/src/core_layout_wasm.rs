@@ -6,14 +6,19 @@ use wasm_bindgen::prelude::*;
 
 use crate::{
     core_layout::{
-        ByteMatrix, LayoutError, MatLayout, OwnedByteMatrix, flip_bytes, repeat_bytes,
-        rotate_bytes, transpose_bytes,
+        ByteMatrix, LayoutError, MatLayout, OwnedByteMatrix, flip_bytes, hconcat_bytes,
+        repeat_bytes, rotate_bytes, transpose_bytes, vconcat_bytes,
     },
-    mat::{Mat, MatError},
+    mat::{Mat, MatDepth, MatError},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum LayoutWasmError {
+    IncompatibleSourceDepth {
+        index: usize,
+        expected: MatDepth,
+        actual: MatDepth,
+    },
     DestinationMetadata {
         expected_rows: u32,
         expected_columns: u32,
@@ -32,6 +37,14 @@ enum LayoutWasmError {
 impl fmt::Display for LayoutWasmError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::IncompatibleSourceDepth {
+                index,
+                expected,
+                actual,
+            } => write!(
+                formatter,
+                "source matrix {index} has depth {actual:?}; expected {expected:?}"
+            ),
             Self::DestinationMetadata {
                 expected_rows,
                 expected_columns,
@@ -62,7 +75,9 @@ impl Error for LayoutWasmError {
         match self {
             Self::Kernel(error) => Some(error),
             Self::Matrix(error) => Some(error),
-            Self::ElementWidthOverflow(_) | Self::DestinationMetadata { .. } => None,
+            Self::ElementWidthOverflow(_)
+            | Self::IncompatibleSourceDepth { .. }
+            | Self::DestinationMetadata { .. } => None,
         }
     }
 }
@@ -179,6 +194,118 @@ pub fn mat_repeat_into(
         repeat_bytes(matrix, row_repeats, column_repeats)
     })
     .map_err(JsError::from)
+}
+
+/// Horizontally concatenates two matrices with identical rows, channels, and depth.
+///
+/// # Errors
+///
+/// Returns an error when source metadata is incompatible or the output cannot be allocated.
+#[wasm_bindgen(js_name = matHconcat2)]
+pub fn mat_hconcat2(first: &Mat, second: &Mat) -> Result<Mat, JsError> {
+    apply_concat(&[first, second], hconcat_bytes).map_err(JsError::from)
+}
+
+/// Horizontally concatenates three compatible matrices.
+///
+/// # Errors
+///
+/// Returns an error when source metadata is incompatible or the output cannot be allocated.
+#[wasm_bindgen(js_name = matHconcat3)]
+pub fn mat_hconcat3(first: &Mat, second: &Mat, third: &Mat) -> Result<Mat, JsError> {
+    apply_concat(&[first, second, third], hconcat_bytes).map_err(JsError::from)
+}
+
+/// Horizontally concatenates four compatible matrices.
+///
+/// # Errors
+///
+/// Returns an error when source metadata is incompatible or the output cannot be allocated.
+#[wasm_bindgen(js_name = matHconcat4)]
+pub fn mat_hconcat4(first: &Mat, second: &Mat, third: &Mat, fourth: &Mat) -> Result<Mat, JsError> {
+    apply_concat(&[first, second, third, fourth], hconcat_bytes).map_err(JsError::from)
+}
+
+/// Vertically concatenates two matrices with identical columns, channels, and depth.
+///
+/// # Errors
+///
+/// Returns an error when source metadata is incompatible or the output cannot be allocated.
+#[wasm_bindgen(js_name = matVconcat2)]
+pub fn mat_vconcat2(first: &Mat, second: &Mat) -> Result<Mat, JsError> {
+    apply_concat(&[first, second], vconcat_bytes).map_err(JsError::from)
+}
+
+/// Vertically concatenates three compatible matrices.
+///
+/// # Errors
+///
+/// Returns an error when source metadata is incompatible or the output cannot be allocated.
+#[wasm_bindgen(js_name = matVconcat3)]
+pub fn mat_vconcat3(first: &Mat, second: &Mat, third: &Mat) -> Result<Mat, JsError> {
+    apply_concat(&[first, second, third], vconcat_bytes).map_err(JsError::from)
+}
+
+/// Vertically concatenates four compatible matrices.
+///
+/// # Errors
+///
+/// Returns an error when source metadata is incompatible or the output cannot be allocated.
+#[wasm_bindgen(js_name = matVconcat4)]
+pub fn mat_vconcat4(first: &Mat, second: &Mat, third: &Mat, fourth: &Mat) -> Result<Mat, JsError> {
+    apply_concat(&[first, second, third, fourth], vconcat_bytes).map_err(JsError::from)
+}
+
+fn apply_concat(
+    sources: &[&Mat],
+    kernel: impl FnOnce(&[ByteMatrix<'_>]) -> Result<OwnedByteMatrix, LayoutError>,
+) -> Result<Mat, LayoutWasmError> {
+    let depth = sources
+        .first()
+        .expect("fixed-arity concat adapters always provide sources")
+        .depth();
+    for (index, source) in sources.iter().enumerate().skip(1) {
+        if source.depth() != depth {
+            return Err(LayoutWasmError::IncompatibleSourceDepth {
+                index,
+                expected: depth,
+                actual: source.depth(),
+            });
+        }
+    }
+
+    let element_width = u8::try_from(depth.byte_width())
+        .map_err(|_| LayoutWasmError::ElementWidthOverflow(depth.byte_width()))?;
+    let snapshots = sources
+        .iter()
+        .map(|source| source.compact_bytes())
+        .collect::<Vec<_>>();
+    let layouts = sources
+        .iter()
+        .map(|source| {
+            MatLayout::new(
+                source.rows(),
+                source.columns(),
+                source.channels(),
+                element_width,
+            )
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let matrices = snapshots
+        .iter()
+        .zip(layouts)
+        .map(|(bytes, layout)| ByteMatrix::new(bytes, layout))
+        .collect::<Result<Vec<_>, _>>()?;
+    let output = kernel(&matrices)?;
+    let (bytes, layout) = output.into_parts();
+    Mat::from_owned_bytes(
+        bytes,
+        layout.rows(),
+        layout.columns(),
+        layout.channels(),
+        depth,
+    )
+    .map_err(LayoutWasmError::from)
 }
 
 fn apply_layout(
@@ -419,5 +546,97 @@ mod tests {
 
         assert_eq!(rotated.to_u8_array(), [4, 1, 5, 2, 6, 3]);
         assert_eq!(repeated.to_u8_array(), [1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6]);
+    }
+
+    #[test]
+    fn horizontal_concat_compacts_two_strided_rois_without_mutating_inputs() {
+        let left_parent = u8_matrix(vec![1, 2, 3, 4, 5, 6, 7, 8], 2, 4, 1);
+        let right_parent = u8_matrix(vec![9, 10, 11, 12, 13, 14, 15, 16], 2, 4, 1);
+        let left = left_parent.roi(0, 1, 2, 2).expect("left ROI");
+        let right = right_parent.roi(0, 0, 2, 1).expect("right ROI");
+        let left_before = left_parent.to_u8_array();
+        let right_before = right_parent.to_u8_array();
+
+        let output = apply_concat(&[&left, &right], hconcat_bytes).expect("horizontal concat");
+
+        assert_eq!((output.rows(), output.columns()), (2, 3));
+        assert_eq!(output.to_u8_array(), [2, 3, 9, 6, 7, 13]);
+        assert_eq!(left_parent.to_u8_array(), left_before);
+        assert_eq!(right_parent.to_u8_array(), right_before);
+    }
+
+    #[test]
+    fn vertical_concat_supports_four_all_depth_channel_matrices() {
+        let values = [
+            [1.25_f64, -2.5],
+            [3.75_f64, 4.5],
+            [-6.0_f64, 7.25],
+            [8.5_f64, -9.75],
+        ];
+        let matrices = values.map(|row| {
+            Mat::from_owned_bytes(
+                row.into_iter().flat_map(f64::to_ne_bytes).collect(),
+                1,
+                1,
+                2,
+                MatDepth::F64,
+            )
+            .expect("valid F64 matrix")
+        });
+
+        let output = apply_concat(
+            &[&matrices[0], &matrices[1], &matrices[2], &matrices[3]],
+            vconcat_bytes,
+        )
+        .expect("vertical concat");
+
+        assert_eq!(
+            (output.rows(), output.columns(), output.channels()),
+            (4, 1, 2)
+        );
+        assert_eq!(output.depth(), MatDepth::F64);
+        assert_eq!(
+            output.to_f64_array().expect("F64 output"),
+            [1.25, -2.5, 3.75, 4.5, -6.0, 7.25, 8.5, -9.75]
+        );
+    }
+
+    #[test]
+    fn concat_rejects_equal_width_but_different_depths() {
+        let unsigned =
+            Mat::from_owned_bytes(vec![1, 0], 1, 1, 1, MatDepth::U16).expect("valid U16 matrix");
+        let signed =
+            Mat::from_owned_bytes(vec![1, 0], 1, 1, 1, MatDepth::I16).expect("valid I16 matrix");
+
+        assert!(matches!(
+            apply_concat(&[&unsigned, &signed], hconcat_bytes),
+            Err(LayoutWasmError::IncompatibleSourceDepth {
+                index: 1,
+                expected: MatDepth::U16,
+                actual: MatDepth::I16
+            })
+        ));
+    }
+
+    #[test]
+    fn concat_rejects_shape_and_channel_mismatches() {
+        let first = u8_matrix(vec![1, 2], 1, 2, 1);
+        let wrong_rows = u8_matrix(vec![3, 4, 5, 6], 2, 2, 1);
+        let wrong_columns = u8_matrix(vec![3, 4], 2, 1, 1);
+        let wrong_channels = u8_matrix(vec![3, 4, 5, 6], 1, 2, 2);
+
+        for result in [
+            apply_concat(&[&first, &wrong_rows], hconcat_bytes),
+            apply_concat(&[&first, &wrong_columns], vconcat_bytes),
+            apply_concat(&[&first, &wrong_channels], hconcat_bytes),
+        ] {
+            assert!(matches!(
+                result,
+                Err(LayoutWasmError::Kernel(LayoutError::IncompatibleSource {
+                    index: 1,
+                    ..
+                }))
+            ));
+        }
     }
 }
