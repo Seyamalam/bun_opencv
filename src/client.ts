@@ -1,3 +1,5 @@
+import { AKAZE, validateAKAZEOptions } from "./akaze.js";
+import type { AKAZEOptions } from "./akaze.js";
 import {
   createRgbaImage,
   validateDimension,
@@ -138,6 +140,22 @@ class WasmOpenCv implements OpenCv {
   createHanningWindow(size: Size, depth: HanningWindowDepth): Mat {
     validateMinimumSize(size, 2, "Hanning window");
     return new Mat(this.#backend.createHanningWindow(size.width, size.height, depthCode(depth)));
+  }
+
+  createAKAZE(options: AKAZEOptions = {}): AKAZE {
+    validateAKAZEOptions(options);
+    return new AKAZE(
+      this.#backend.AKAZE.create(
+        options.descriptorType,
+        options.descriptorSize,
+        options.descriptorChannels,
+        options.threshold,
+        options.octaves,
+        options.octaveLayers,
+        options.diffusivity,
+        options.maxPoints,
+      ),
+    );
   }
 
   determinant(source: Mat): number {

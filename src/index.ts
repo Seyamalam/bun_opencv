@@ -2,6 +2,8 @@ import { createOpenCv } from "./client.js";
 import type { OpenCvBackend } from "./types.js";
 
 export { createOpenCv } from "./client.js";
+export { AKAZE, AKAZE_DEFAULTS, AKAZEDescriptorType, KAZEDiffusivity } from "./akaze.js";
+export type { AKAZEOptions, WasmAKAZEFactory, WasmAKAZEHandle } from "./akaze.js";
 export { OpenCvInputError } from "./error.js";
 export { createRgbaImage, imageDataFromRgbaImage, rgbaImageFromImageData } from "./image.js";
 export { OPENCV_OPERATIONS } from "./operations.js";

@@ -1,6 +1,37 @@
 import type { WasmMatHandle } from "./mat.js";
+import type { WasmAKAZEHandle } from "./akaze.js";
 
 declare module "#wasm" {
+  export class AKAZE implements WasmAKAZEHandle {
+    private constructor();
+    static create(
+      descriptorType?: number | null,
+      descriptorSize?: number | null,
+      descriptorChannels?: number | null,
+      threshold?: number | null,
+      octaves?: number | null,
+      octaveLayers?: number | null,
+      diffusivity?: number | null,
+      maxPoints?: number | null,
+    ): AKAZE;
+    free(): void;
+    getDefaultName(): string;
+    getDescriptorChannels(): number;
+    getDescriptorSize(): number;
+    getDescriptorType(): number;
+    getDiffusivity(): number;
+    getNOctaveLayers(): number;
+    getNOctaves(): number;
+    getThreshold(): number;
+    setDescriptorChannels(value: number): void;
+    setDescriptorSize(value: number): void;
+    setDescriptorType(value: number): void;
+    setDiffusivity(value: number): void;
+    setNOctaveLayers(value: number): void;
+    setNOctaves(value: number): void;
+    setThreshold(value: number): void;
+  }
+
   export default function initialize(): Promise<void>;
   export function initSync(input: { module: BufferSource | WebAssembly.Module }): void;
 

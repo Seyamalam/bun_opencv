@@ -1,3 +1,4 @@
+import type { AKAZE, AKAZEOptions, WasmAKAZEFactory } from "./akaze.js";
 import type { Mat, WasmMatHandle } from "./mat.js";
 
 /** An RGBA image whose data contains four bytes per pixel. */
@@ -59,6 +60,7 @@ export interface MinMaxLocation {
 
 /** Low-level contract implemented by the generated WebAssembly module. */
 export interface OpenCvBackend {
+  readonly AKAZE: WasmAKAZEFactory;
   clipLine(
     rectangleX: number,
     rectangleY: number,
@@ -355,6 +357,7 @@ export interface OpenCv {
   countNonZero(source: Mat): number;
   contourArea(contour: Mat, oriented?: boolean): number;
   createHanningWindow(size: Size, depth: HanningWindowDepth): Mat;
+  createAKAZE(options?: AKAZEOptions): AKAZE;
   determinant(source: Mat): number;
   convertScaleAbs(source: Mat, alpha?: number, beta?: number): Mat;
   convertScaleAbs(source: Mat, destination: Mat, alpha?: number, beta?: number): void;

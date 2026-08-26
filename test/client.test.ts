@@ -1,7 +1,19 @@
 import { describe, expect, test } from "bun:test";
 
-import { createOpenCv, createRgbaImage, OpenCvInputError } from "../src/index.js";
-import type { OpenCvBackend, WasmMatHandle } from "../src/index.js";
+import {
+  AKAZE_DEFAULTS,
+  AKAZEDescriptorType,
+  createOpenCv,
+  createRgbaImage,
+  KAZEDiffusivity,
+  OpenCvInputError,
+} from "../src/index.js";
+import type {
+  OpenCvBackend,
+  WasmAKAZEFactory,
+  WasmAKAZEHandle,
+  WasmMatHandle,
+} from "../src/index.js";
 
 class CopyingMatHandle implements WasmMatHandle {
   readonly byteLength: number;
@@ -67,6 +79,123 @@ class CopyingMatHandle implements WasmMatHandle {
 
   toUint8Array(): Uint8Array {
     return new Uint8Array(this.data);
+  }
+}
+
+class CopyingAKAZEHandle implements WasmAKAZEHandle {
+  #descriptorChannels: number;
+  #descriptorSize: number;
+  #descriptorType: number;
+  #diffusivity: number;
+  #freed = false;
+  #octaveLayers: number;
+  #octaves: number;
+  #threshold: number;
+
+  constructor(
+    descriptorType: number,
+    descriptorSize: number,
+    descriptorChannels: number,
+    threshold: number,
+    octaves: number,
+    octaveLayers: number,
+    diffusivity: number,
+    readonly onFree: () => void,
+  ) {
+    this.#descriptorType = descriptorType;
+    this.#descriptorSize = descriptorSize;
+    this.#descriptorChannels = descriptorChannels;
+    this.#threshold = threshold;
+    this.#octaves = octaves;
+    this.#octaveLayers = octaveLayers;
+    this.#diffusivity = diffusivity;
+  }
+
+  free(): void {
+    if (this.#freed) return;
+    this.#freed = true;
+    this.onFree();
+  }
+
+  getDefaultName(): string {
+    return "Feature2D.AKAZE";
+  }
+
+  getDescriptorChannels(): number {
+    return this.#descriptorChannels;
+  }
+
+  getDescriptorSize(): number {
+    return this.#descriptorSize;
+  }
+
+  getDescriptorType(): number {
+    return this.#descriptorType;
+  }
+
+  getDiffusivity(): number {
+    return this.#diffusivity;
+  }
+
+  getNOctaveLayers(): number {
+    return this.#octaveLayers;
+  }
+
+  getNOctaves(): number {
+    return this.#octaves;
+  }
+
+  getThreshold(): number {
+    return this.#threshold;
+  }
+
+  setDescriptorChannels(value: number): void {
+    if (!Number.isInteger(value) || value < 1 || value > 3) {
+      throw new OpenCvInputError("invalid AKAZE descriptor channels");
+    }
+    this.#descriptorChannels = value;
+  }
+
+  setDescriptorSize(value: number): void {
+    if (!Number.isInteger(value) || value < 0) {
+      throw new OpenCvInputError("invalid AKAZE descriptor size");
+    }
+    this.#descriptorSize = value;
+  }
+
+  setDescriptorType(value: number): void {
+    if (!Number.isInteger(value) || value < 2 || value > 5) {
+      throw new OpenCvInputError("invalid AKAZE descriptor type");
+    }
+    this.#descriptorType = value;
+  }
+
+  setDiffusivity(value: number): void {
+    if (!Number.isInteger(value) || value < 0 || value > 3) {
+      throw new OpenCvInputError("invalid AKAZE diffusivity");
+    }
+    this.#diffusivity = value;
+  }
+
+  setNOctaveLayers(value: number): void {
+    if (!Number.isInteger(value) || value <= 0) {
+      throw new OpenCvInputError("invalid AKAZE octave layer count");
+    }
+    this.#octaveLayers = value;
+  }
+
+  setNOctaves(value: number): void {
+    if (!Number.isInteger(value) || value <= 0) {
+      throw new OpenCvInputError("invalid AKAZE octave count");
+    }
+    this.#octaves = value;
+  }
+
+  setThreshold(value: number): void {
+    if (!Number.isFinite(value) || value < 0) {
+      throw new OpenCvInputError("invalid AKAZE threshold");
+    }
+    this.#threshold = value;
   }
 }
 
@@ -246,8 +375,43 @@ function writeMeanStdDev(
 }
 
 class CopyingBackend implements OpenCvBackend {
+  #akazeFreeCount = 0;
   #logLevel = 3;
   #randomState = 0;
+
+  readonly AKAZE: WasmAKAZEFactory = {
+    create: (
+      descriptorType,
+      descriptorSize,
+      descriptorChannels,
+      threshold,
+      octaves,
+      octaveLayers,
+      diffusivity,
+      maxPoints,
+    ): WasmAKAZEHandle => {
+      const resolvedMaxPoints = maxPoints ?? AKAZE_DEFAULTS.maxPoints;
+      if (!Number.isInteger(resolvedMaxPoints)) {
+        throw new OpenCvInputError("invalid AKAZE maximum point count");
+      }
+      return new CopyingAKAZEHandle(
+        descriptorType ?? AKAZE_DEFAULTS.descriptorType,
+        descriptorSize ?? AKAZE_DEFAULTS.descriptorSize,
+        descriptorChannels ?? AKAZE_DEFAULTS.descriptorChannels,
+        threshold ?? AKAZE_DEFAULTS.threshold,
+        octaves ?? AKAZE_DEFAULTS.octaves,
+        octaveLayers ?? AKAZE_DEFAULTS.octaveLayers,
+        diffusivity ?? AKAZE_DEFAULTS.diffusivity,
+        () => {
+          this.#akazeFreeCount += 1;
+        },
+      );
+    },
+  };
+
+  get akazeFreeCount(): number {
+    return this.#akazeFreeCount;
+  }
 
   clipLine(
     rectangleX: number,
@@ -1937,5 +2101,69 @@ describe("OpenCv client", () => {
     deviations.dispose();
     means.dispose();
     source.dispose();
+  });
+
+  test("owns AKAZE configuration handles with documented defaults", () => {
+    const backend = new CopyingBackend();
+    const localClient = createOpenCv(backend);
+    const akaze = localClient.createAKAZE();
+
+    expect(akaze.getDefaultName()).toBe("Feature2D.AKAZE");
+    expect(akaze.getDescriptorType()).toBe(AKAZE_DEFAULTS.descriptorType);
+    expect(akaze.getDescriptorSize()).toBe(AKAZE_DEFAULTS.descriptorSize);
+    expect(akaze.getDescriptorChannels()).toBe(AKAZE_DEFAULTS.descriptorChannels);
+    expect(akaze.getThreshold()).toBeCloseTo(AKAZE_DEFAULTS.threshold, 9);
+    expect(akaze.getNOctaves()).toBe(AKAZE_DEFAULTS.octaves);
+    expect(akaze.getNOctaveLayers()).toBe(AKAZE_DEFAULTS.octaveLayers);
+    expect(akaze.getDiffusivity()).toBe(AKAZE_DEFAULTS.diffusivity);
+
+    akaze.dispose();
+    expect(backend.akazeFreeCount).toBe(1);
+    akaze.dispose();
+    expect(backend.akazeFreeCount).toBe(1);
+    expect(() => akaze.getThreshold()).toThrow(OpenCvInputError);
+  });
+
+  test("creates and mutates an explicit AKAZE configuration", () => {
+    const localClient = createOpenCv(new CopyingBackend());
+    const akaze = localClient.createAKAZE({
+      descriptorType: AKAZEDescriptorType.MLDB_UPRIGHT,
+      descriptorSize: 96,
+      descriptorChannels: 2,
+      threshold: 0.05,
+      octaves: 5,
+      octaveLayers: 6,
+      diffusivity: KAZEDiffusivity.WEICKERT,
+      maxPoints: 300,
+    });
+
+    expect(akaze.getDescriptorType()).toBe(AKAZEDescriptorType.MLDB_UPRIGHT);
+    expect(akaze.getDescriptorSize()).toBe(96);
+    expect(akaze.getDescriptorChannels()).toBe(2);
+    expect(akaze.getThreshold()).toBe(0.05);
+    expect(akaze.getNOctaves()).toBe(5);
+    expect(akaze.getNOctaveLayers()).toBe(6);
+    expect(akaze.getDiffusivity()).toBe(KAZEDiffusivity.WEICKERT);
+
+    akaze.setDescriptorType(AKAZEDescriptorType.KAZE);
+    akaze.setDescriptorSize(128);
+    akaze.setDescriptorChannels(3);
+    akaze.setThreshold(0.1);
+    akaze.setNOctaves(7);
+    akaze.setNOctaveLayers(8);
+    akaze.setDiffusivity(KAZEDiffusivity.CHARBONNIER);
+    expect(akaze.getDescriptorType()).toBe(AKAZEDescriptorType.KAZE);
+    expect(akaze.getDescriptorSize()).toBe(128);
+    expect(akaze.getDescriptorChannels()).toBe(3);
+    expect(akaze.getThreshold()).toBe(0.1);
+    expect(akaze.getNOctaves()).toBe(7);
+    expect(akaze.getNOctaveLayers()).toBe(8);
+    expect(akaze.getDiffusivity()).toBe(KAZEDiffusivity.CHARBONNIER);
+
+    expect(() => akaze.setDescriptorSize(-1)).toThrow(OpenCvInputError);
+    expect(akaze.getDescriptorSize()).toBe(128);
+    akaze.dispose();
+    expect(() => akaze.setThreshold(0.2)).toThrow(OpenCvInputError);
+    expect(() => localClient.createAKAZE({ descriptorSize: -1 })).toThrow(OpenCvInputError);
   });
 });
