@@ -121,6 +121,28 @@ self.addEventListener("message", async ({ data: input }) => {
       akaze.getDiffusivity(),
     ];
     akaze.delete();
+    const agast = new reference.AgastFeatureDetector();
+    const fast = new reference.FastFeatureDetector();
+    const agastType = agast.getType();
+    const fastType = fast.getType();
+    outputs.agastDefaultName = agast.getDefaultName();
+    outputs.agastDefaults = [agast.getNonmaxSuppression(), agast.getThreshold(), agastType.value];
+    agast.setNonmaxSuppression(false);
+    agast.setThreshold(-1);
+    agast.setType(reference.AgastFeatureDetector_AGAST_5_8);
+    outputs.agastMutated = [
+      agast.getNonmaxSuppression(),
+      agast.getThreshold(),
+      agast.getType().value,
+    ];
+    outputs.fastDefaultName = fast.getDefaultName();
+    outputs.fastDefaults = [fast.getNonmaxSuppression(), fast.getThreshold(), fastType.value];
+    fast.setNonmaxSuppression(false);
+    fast.setThreshold(256);
+    fast.setType(reference.FastFeatureDetector_TYPE_5_8);
+    outputs.fastMutated = [fast.getNonmaxSuppression(), fast.getThreshold(), fast.getType().value];
+    agast.delete();
+    fast.delete();
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });

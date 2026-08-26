@@ -209,9 +209,63 @@
         );
         packageAkaze.dispose();
 
+        const packageAgast = packageCv.createAgastFeatureDetector();
+        if (packageAgast.getDefaultName() !== referenceOutputs.agastDefaultName) {
+          throw new Error(
+            `AGAST default name differs: package=${packageAgast.getDefaultName()} OpenCV.js=${referenceOutputs.agastDefaultName}`,
+          );
+        }
+        sameNumbers(
+          [
+            packageAgast.getNonmaxSuppression(),
+            packageAgast.getThreshold(),
+            packageAgast.getType(),
+          ],
+          referenceOutputs.agastDefaults,
+          "AGAST defaults",
+          0,
+        );
+        packageAgast.setNonmaxSuppression(false);
+        packageAgast.setThreshold(-1);
+        packageAgast.setType(0);
+        sameNumbers(
+          [
+            packageAgast.getNonmaxSuppression(),
+            packageAgast.getThreshold(),
+            packageAgast.getType(),
+          ],
+          referenceOutputs.agastMutated,
+          "AGAST mutations",
+          0,
+        );
+        packageAgast.dispose();
+
+        const packageFast = packageCv.createFastFeatureDetector();
+        if (packageFast.getDefaultName() !== referenceOutputs.fastDefaultName) {
+          throw new Error(
+            `FAST default name differs: package=${packageFast.getDefaultName()} OpenCV.js=${referenceOutputs.fastDefaultName}`,
+          );
+        }
+        sameNumbers(
+          [packageFast.getNonmaxSuppression(), packageFast.getThreshold(), packageFast.getType()],
+          referenceOutputs.fastDefaults,
+          "FAST defaults",
+          0,
+        );
+        packageFast.setNonmaxSuppression(false);
+        packageFast.setThreshold(256);
+        packageFast.setType(0);
+        sameNumbers(
+          [packageFast.getNonmaxSuppression(), packageFast.getThreshold(), packageFast.getType()],
+          referenceOutputs.fastMutated,
+          "FAST mutations",
+          0,
+        );
+        packageFast.dispose();
+
         packageSource.dispose();
         result.value =
-          "PASS OpenCV.js 4.13.0 layout, geometry, helper, DFT, and AKAZE differential";
+          "PASS OpenCV.js 4.13.0 layout, geometry, helper, DFT, AKAZE, AGAST, and FAST differential";
         document.body.dataset.status = "passed";
       } catch (error) {
         result.value = `FAIL ${String(error)}`;
