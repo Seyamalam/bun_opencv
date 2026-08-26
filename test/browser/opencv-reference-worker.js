@@ -270,6 +270,100 @@ function auditFlipCode(reference, label, value) {
   return result;
 }
 
+function auditFlipDestination(reference, name, createDestination) {
+  const source = makeSeedMat(reference, 2, 3, reference.CV_8UC1, [1, 2, 3, 4, 5, 6]);
+  const destination = createDestination();
+  const result = {
+    name,
+    audit: auditTransposeCall(
+      () => reference.flip(source, destination, 1),
+      [
+        ["source", source],
+        ["destination", destination],
+      ],
+    ),
+  };
+  safeDelete(destination);
+  safeDelete(source);
+  return result;
+}
+
+function auditFlipInPlace(reference, code) {
+  const matrix = makeSeedMat(reference, 2, 3, reference.CV_8UC1, [1, 2, 3, 4, 5, 6]);
+  const result = {
+    code,
+    audit: auditTransposeCall(() => reference.flip(matrix, matrix, code), [["matrix", matrix]]),
+  };
+  safeDelete(matrix);
+  return result;
+}
+
+function auditFlipRoi(reference, name, sourceRect, destinationRect, sameParent, code) {
+  const sourceParent = makeSeedMat(
+    reference,
+    5,
+    6,
+    reference.CV_8UC1,
+    Array.from({ length: 30 }, (_, index) => index + 1),
+  );
+  const destinationParent = sameParent
+    ? sourceParent
+    : makeSeedMat(reference, 5, 6, reference.CV_8UC1, new Uint8Array(30).fill(99));
+  const source = sourceParent.roi(new reference.Rect(...sourceRect));
+  const destination = destinationParent.roi(new reference.Rect(...destinationRect));
+  const result = {
+    name,
+    sameParent,
+    code,
+    audit: auditTransposeCall(
+      () => reference.flip(source, destination, code),
+      [
+        ["source", source],
+        ["destination", destination],
+        ["sourceParent", sourceParent],
+        ["destinationParent", destinationParent],
+      ],
+    ),
+  };
+  safeDelete(destination);
+  safeDelete(source);
+  if (!sameParent) safeDelete(destinationParent);
+  safeDelete(sourceParent);
+  return result;
+}
+
+function auditFlipType(reference, name, type, values) {
+  if (typeof type !== "number") return { name, available: false };
+  let source;
+  let destination;
+  try {
+    source = makeSeedMat(reference, 2, 3, type, values);
+    destination = new reference.Mat();
+    return {
+      name,
+      available: true,
+      audit: auditTransposeCall(
+        () => reference.flip(source, destination, -1),
+        [
+          ["source", source],
+          ["destination", destination],
+        ],
+      ),
+    };
+  } catch (error) {
+    return {
+      name,
+      available: true,
+      setup: captureCall(() => {
+        throw error;
+      }),
+    };
+  } finally {
+    safeDelete(destination);
+    safeDelete(source);
+  }
+}
+
 function auditFlip(reference) {
   const source = makeSeedMat(reference, 2, 3, reference.CV_8UC1, [1, 2, 3, 4, 5, 6]);
   const destination = new reference.Mat();
@@ -308,7 +402,114 @@ function auditFlip(reference) {
     ["explicit undefined", undefined],
   ].map(([label, value]) => auditFlipCode(reference, label, value));
 
-  return { arity, codes };
+  const emptySource = new reference.Mat();
+  const emptyDestination = new reference.Mat();
+  const empty = auditTransposeCall(
+    () => reference.flip(emptySource, emptyDestination, 1),
+    [
+      ["source", emptySource],
+      ["destination", emptyDestination],
+    ],
+  );
+  safeDelete(emptyDestination);
+  safeDelete(emptySource);
+
+  const deletedSource = makeSeedMat(reference, 1, 1, reference.CV_8UC1, [7]);
+  const liveDestination = new reference.Mat();
+  deletedSource.delete();
+  const deletedSourceAudit = auditTransposeCall(
+    () => reference.flip(deletedSource, liveDestination, 1),
+    [
+      ["source", deletedSource],
+      ["destination", liveDestination],
+    ],
+  );
+  safeDelete(liveDestination);
+
+  const liveSource = makeSeedMat(reference, 1, 1, reference.CV_8UC1, [8]);
+  const deletedDestination = new reference.Mat();
+  deletedDestination.delete();
+  const deletedDestinationAudit = auditTransposeCall(
+    () => reference.flip(liveSource, deletedDestination, 1),
+    [
+      ["source", liveSource],
+      ["destination", deletedDestination],
+    ],
+  );
+  safeDelete(liveSource);
+
+  const types = [
+    ["CV_8UC1", reference.CV_8UC1, [1, 2, 3, 4, 5, 6]],
+    ["CV_8UC3", reference.CV_8UC3, Array.from({ length: 18 }, (_, index) => index + 1)],
+    ["CV_8SC2", reference.CV_8SC2, [-1, 2, -3, 4, -5, 6, -7, 8, -9, 10, -11, 12]],
+    ["CV_16UC1", reference.CV_16UC1, [1, 256, 513, 1024, 4096, 65_535]],
+    [
+      "CV_16SC2",
+      reference.CV_16SC2,
+      [-1, 2, -300, 400, -500, 600, -700, 800, -900, 1000, -1100, 1200],
+    ],
+    ["CV_32SC1", reference.CV_32SC1, [-1, 2, -300_000, 400_000, -500_000, 600_000]],
+    [
+      "CV_32FC2",
+      reference.CV_32FC2,
+      [-1.5, 2.25, -3.5, 4.75, -5.5, 6.25, -7.5, 8.75, -9.5, 10.25, -11.5, 12.75],
+    ],
+    ["CV_64FC1", reference.CV_64FC1, [-1.5, 2.25, -3.5, 4.75, -5.5, 6.25]],
+    ["CV_16FC1", reference.CV_16FC1, [1, 2, 3, 4, 5, 6]],
+  ].map(([name, type, values]) => auditFlipType(reference, name, type, values));
+
+  return {
+    arity,
+    codes,
+    destinationReplacement: [
+      auditFlipDestination(reference, "empty", () => new reference.Mat()),
+      auditFlipDestination(reference, "correct-metadata", () =>
+        makeSeedMat(reference, 2, 3, reference.CV_8UC1, new Uint8Array(6).fill(99)),
+      ),
+      auditFlipDestination(reference, "wrong-shape", () =>
+        makeSeedMat(reference, 3, 2, reference.CV_8UC1, new Uint8Array(6).fill(99)),
+      ),
+      auditFlipDestination(reference, "wrong-type-and-channels", () =>
+        makeSeedMat(reference, 2, 3, reference.CV_32FC2, new Float32Array(12).fill(99)),
+      ),
+    ],
+    inPlace: [-1, 0, 1].map((code) => auditFlipInPlace(reference, code)),
+    roi: [
+      auditFlipRoi(reference, "compatible-separate", [1, 1, 3, 2], [1, 1, 3, 2], false, 1),
+      auditFlipRoi(reference, "incompatible-shape-separate", [1, 1, 3, 2], [0, 0, 2, 3], false, 1),
+      auditFlipRoi(
+        reference,
+        "compatible-same-parent-non-overlap",
+        [0, 0, 2, 2],
+        [3, 2, 2, 2],
+        true,
+        -1,
+      ),
+      auditFlipRoi(
+        reference,
+        "compatible-same-parent-overlap-horizontal",
+        [0, 0, 3, 2],
+        [1, 0, 3, 2],
+        true,
+        1,
+      ),
+      auditFlipRoi(
+        reference,
+        "compatible-same-parent-overlap-vertical",
+        [0, 0, 3, 3],
+        [0, 1, 3, 3],
+        true,
+        0,
+      ),
+    ],
+    empty,
+    deleted: { source: deletedSourceAudit, destination: deletedDestinationAudit },
+    types,
+    halfFloatConstants: {
+      CV_16F: encodeValue(reference.CV_16F),
+      CV_16FC1: encodeValue(reference.CV_16FC1),
+    },
+  };
 }
 
 function encodeValue(value) {
