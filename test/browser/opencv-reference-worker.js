@@ -92,6 +92,35 @@ self.addEventListener("message", async ({ data: input }) => {
       reference.getOptimalDFTSize(25),
       reference.getOptimalDFTSize(0),
     ];
+
+    const akaze = new reference.AKAZE();
+    outputs.akazeDefaultName = akaze.getDefaultName();
+    outputs.akazeDefaults = [
+      akaze.getDescriptorType(),
+      akaze.getDescriptorSize(),
+      akaze.getDescriptorChannels(),
+      akaze.getThreshold(),
+      akaze.getNOctaves(),
+      akaze.getNOctaveLayers(),
+      akaze.getDiffusivity(),
+    ];
+    akaze.setDescriptorType(4);
+    akaze.setDescriptorSize(96);
+    akaze.setDescriptorChannels(2);
+    akaze.setThreshold(0.05);
+    akaze.setNOctaves(5);
+    akaze.setNOctaveLayers(6);
+    akaze.setDiffusivity(2);
+    outputs.akazeMutated = [
+      akaze.getDescriptorType(),
+      akaze.getDescriptorSize(),
+      akaze.getDescriptorChannels(),
+      akaze.getThreshold(),
+      akaze.getNOctaves(),
+      akaze.getNOctaveLayers(),
+      akaze.getDiffusivity(),
+    ];
+    akaze.delete();
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });

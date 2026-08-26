@@ -166,8 +166,52 @@
           0,
         );
 
+        const packageAkaze = packageCv.createAKAZE();
+        if (packageAkaze.getDefaultName() !== referenceOutputs.akazeDefaultName) {
+          throw new Error(
+            `AKAZE default name differs: package=${packageAkaze.getDefaultName()} OpenCV.js=${referenceOutputs.akazeDefaultName}`,
+          );
+        }
+        sameNumbers(
+          [
+            packageAkaze.getDescriptorType(),
+            packageAkaze.getDescriptorSize(),
+            packageAkaze.getDescriptorChannels(),
+            packageAkaze.getThreshold(),
+            packageAkaze.getNOctaves(),
+            packageAkaze.getNOctaveLayers(),
+            packageAkaze.getDiffusivity(),
+          ],
+          referenceOutputs.akazeDefaults,
+          "AKAZE defaults",
+          1e-9,
+        );
+        packageAkaze.setDescriptorType(4);
+        packageAkaze.setDescriptorSize(96);
+        packageAkaze.setDescriptorChannels(2);
+        packageAkaze.setThreshold(0.05);
+        packageAkaze.setNOctaves(5);
+        packageAkaze.setNOctaveLayers(6);
+        packageAkaze.setDiffusivity(2);
+        sameNumbers(
+          [
+            packageAkaze.getDescriptorType(),
+            packageAkaze.getDescriptorSize(),
+            packageAkaze.getDescriptorChannels(),
+            packageAkaze.getThreshold(),
+            packageAkaze.getNOctaves(),
+            packageAkaze.getNOctaveLayers(),
+            packageAkaze.getDiffusivity(),
+          ],
+          referenceOutputs.akazeMutated,
+          "AKAZE mutations",
+          1e-7,
+        );
+        packageAkaze.dispose();
+
         packageSource.dispose();
-        result.value = "PASS OpenCV.js 4.13.0 layout, geometry, helper, and DFT differential";
+        result.value =
+          "PASS OpenCV.js 4.13.0 layout, geometry, helper, DFT, and AKAZE differential";
         document.body.dataset.status = "passed";
       } catch (error) {
         result.value = `FAIL ${String(error)}`;
