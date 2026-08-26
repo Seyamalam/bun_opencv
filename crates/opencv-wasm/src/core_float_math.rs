@@ -287,9 +287,9 @@ pub(crate) fn cart_to_polar_f32(
     angle_in_degrees: bool,
 ) -> Result<(Vec<u8>, Vec<u8>), FloatMathError> {
     transform_pairs_f32(x, y, |x_value, y_value| {
-        let angle = y_value.atan2(x_value);
+        let angle = normalize_polar_angle_f32(y_value.atan2(x_value));
         (
-            x_value.hypot(y_value),
+            (x_value * x_value + y_value * y_value).sqrt(),
             convert_angle_f32(angle, angle_in_degrees),
         )
     })
@@ -304,9 +304,9 @@ pub(crate) fn cart_to_polar_f64(
     angle_in_degrees: bool,
 ) -> Result<(Vec<u8>, Vec<u8>), FloatMathError> {
     transform_pairs_f64(x, y, |x_value, y_value| {
-        let angle = y_value.atan2(x_value);
+        let angle = normalize_polar_angle_f64(y_value.atan2(x_value));
         (
-            x_value.hypot(y_value),
+            (x_value * x_value + y_value * y_value).sqrt(),
             convert_angle_f64(angle, angle_in_degrees),
         )
     })
@@ -344,6 +344,26 @@ pub(crate) fn polar_to_cart_f64(
 
 fn convert_angle_f32(angle: f32, degrees: bool) -> f32 {
     if degrees { angle.to_degrees() } else { angle }
+}
+
+fn normalize_polar_angle_f32(angle: f32) -> f32 {
+    if angle < 0.0 {
+        angle + std::f32::consts::TAU
+    } else if angle == 0.0 {
+        0.0
+    } else {
+        angle
+    }
+}
+
+fn normalize_polar_angle_f64(angle: f64) -> f64 {
+    if angle < 0.0 {
+        angle + std::f64::consts::TAU
+    } else if angle == 0.0 {
+        0.0
+    } else {
+        angle
+    }
 }
 
 fn convert_angle_f64(angle: f64, degrees: bool) -> f64 {

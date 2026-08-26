@@ -503,12 +503,41 @@ fn pair_into(
     kernel: impl FnOnce(MatDepth, &[u8], &[u8]) -> Result<(Vec<u8>, Vec<u8>), FloatMathError>,
 ) -> Result<(), FloatMathWasmError> {
     let depth = float_depth(left)?;
-    if !matches(left, right) || !matches(left, first) || !matches(left, second) {
+    if !matches(left, right) {
         return Err(FloatMathWasmError::ShapeMismatch);
     }
+    if left.rows() == 0 || left.columns() == 0 {
+        first.write_empty_layout(
+            left.rows(),
+            left.columns(),
+            left.channels(),
+            depth,
+            true,
+        )?;
+        second.write_empty_layout(
+            left.rows(),
+            left.columns(),
+            left.channels(),
+            depth,
+            true,
+        )?;
+        return Ok(());
+    }
     let (first_bytes, second_bytes) = kernel(depth, &left.compact_bytes(), &right.compact_bytes())?;
-    first.write_compact_bytes(&first_bytes)?;
-    second.write_compact_bytes(&second_bytes)?;
+    first.write_output(
+        first_bytes,
+        left.rows(),
+        left.columns(),
+        left.channels(),
+        depth,
+    )?;
+    second.write_output(
+        second_bytes,
+        left.rows(),
+        left.columns(),
+        left.channels(),
+        depth,
+    )?;
     Ok(())
 }
 
@@ -827,6 +856,34 @@ mod tests {
         {
             assert!((actual - expected).abs() < 1e-5);
         }
+    }
+    #[test]
+    fn cart_to_polar_rebinds_outputs_and_normalizes_negative_angles() {
+        let x = f32_mat(&[0.0, 3.0], 1, 2, 1);
+        let y = f32_mat(&[-1.0, 4.0], 1, 2, 1);
+        let magnitude = f64_mat(&[99.0], 1, 1, 1);
+        let angle = Mat::from_owned_bytes(vec![99], 1, 1, 1, MatDepth::U8).unwrap();
+
+        pair_into(&x, &y, &magnitude, &angle, |depth, a, b| match depth {
+            MatDepth::F32 => core_float_math::cart_to_polar_f32(a, b, true),
+            MatDepth::F64 => core_float_math::cart_to_polar_f64(a, b, true),
+            _ => unreachable!(),
+        })
+        .expect("valid Cartesian conversion destinations");
+
+        assert_eq!(
+            (
+                magnitude.rows(),
+                magnitude.columns(),
+                magnitude.channels(),
+                magnitude.depth(),
+            ),
+            (1, 2, 1, MatDepth::F32)
+        );
+        assert_eq!(magnitude.to_f32_array().unwrap(), [1.0, 5.0]);
+        let angles = angle.to_f32_array().unwrap();
+        assert!((angles[0] - 270.0).abs() < 1e-4);
+        assert!((angles[1] - 53.130_104).abs() < 1e-4);
     }
     #[test]
     fn rejects_integer_depth_and_metadata_mismatch() {
