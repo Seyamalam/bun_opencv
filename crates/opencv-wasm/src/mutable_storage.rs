@@ -281,6 +281,103 @@ impl MutableStorage {
         Ok(())
     }
 
+    pub(crate) fn write_binary_scalars_from_shared(
+        &self,
+        first: &Self,
+        second: &Self,
+        scalar_width: usize,
+        mut operation: impl FnMut(&[u8], &[u8], &mut [u8]),
+    ) -> Result<(), MutableStorageError> {
+        if self.rows != first.rows
+            || self.rows != second.rows
+            || self.row_bytes != first.row_bytes
+            || self.row_bytes != second.row_bytes
+            || scalar_width == 0
+            || self.row_bytes % scalar_width != 0
+        {
+            return Err(MutableStorageError::IncorrectBufferLength {
+                expected: first.row_bytes,
+                actual: self.row_bytes,
+            });
+        }
+
+        let shares_first = self.shares_allocation_with(first);
+        let shares_second = self.shares_allocation_with(second);
+        if !shares_first && !shares_second {
+            return Err(MutableStorageError::IncorrectBufferLength {
+                expected: first.row_bytes,
+                actual: self.row_bytes,
+            });
+        }
+
+        let scalars_per_row = self.row_bytes / scalar_width;
+        let mut first_input = vec![0; scalar_width];
+        let mut second_input = vec![0; scalar_width];
+        let mut output = vec![0; scalar_width];
+        if shares_first && shares_second {
+            let mut data = self.data.borrow_mut();
+            for row in 0..self.rows {
+                let first_row = first.offset + row * first.row_stride;
+                let second_row = second.offset + row * second.row_stride;
+                let destination_row = self.offset + row * self.row_stride;
+                for scalar in 0..scalars_per_row {
+                    let first_start = first_row + scalar * scalar_width;
+                    let second_start = second_row + scalar * scalar_width;
+                    first_input.copy_from_slice(&data[first_start..first_start + scalar_width]);
+                    second_input.copy_from_slice(&data[second_start..second_start + scalar_width]);
+                    operation(&first_input, &second_input, &mut output);
+                    let destination_start = destination_row + scalar * scalar_width;
+                    data[destination_start..destination_start + scalar_width]
+                        .copy_from_slice(&output);
+                }
+            }
+            return Ok(());
+        }
+
+        if shares_first {
+            let mut shared_data = self.data.borrow_mut();
+            let second_data = second.data.borrow();
+            for row in 0..self.rows {
+                let first_row = first.offset + row * first.row_stride;
+                let second_row = second.offset + row * second.row_stride;
+                let destination_row = self.offset + row * self.row_stride;
+                for scalar in 0..scalars_per_row {
+                    let first_start = first_row + scalar * scalar_width;
+                    let second_start = second_row + scalar * scalar_width;
+                    first_input
+                        .copy_from_slice(&shared_data[first_start..first_start + scalar_width]);
+                    second_input
+                        .copy_from_slice(&second_data[second_start..second_start + scalar_width]);
+                    operation(&first_input, &second_input, &mut output);
+                    let destination_start = destination_row + scalar * scalar_width;
+                    shared_data[destination_start..destination_start + scalar_width]
+                        .copy_from_slice(&output);
+                }
+            }
+            return Ok(());
+        }
+
+        let first_data = first.data.borrow();
+        let mut shared_data = self.data.borrow_mut();
+        for row in 0..self.rows {
+            let first_row = first.offset + row * first.row_stride;
+            let second_row = second.offset + row * second.row_stride;
+            let destination_row = self.offset + row * self.row_stride;
+            for scalar in 0..scalars_per_row {
+                let first_start = first_row + scalar * scalar_width;
+                let second_start = second_row + scalar * scalar_width;
+                first_input.copy_from_slice(&first_data[first_start..first_start + scalar_width]);
+                second_input
+                    .copy_from_slice(&shared_data[second_start..second_start + scalar_width]);
+                operation(&first_input, &second_input, &mut output);
+                let destination_start = destination_row + scalar * scalar_width;
+                shared_data[destination_start..destination_start + scalar_width]
+                    .copy_from_slice(&output);
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) fn from_compact(
         data: Vec<u8>,
         rows: usize,

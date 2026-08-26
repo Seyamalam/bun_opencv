@@ -618,6 +618,52 @@ impl Mat {
         Ok(true)
     }
 
+    pub(crate) fn try_write_shared_binary_scalars(
+        &self,
+        first: &Self,
+        second: &Self,
+        scalar_width: usize,
+        operation: impl FnMut(&[u8], &[u8], &mut [u8]),
+    ) -> Result<bool, MatError> {
+        let first_header = first.header.borrow();
+        let second_header = second.header.borrow();
+        let destination_header = self.header.borrow();
+        let compatible = destination_header.rows == first_header.rows
+            && destination_header.columns == first_header.columns
+            && destination_header.channels == first_header.channels
+            && destination_header.depth == first_header.depth
+            && second_header.rows == first_header.rows
+            && second_header.columns == first_header.columns
+            && second_header.channels == first_header.channels
+            && second_header.depth == first_header.depth;
+        if !compatible {
+            return Ok(false);
+        }
+
+        let Some(first_storage) = first_header.storage.as_ref() else {
+            return Ok(false);
+        };
+        let Some(second_storage) = second_header.storage.as_ref() else {
+            return Ok(false);
+        };
+        let Some(destination_storage) = destination_header.storage.as_ref() else {
+            return Ok(false);
+        };
+        if !destination_storage.shares_allocation_with(first_storage)
+            && !destination_storage.shares_allocation_with(second_storage)
+        {
+            return Ok(false);
+        }
+
+        destination_storage.write_binary_scalars_from_shared(
+            first_storage,
+            second_storage,
+            scalar_width,
+            operation,
+        )?;
+        Ok(true)
+    }
+
     fn compact_u8(&self) -> Vec<u8> {
         self.compact_bytes()
     }

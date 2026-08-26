@@ -45,6 +45,7 @@ impl From<MatError> for FloatMathWasmError {
 type UnaryKernel = fn(&[u8]) -> Result<Vec<u8>, FloatMathError>;
 type BinaryKernel = fn(&[u8], &[u8]) -> Result<Vec<u8>, FloatMathError>;
 type UnaryScalarKernel = fn(&[u8], &mut [u8]);
+type BinaryScalarKernel = fn(&[u8], &[u8], &mut [u8]);
 
 /// Computes the natural exponential element-wise.
 /// # Errors
@@ -147,6 +148,23 @@ pub fn mat_magnitude(x: &Mat, y: &Mat) -> Result<Mat, JsError> {
         y,
         core_float_math::magnitude_f32,
         core_float_math::magnitude_f64,
+    )
+    .map_err(JsError::from)
+}
+
+/// Computes Cartesian magnitude into a caller-owned destination.
+/// # Errors
+/// Returns an error unless both inputs match and have F32 or F64 depth.
+#[wasm_bindgen(js_name = matMagnitudeInto)]
+pub fn mat_magnitude_into(x: &Mat, y: &Mat, destination: &Mat) -> Result<(), JsError> {
+    binary_into(
+        x,
+        y,
+        destination,
+        core_float_math::magnitude_f32,
+        core_float_math::magnitude_f64,
+        magnitude_scalar_f32,
+        magnitude_scalar_f64,
     )
     .map_err(JsError::from)
 }
@@ -288,6 +306,30 @@ fn sqrt_scalar_f64(input: &[u8], output: &mut [u8]) {
     transform_scalar_f64(input, output, f64::sqrt);
 }
 
+fn magnitude_scalar_f32(first: &[u8], second: &[u8], output: &mut [u8]) {
+    let first: [u8; 4] = first
+        .try_into()
+        .expect("F32 scalar traversal always supplies four bytes");
+    let second: [u8; 4] = second
+        .try_into()
+        .expect("F32 scalar traversal always supplies four bytes");
+    let x = f32::from_ne_bytes(first);
+    let y = f32::from_ne_bytes(second);
+    output.copy_from_slice(&(x * x + y * y).sqrt().to_ne_bytes());
+}
+
+fn magnitude_scalar_f64(first: &[u8], second: &[u8], output: &mut [u8]) {
+    let first: [u8; 8] = first
+        .try_into()
+        .expect("F64 scalar traversal always supplies eight bytes");
+    let second: [u8; 8] = second
+        .try_into()
+        .expect("F64 scalar traversal always supplies eight bytes");
+    let x = f64::from_ne_bytes(first);
+    let y = f64::from_ne_bytes(second);
+    output.copy_from_slice(&(x * x + y * y).sqrt().to_ne_bytes());
+}
+
 fn transform_scalar_f32(input: &[u8], output: &mut [u8], operation: impl FnOnce(f32) -> f32) {
     let bytes: [u8; 4] = input
         .try_into()
@@ -336,6 +378,54 @@ fn binary(
         _ => unreachable!(),
     };
     from_bytes(left, output)
+}
+fn binary_into(
+    left: &Mat,
+    right: &Mat,
+    destination: &Mat,
+    f32_kernel: BinaryKernel,
+    f64_kernel: BinaryKernel,
+    f32_scalar_kernel: BinaryScalarKernel,
+    f64_scalar_kernel: BinaryScalarKernel,
+) -> Result<(), FloatMathWasmError> {
+    let depth = float_depth(left)?;
+    if !matches(left, right) {
+        return Err(FloatMathWasmError::ShapeMismatch);
+    }
+    if left.rows() == 0 || left.columns() == 0 {
+        destination.write_empty_layout(
+            left.rows(),
+            left.columns(),
+            left.channels(),
+            depth,
+            true,
+        )?;
+        return Ok(());
+    }
+
+    let scalar_kernel = match depth {
+        MatDepth::F32 => f32_scalar_kernel,
+        MatDepth::F64 => f64_scalar_kernel,
+        _ => unreachable!(),
+    };
+    if destination.try_write_shared_binary_scalars(
+        left,
+        right,
+        depth.byte_width(),
+        scalar_kernel,
+    )? {
+        return Ok(());
+    }
+
+    let left_bytes = left.compact_bytes();
+    let right_bytes = right.compact_bytes();
+    let output = match depth {
+        MatDepth::F32 => f32_kernel(&left_bytes, &right_bytes)?,
+        MatDepth::F64 => f64_kernel(&left_bytes, &right_bytes)?,
+        _ => unreachable!(),
+    };
+    destination.write_output(output, left.rows(), left.columns(), left.channels(), depth)?;
+    Ok(())
 }
 fn pair_into(
     left: &Mat,
@@ -529,6 +619,35 @@ mod tests {
             ),
             (0, 3, 2, MatDepth::F32, true)
         );
+    }
+    #[test]
+    fn magnitude_into_reads_two_shared_inputs_atomically_and_live() {
+        let parent = f32_mat(&[3.0, 4.0, 0.0, 0.0, 0.0], 1, 5, 1);
+        let x = parent.roi(0, 0, 1, 3).unwrap();
+        let y = parent.roi(0, 1, 1, 3).unwrap();
+        let destination = parent.roi(0, 2, 1, 3).unwrap();
+
+        mat_magnitude_into(&x, &y, &destination).expect("valid shared magnitude destination");
+
+        let actual = parent.to_f32_array().unwrap();
+        for (actual, expected) in actual
+            .into_iter()
+            .zip([3.0, 4.0, 5.0, 6.403_124_3, 8.124_039])
+        {
+            assert!(
+                (actual - expected).abs() <= 1e-5,
+                "expected {expected}, got {actual}"
+            );
+        }
+    }
+    #[test]
+    fn magnitude_into_supports_exact_in_place_second_input() {
+        let x = f64_mat(&[3.0, 5.0], 1, 2, 1);
+        let y = f64_mat(&[4.0, 12.0], 1, 2, 1);
+
+        mat_magnitude_into(&x, &y, &y).expect("valid in-place magnitude destination");
+
+        assert_eq!(y.to_f64_array().unwrap(), [5.0, 13.0]);
     }
     #[test]
     fn pair_outputs_mutate_strided_destinations_and_round_trip() {
