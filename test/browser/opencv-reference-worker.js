@@ -91,34 +91,37 @@ self.addEventListener("message", async ({ data: input }) => {
       reference.getOptimalDFTSize(7),
       reference.getOptimalDFTSize(25),
       reference.getOptimalDFTSize(0),
+      reference.getOptimalDFTSize(-1),
+      reference.getOptimalDFTSize(2_125_763_999),
+      reference.getOptimalDFTSize(2_125_764_000),
     ];
 
     const akaze = new reference.AKAZE();
     outputs.akazeDefaultName = akaze.getDefaultName();
     outputs.akazeDefaults = [
-      akaze.getDescriptorType(),
+      akaze.getDescriptorType().value,
       akaze.getDescriptorSize(),
       akaze.getDescriptorChannels(),
       akaze.getThreshold(),
       akaze.getNOctaves(),
       akaze.getNOctaveLayers(),
-      akaze.getDiffusivity(),
+      akaze.getDiffusivity().value,
     ];
-    akaze.setDescriptorType(4);
+    akaze.setDescriptorType(reference.AKAZE_DescriptorType.DESCRIPTOR_MLDB_UPRIGHT);
     akaze.setDescriptorSize(96);
     akaze.setDescriptorChannels(2);
     akaze.setThreshold(0.05);
     akaze.setNOctaves(5);
     akaze.setNOctaveLayers(6);
-    akaze.setDiffusivity(2);
+    akaze.setDiffusivity(reference.KAZE_DiffusivityType.DIFF_WEICKERT);
     outputs.akazeMutated = [
-      akaze.getDescriptorType(),
+      akaze.getDescriptorType().value,
       akaze.getDescriptorSize(),
       akaze.getDescriptorChannels(),
       akaze.getThreshold(),
       akaze.getNOctaves(),
       akaze.getNOctaveLayers(),
-      akaze.getDiffusivity(),
+      akaze.getDiffusivity().value,
     ];
     akaze.delete();
     const agast = new reference.AgastFeatureDetector();
@@ -129,7 +132,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.agastDefaults = [agast.getNonmaxSuppression(), agast.getThreshold(), agastType.value];
     agast.setNonmaxSuppression(false);
     agast.setThreshold(-1);
-    agast.setType(reference.AgastFeatureDetector_AGAST_5_8);
+    agast.setType(reference.AgastFeatureDetector_DetectorType.AGAST_5_8);
     outputs.agastMutated = [
       agast.getNonmaxSuppression(),
       agast.getThreshold(),
@@ -139,7 +142,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.fastDefaults = [fast.getNonmaxSuppression(), fast.getThreshold(), fastType.value];
     fast.setNonmaxSuppression(false);
     fast.setThreshold(256);
-    fast.setType(reference.FastFeatureDetector_TYPE_5_8);
+    fast.setType(reference.FastFeatureDetector_DetectorType.TYPE_5_8);
     outputs.fastMutated = [fast.getNonmaxSuppression(), fast.getThreshold(), fast.getType().value];
     agast.delete();
     fast.delete();

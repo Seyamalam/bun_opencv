@@ -47,7 +47,14 @@
           );
         }
         for (let index = 0; index < actual.length; index += 1) {
-          if (Math.abs(actual[index] - expected[index]) > tolerance) {
+          const actualNumber = Number(actual[index]);
+          const expectedNumber = Number(expected[index]);
+          if (!Number.isFinite(actualNumber) || !Number.isFinite(expectedNumber)) {
+            throw new Error(
+              `${operation} contains a non-numeric value at ${index}: package=${actual[index]} OpenCV.js=${expected[index]}`,
+            );
+          }
+          if (Math.abs(actualNumber - expectedNumber) > tolerance) {
             throw new Error(
               `${operation} differs at ${index}: package=${actual[index]} OpenCV.js=${expected[index]}`,
             );
@@ -160,6 +167,9 @@
             packageCv.getOptimalDFTSize(7),
             packageCv.getOptimalDFTSize(25),
             packageCv.getOptimalDFTSize(0),
+            packageCv.getOptimalDFTSize(-1),
+            packageCv.getOptimalDFTSize(2_125_763_999),
+            packageCv.getOptimalDFTSize(2_125_764_000),
           ],
           referenceOutputs.optimalDftSizes,
           "getOptimalDFTSize",
