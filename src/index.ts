@@ -2,8 +2,23 @@ import { createOpenCv } from "./client.js";
 import type { OpenCvBackend } from "./types.js";
 
 export { createOpenCv } from "./client.js";
-export { AKAZE, AKAZE_DEFAULTS, AKAZEDescriptorType, KAZEDiffusivity } from "./akaze.js";
-export type { AKAZEOptions, WasmAKAZEFactory, WasmAKAZEHandle } from "./akaze.js";
+export {
+  AKAZE,
+  AKAZE_DEFAULTS,
+  AKAZE_DescriptorType,
+  AKAZEDescriptorType,
+  KAZE_DiffusivityType,
+  KAZEDiffusivity,
+} from "./akaze.js";
+export type {
+  AKAZE_DescriptorTypeNamespace,
+  AKAZE_DescriptorTypeValue,
+  AKAZEOptions,
+  KAZE_DiffusivityTypeNamespace,
+  KAZE_DiffusivityTypeValue,
+  WasmAKAZEFactory,
+  WasmAKAZEHandle,
+} from "./akaze.js";
 export { KAZE, KAZE_DEFAULTS } from "./kaze.js";
 export type { KAZEOptions, WasmKAZEFactory, WasmKAZEHandle } from "./kaze.js";
 export { GFTT_DETECTOR_DEFAULTS, GFTTDetector } from "./gftt.js";
@@ -13,16 +28,23 @@ export type {
   WasmGFTTDetectorHandle,
 } from "./gftt.js";
 export { BindingError, OpenCvInputError } from "./error.js";
+export type { EmbindEnumInput, EmbindEnumValue } from "./embind-enum.js";
 export {
   AGAST_FEATURE_DETECTOR_DEFAULTS,
   AgastFeatureDetector,
+  AgastFeatureDetector_DetectorType,
   AgastFeatureDetectorType,
   FAST_FEATURE_DETECTOR_DEFAULTS,
   FastFeatureDetector,
+  FastFeatureDetector_DetectorType,
   FastFeatureDetectorType,
 } from "./feature-detectors.js";
 export type {
+  AgastFeatureDetector_DetectorTypeNamespace,
+  AgastFeatureDetector_DetectorTypeValue,
   AgastFeatureDetectorOptions,
+  FastFeatureDetector_DetectorTypeNamespace,
+  FastFeatureDetector_DetectorTypeValue,
   FastFeatureDetectorOptions,
   WasmAgastFeatureDetectorFactory,
   WasmAgastFeatureDetectorHandle,

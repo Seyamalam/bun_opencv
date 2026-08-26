@@ -2,16 +2,18 @@ import { describe, expect, test } from "bun:test";
 
 import {
   AGAST_FEATURE_DETECTOR_DEFAULTS,
-  AgastFeatureDetectorType,
+  AgastFeatureDetector_DetectorType,
   AKAZE_DEFAULTS,
+  AKAZE_DescriptorType,
   AKAZEDescriptorType,
   BindingError,
   createOpenCv,
   createRgbaImage,
   FAST_FEATURE_DETECTOR_DEFAULTS,
-  FastFeatureDetectorType,
+  FastFeatureDetector_DetectorType,
   GFTT_DETECTOR_DEFAULTS,
   KAZE_DEFAULTS,
+  KAZE_DiffusivityType,
   KAZEDiffusivity,
   OpenCvInputError,
 } from "../src/index.js";
@@ -2512,13 +2514,13 @@ describe("OpenCv client", () => {
     const akaze = localClient.createAKAZE();
 
     expect(akaze.getDefaultName()).toBe("Feature2D.AKAZE");
-    expect(akaze.getDescriptorType()).toBe(AKAZE_DEFAULTS.descriptorType);
+    expect(akaze.getDescriptorType()).toBe(AKAZE_DescriptorType.DESCRIPTOR_MLDB);
     expect(akaze.getDescriptorSize()).toBe(AKAZE_DEFAULTS.descriptorSize);
     expect(akaze.getDescriptorChannels()).toBe(AKAZE_DEFAULTS.descriptorChannels);
     expect(akaze.getThreshold()).toBeCloseTo(AKAZE_DEFAULTS.threshold, 9);
     expect(akaze.getNOctaves()).toBe(AKAZE_DEFAULTS.octaves);
     expect(akaze.getNOctaveLayers()).toBe(AKAZE_DEFAULTS.octaveLayers);
-    expect(akaze.getDiffusivity()).toBe(AKAZE_DEFAULTS.diffusivity);
+    expect(akaze.getDiffusivity()).toBe(KAZE_DiffusivityType.DIFF_PM_G2);
 
     akaze.dispose();
     expect(backend.akazeFreeCount).toBe(1);
@@ -2535,14 +2537,14 @@ describe("OpenCv client", () => {
     expect(detector.getDefaultName()).toBe("Feature2D.AgastFeatureDetector");
     expect(detector.getThreshold()).toBe(AGAST_FEATURE_DETECTOR_DEFAULTS.threshold);
     expect(detector.getNonmaxSuppression()).toBe(AGAST_FEATURE_DETECTOR_DEFAULTS.nonmaxSuppression);
-    expect(detector.getType()).toBe(AGAST_FEATURE_DETECTOR_DEFAULTS.type);
+    expect(detector.getType()).toBe(AgastFeatureDetector_DetectorType.OAST_9_16);
 
     detector.setThreshold(-1);
     detector.setNonmaxSuppression(false);
-    detector.setType(AgastFeatureDetectorType.AGAST_7_12s);
+    detector.setType(AgastFeatureDetector_DetectorType.AGAST_7_12s);
     expect(detector.getThreshold()).toBe(-1);
     expect(detector.getNonmaxSuppression()).toBe(false);
-    expect(detector.getType()).toBe(AgastFeatureDetectorType.AGAST_7_12s);
+    expect(detector.getType()).toBe(AgastFeatureDetector_DetectorType.AGAST_7_12s);
 
     detector.dispose();
     detector.dispose();
@@ -2576,14 +2578,14 @@ describe("OpenCv client", () => {
     expect(detector.getDefaultName()).toBe("Feature2D.FastFeatureDetector");
     expect(detector.getThreshold()).toBe(FAST_FEATURE_DETECTOR_DEFAULTS.threshold);
     expect(detector.getNonmaxSuppression()).toBe(FAST_FEATURE_DETECTOR_DEFAULTS.nonmaxSuppression);
-    expect(detector.getType()).toBe(FAST_FEATURE_DETECTOR_DEFAULTS.type);
+    expect(detector.getType()).toBe(FastFeatureDetector_DetectorType.TYPE_9_16);
 
     detector.setThreshold(256);
     detector.setNonmaxSuppression(false);
-    detector.setType(FastFeatureDetectorType.TYPE_7_12);
+    detector.setType(FastFeatureDetector_DetectorType.TYPE_7_12);
     expect(detector.getThreshold()).toBe(256);
     expect(detector.getNonmaxSuppression()).toBe(false);
-    expect(detector.getType()).toBe(FastFeatureDetectorType.TYPE_7_12);
+    expect(detector.getType()).toBe(FastFeatureDetector_DetectorType.TYPE_7_12);
 
     detector.dispose();
     detector.dispose();
@@ -2622,28 +2624,28 @@ describe("OpenCv client", () => {
       maxPoints: 300,
     });
 
-    expect(akaze.getDescriptorType()).toBe(AKAZEDescriptorType.MLDB_UPRIGHT);
+    expect(akaze.getDescriptorType()).toBe(AKAZE_DescriptorType.DESCRIPTOR_MLDB_UPRIGHT);
     expect(akaze.getDescriptorSize()).toBe(96);
     expect(akaze.getDescriptorChannels()).toBe(2);
     expect(akaze.getThreshold()).toBe(0.05);
     expect(akaze.getNOctaves()).toBe(5);
     expect(akaze.getNOctaveLayers()).toBe(6);
-    expect(akaze.getDiffusivity()).toBe(KAZEDiffusivity.WEICKERT);
+    expect(akaze.getDiffusivity()).toBe(KAZE_DiffusivityType.DIFF_WEICKERT);
 
-    akaze.setDescriptorType(AKAZEDescriptorType.KAZE);
+    akaze.setDescriptorType(AKAZE_DescriptorType.DESCRIPTOR_KAZE);
     akaze.setDescriptorSize(128);
     akaze.setDescriptorChannels(3);
     akaze.setThreshold(0.1);
     akaze.setNOctaves(7);
     akaze.setNOctaveLayers(8);
-    akaze.setDiffusivity(KAZEDiffusivity.CHARBONNIER);
-    expect(akaze.getDescriptorType()).toBe(AKAZEDescriptorType.KAZE);
+    akaze.setDiffusivity(KAZE_DiffusivityType.DIFF_CHARBONNIER);
+    expect(akaze.getDescriptorType()).toBe(AKAZE_DescriptorType.DESCRIPTOR_KAZE);
     expect(akaze.getDescriptorSize()).toBe(128);
     expect(akaze.getDescriptorChannels()).toBe(3);
     expect(akaze.getThreshold()).toBe(0.1);
     expect(akaze.getNOctaves()).toBe(7);
     expect(akaze.getNOctaveLayers()).toBe(8);
-    expect(akaze.getDiffusivity()).toBe(KAZEDiffusivity.CHARBONNIER);
+    expect(akaze.getDiffusivity()).toBe(KAZE_DiffusivityType.DIFF_CHARBONNIER);
 
     expect(akaze.setDescriptorSize(-1)).toBeUndefined();
     expect(akaze.getDescriptorSize()).toBe(-1);
@@ -2738,7 +2740,7 @@ describe("OpenCv client", () => {
     expect(kaze.getThreshold()).toBe(0.0010000000474974513);
     expect(kaze.getNOctaves()).toBe(KAZE_DEFAULTS.octaves);
     expect(kaze.getNOctaveLayers()).toBe(KAZE_DEFAULTS.octaveLayers);
-    expect(kaze.getDiffusivity()).toBe(KAZE_DEFAULTS.diffusivity);
+    expect(kaze.getDiffusivity()).toBe(KAZE_DiffusivityType.DIFF_PM_G2);
 
     kaze.dispose();
     expect(backend.kazeFreeCount).toBe(1);
@@ -2763,20 +2765,20 @@ describe("OpenCv client", () => {
     expect(kaze.getThreshold()).toBe(-1);
     expect(kaze.getNOctaves()).toBe(5);
     expect(kaze.getNOctaveLayers()).toBe(6);
-    expect(kaze.getDiffusivity()).toBe(KAZEDiffusivity.WEICKERT);
+    expect(kaze.getDiffusivity()).toBe(KAZE_DiffusivityType.DIFF_WEICKERT);
 
     kaze.setExtended(false);
     kaze.setUpright(false);
     kaze.setThreshold(-0.25);
     kaze.setNOctaves(7);
     kaze.setNOctaveLayers(8);
-    kaze.setDiffusivity(KAZEDiffusivity.CHARBONNIER);
+    kaze.setDiffusivity(KAZE_DiffusivityType.DIFF_CHARBONNIER);
     expect(kaze.getExtended()).toBe(false);
     expect(kaze.getUpright()).toBe(false);
     expect(kaze.getThreshold()).toBe(-0.25);
     expect(kaze.getNOctaves()).toBe(7);
     expect(kaze.getNOctaveLayers()).toBe(8);
-    expect(kaze.getDiffusivity()).toBe(KAZEDiffusivity.CHARBONNIER);
+    expect(kaze.getDiffusivity()).toBe(KAZE_DiffusivityType.DIFF_CHARBONNIER);
 
     kaze.dispose();
     expect(() => kaze.setExtended(true)).toThrow(BindingError);
@@ -2791,7 +2793,7 @@ describe("OpenCv client", () => {
     const kaze = localClient.createKAZE();
     kaze.setNOctaves(1.5);
     kaze.setThreshold(Number.POSITIVE_INFINITY);
-    expect(kaze.getDiffusivity()).toBe(KAZE_DEFAULTS.diffusivity);
+    expect(kaze.getDiffusivity()).toBe(KAZE_DiffusivityType.DIFF_PM_G2);
     expect(kaze.getNOctaves()).toBe(1);
     expect(kaze.getThreshold()).toBe(Number.POSITIVE_INFINITY);
     kaze.dispose();

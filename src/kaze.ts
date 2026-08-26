@@ -1,4 +1,7 @@
-import { KAZEDiffusivity } from "./akaze.js";
+import { KAZE_DIFFUSIVITY_VALUES, KAZEDiffusivity } from "./akaze.js";
+import type { KAZE_DiffusivityTypeValue } from "./akaze.js";
+import { enumInputToI32, enumValueFromI32 } from "./embind-enum.js";
+import type { EmbindEnumInput } from "./embind-enum.js";
 import { BindingError, OpenCvInputError } from "./error.js";
 
 interface EmbindObjectInput {
@@ -71,8 +74,9 @@ export class KAZE {
     return this.#owned().getDefaultName();
   }
 
-  getDiffusivity(): KAZEDiffusivity {
-    return diffusivityFromNumber(this.#owned().getDiffusivity());
+  getDiffusivity(): KAZE_DiffusivityTypeValue | undefined {
+    requireExactArity(arguments.length, 0, "KAZE.getDiffusivity");
+    return enumValueFromI32(KAZE_DIFFUSIVITY_VALUES, this.#ownedConst().getDiffusivity());
   }
 
   getExtended(): boolean {
@@ -100,9 +104,9 @@ export class KAZE {
     return this.#ownedConst().getUpright();
   }
 
-  setDiffusivity(value: KAZEDiffusivity): void {
-    validateDiffusivity(value);
-    this.#owned().setDiffusivity(value);
+  setDiffusivity(value: KAZE_DiffusivityTypeValue | EmbindEnumInput): void {
+    requireExactArity(arguments.length, 1, "KAZE.setDiffusivity");
+    this.#owned().setDiffusivity(enumInputToI32(value));
   }
 
   setExtended(value: boolean): void {
@@ -188,18 +192,6 @@ function validateDiffusivity(value: KAZEDiffusivity): void {
     value !== KAZEDiffusivity.CHARBONNIER
   ) {
     throw new OpenCvInputError("KAZE diffusivity must be 0, 1, 2, or 3");
-  }
-}
-
-function diffusivityFromNumber(value: number): KAZEDiffusivity {
-  switch (value) {
-    case 0:
-    case 1:
-    case 2:
-    case 3:
-      return value;
-    default:
-      throw new OpenCvInputError(`unsupported KAZE diffusivity ${value}`);
   }
 }
 

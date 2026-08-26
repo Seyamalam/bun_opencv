@@ -1,4 +1,6 @@
 import { BindingError, OpenCvInputError } from "./error.js";
+import { createEmbindEnumNamespace, enumInputToI32, enumValueFromI32 } from "./embind-enum.js";
+import type { EmbindEnumInput, EmbindEnumValue } from "./embind-enum.js";
 
 interface EmbindObjectInput {
   toString(): string;
@@ -20,6 +22,61 @@ export enum FastFeatureDetectorType {
   TYPE_7_12 = 1,
   TYPE_9_16 = 2,
 }
+
+export interface AgastFeatureDetector_DetectorTypeValue extends EmbindEnumValue {}
+
+export interface AgastFeatureDetector_DetectorTypeNamespace extends Function {
+  AGAST_5_8: AgastFeatureDetector_DetectorTypeValue;
+  AGAST_7_12d: AgastFeatureDetector_DetectorTypeValue;
+  AGAST_7_12s: AgastFeatureDetector_DetectorTypeValue;
+  OAST_9_16: AgastFeatureDetector_DetectorTypeValue;
+  readonly prototype: AgastFeatureDetector_DetectorTypeValue;
+}
+
+/** OpenCV.js-compatible AGAST detector-type enum namespace. */
+export const AgastFeatureDetector_DetectorType =
+  createEmbindEnumNamespace<AgastFeatureDetector_DetectorTypeNamespace>(
+    "AgastFeatureDetector_DetectorType",
+    [
+      ["AGAST_5_8", 0],
+      ["AGAST_7_12d", 1],
+      ["AGAST_7_12s", 2],
+      ["OAST_9_16", 3],
+    ],
+  );
+
+export interface FastFeatureDetector_DetectorTypeValue extends EmbindEnumValue {}
+
+export interface FastFeatureDetector_DetectorTypeNamespace extends Function {
+  TYPE_5_8: FastFeatureDetector_DetectorTypeValue;
+  TYPE_7_12: FastFeatureDetector_DetectorTypeValue;
+  TYPE_9_16: FastFeatureDetector_DetectorTypeValue;
+  readonly prototype: FastFeatureDetector_DetectorTypeValue;
+}
+
+/** OpenCV.js-compatible FAST detector-type enum namespace. */
+export const FastFeatureDetector_DetectorType =
+  createEmbindEnumNamespace<FastFeatureDetector_DetectorTypeNamespace>(
+    "FastFeatureDetector_DetectorType",
+    [
+      ["TYPE_5_8", 0],
+      ["TYPE_7_12", 1],
+      ["TYPE_9_16", 2],
+    ],
+  );
+
+const AGAST_TYPES = new Map<number, AgastFeatureDetector_DetectorTypeValue>([
+  [0, AgastFeatureDetector_DetectorType.AGAST_5_8],
+  [1, AgastFeatureDetector_DetectorType.AGAST_7_12d],
+  [2, AgastFeatureDetector_DetectorType.AGAST_7_12s],
+  [3, AgastFeatureDetector_DetectorType.OAST_9_16],
+]);
+
+const FAST_TYPES = new Map<number, FastFeatureDetector_DetectorTypeValue>([
+  [0, FastFeatureDetector_DetectorType.TYPE_5_8],
+  [1, FastFeatureDetector_DetectorType.TYPE_7_12],
+  [2, FastFeatureDetector_DetectorType.TYPE_9_16],
+]);
 
 /** Optional configuration accepted by `OpenCv.createAgastFeatureDetector`. */
 export interface AgastFeatureDetectorOptions {
@@ -117,8 +174,9 @@ export class AgastFeatureDetector {
     return this.#ownedConst().getThreshold();
   }
 
-  getType(): AgastFeatureDetectorType {
-    return agastTypeFromNumber(this.#owned().getType());
+  getType(): AgastFeatureDetector_DetectorTypeValue | undefined {
+    requireExactArity(arguments.length, 0, "AgastFeatureDetector.getType");
+    return enumValueFromI32(AGAST_TYPES, this.#ownedConst().getType());
   }
 
   setNonmaxSuppression(value: boolean): void {
@@ -131,9 +189,9 @@ export class AgastFeatureDetector {
     this.#owned().setThreshold(toWasmI32(value));
   }
 
-  setType(value: AgastFeatureDetectorType): void {
-    validateAgastType(value);
-    this.#owned().setType(value);
+  setType(value: AgastFeatureDetector_DetectorTypeValue | EmbindEnumInput): void {
+    requireExactArity(arguments.length, 1, "AgastFeatureDetector.setType");
+    this.#owned().setType(enumInputToI32(value));
   }
 
   /** Releases the WASM handle with OpenCV.js-compatible repeated-delete behavior. */
@@ -199,8 +257,9 @@ export class FastFeatureDetector {
     return this.#ownedConst().getThreshold();
   }
 
-  getType(): FastFeatureDetectorType {
-    return fastTypeFromNumber(this.#owned().getType());
+  getType(): FastFeatureDetector_DetectorTypeValue | undefined {
+    requireExactArity(arguments.length, 0, "FastFeatureDetector.getType");
+    return enumValueFromI32(FAST_TYPES, this.#ownedConst().getType());
   }
 
   setNonmaxSuppression(value: boolean): void {
@@ -213,9 +272,9 @@ export class FastFeatureDetector {
     this.#owned().setThreshold(toWasmI32(value));
   }
 
-  setType(value: FastFeatureDetectorType): void {
-    validateFastType(value);
-    this.#owned().setType(value);
+  setType(value: FastFeatureDetector_DetectorTypeValue | EmbindEnumInput): void {
+    requireExactArity(arguments.length, 1, "FastFeatureDetector.setType");
+    this.#owned().setType(enumInputToI32(value));
   }
 
   /** Releases the WASM handle with OpenCV.js-compatible repeated-delete behavior. */
@@ -284,18 +343,6 @@ function validateAgastType(value: AgastFeatureDetectorType): void {
   }
 }
 
-function agastTypeFromNumber(value: number): AgastFeatureDetectorType {
-  switch (value) {
-    case 0:
-    case 1:
-    case 2:
-    case 3:
-      return value;
-    default:
-      throw new OpenCvInputError(`unsupported AGAST detector type ${value}`);
-  }
-}
-
 function validateFastType(value: FastFeatureDetectorType): void {
   if (
     value !== FastFeatureDetectorType.TYPE_5_8 &&
@@ -303,17 +350,6 @@ function validateFastType(value: FastFeatureDetectorType): void {
     value !== FastFeatureDetectorType.TYPE_9_16
   ) {
     throw new OpenCvInputError("FAST detector type must be 0, 1, or 2");
-  }
-}
-
-function fastTypeFromNumber(value: number): FastFeatureDetectorType {
-  switch (value) {
-    case 0:
-    case 1:
-    case 2:
-      return value;
-    default:
-      throw new OpenCvInputError(`unsupported FAST detector type ${value}`);
   }
 }
 

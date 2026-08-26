@@ -1,4 +1,6 @@
 import { BindingError, OpenCvInputError } from "./error.js";
+import { createEmbindEnumNamespace, enumInputToI32, enumValueFromI32 } from "./embind-enum.js";
+import type { EmbindEnumInput, EmbindEnumValue } from "./embind-enum.js";
 
 interface EmbindObjectInput {
   toString(): string;
@@ -21,6 +23,64 @@ export enum KAZEDiffusivity {
   WEICKERT = 2,
   CHARBONNIER = 3,
 }
+
+/** Embind singleton returned by AKAZE descriptor-type methods. */
+export interface AKAZE_DescriptorTypeValue extends EmbindEnumValue {}
+
+export interface AKAZE_DescriptorTypeNamespace extends Function {
+  DESCRIPTOR_KAZE_UPRIGHT: AKAZE_DescriptorTypeValue;
+  DESCRIPTOR_KAZE: AKAZE_DescriptorTypeValue;
+  DESCRIPTOR_MLDB_UPRIGHT: AKAZE_DescriptorTypeValue;
+  DESCRIPTOR_MLDB: AKAZE_DescriptorTypeValue;
+  readonly prototype: AKAZE_DescriptorTypeValue;
+}
+
+/** OpenCV.js-compatible descriptor-type enum namespace. */
+export const AKAZE_DescriptorType = createEmbindEnumNamespace<AKAZE_DescriptorTypeNamespace>(
+  "AKAZE_DescriptorType",
+  [
+    ["DESCRIPTOR_KAZE_UPRIGHT", 2],
+    ["DESCRIPTOR_KAZE", 3],
+    ["DESCRIPTOR_MLDB_UPRIGHT", 4],
+    ["DESCRIPTOR_MLDB", 5],
+  ],
+);
+
+/** Embind singleton shared by AKAZE and KAZE diffusivity methods. */
+export interface KAZE_DiffusivityTypeValue extends EmbindEnumValue {}
+
+export interface KAZE_DiffusivityTypeNamespace extends Function {
+  DIFF_PM_G1: KAZE_DiffusivityTypeValue;
+  DIFF_PM_G2: KAZE_DiffusivityTypeValue;
+  DIFF_WEICKERT: KAZE_DiffusivityTypeValue;
+  DIFF_CHARBONNIER: KAZE_DiffusivityTypeValue;
+  readonly prototype: KAZE_DiffusivityTypeValue;
+}
+
+/** OpenCV.js-compatible nonlinear-diffusion enum namespace. */
+export const KAZE_DiffusivityType = createEmbindEnumNamespace<KAZE_DiffusivityTypeNamespace>(
+  "KAZE_DiffusivityType",
+  [
+    ["DIFF_PM_G1", 0],
+    ["DIFF_PM_G2", 1],
+    ["DIFF_WEICKERT", 2],
+    ["DIFF_CHARBONNIER", 3],
+  ],
+);
+
+const DESCRIPTOR_TYPES = new Map<number, AKAZE_DescriptorTypeValue>([
+  [2, AKAZE_DescriptorType.DESCRIPTOR_KAZE_UPRIGHT],
+  [3, AKAZE_DescriptorType.DESCRIPTOR_KAZE],
+  [4, AKAZE_DescriptorType.DESCRIPTOR_MLDB_UPRIGHT],
+  [5, AKAZE_DescriptorType.DESCRIPTOR_MLDB],
+]);
+
+export const KAZE_DIFFUSIVITY_VALUES = new Map<number, KAZE_DiffusivityTypeValue>([
+  [0, KAZE_DiffusivityType.DIFF_PM_G1],
+  [1, KAZE_DiffusivityType.DIFF_PM_G2],
+  [2, KAZE_DiffusivityType.DIFF_WEICKERT],
+  [3, KAZE_DiffusivityType.DIFF_CHARBONNIER],
+]);
 
 /** Optional configuration accepted by `OpenCv.createAKAZE`. */
 export interface AKAZEOptions {
@@ -104,12 +164,14 @@ export class AKAZE {
     return this.#ownedConst().getDescriptorSize();
   }
 
-  getDescriptorType(): AKAZEDescriptorType {
-    return descriptorTypeFromNumber(this.#owned().getDescriptorType());
+  getDescriptorType(): AKAZE_DescriptorTypeValue | undefined {
+    requireExactArity(arguments.length, 0, "AKAZE.getDescriptorType");
+    return enumValueFromI32(DESCRIPTOR_TYPES, this.#ownedConst().getDescriptorType());
   }
 
-  getDiffusivity(): KAZEDiffusivity {
-    return diffusivityFromNumber(this.#owned().getDiffusivity());
+  getDiffusivity(): KAZE_DiffusivityTypeValue | undefined {
+    requireExactArity(arguments.length, 0, "AKAZE.getDiffusivity");
+    return enumValueFromI32(KAZE_DIFFUSIVITY_VALUES, this.#ownedConst().getDiffusivity());
   }
 
   getNOctaveLayers(): number {
@@ -137,14 +199,14 @@ export class AKAZE {
     this.#owned().setDescriptorSize(toWasmI32(value));
   }
 
-  setDescriptorType(value: AKAZEDescriptorType): void {
-    validateDescriptorType(value);
-    this.#owned().setDescriptorType(value);
+  setDescriptorType(value: AKAZE_DescriptorTypeValue | EmbindEnumInput): void {
+    requireExactArity(arguments.length, 1, "AKAZE.setDescriptorType");
+    this.#owned().setDescriptorType(enumInputToI32(value));
   }
 
-  setDiffusivity(value: KAZEDiffusivity): void {
-    validateDiffusivity(value);
-    this.#owned().setDiffusivity(value);
+  setDiffusivity(value: KAZE_DiffusivityTypeValue | EmbindEnumInput): void {
+    requireExactArity(arguments.length, 1, "AKAZE.setDiffusivity");
+    this.#owned().setDiffusivity(enumInputToI32(value));
   }
 
   setNOctaveLayers(value: number): void {
@@ -249,30 +311,6 @@ function validateDiffusivity(value: KAZEDiffusivity): void {
     value !== KAZEDiffusivity.CHARBONNIER
   ) {
     throw new OpenCvInputError("AKAZE diffusivity must be 0, 1, 2, or 3");
-  }
-}
-
-function descriptorTypeFromNumber(value: number): AKAZEDescriptorType {
-  switch (value) {
-    case 2:
-    case 3:
-    case 4:
-    case 5:
-      return value;
-    default:
-      throw new OpenCvInputError(`unsupported AKAZE descriptor type ${value}`);
-  }
-}
-
-function diffusivityFromNumber(value: number): KAZEDiffusivity {
-  switch (value) {
-    case 0:
-    case 1:
-    case 2:
-    case 3:
-      return value;
-    default:
-      throw new OpenCvInputError(`unsupported AKAZE diffusivity ${value}`);
   }
 }
 
