@@ -67,67 +67,80 @@ Read [the API reference](docs/API.md) for input contracts and conversion helpers
 
 The independent browser inventory contains 488 callable families, so the 25% milestone is 122 fully compatible families. A family earns full credit only after every selected browser overload, supported matrix form, output mutation, error case, and differential fixture passes. A useful U8 specialization is recorded as partial and earns no full-parity credit.
 
-| Module  | Package method         | OpenCV.js family          | Status  | Current scope                          |
-| ------- | ---------------------- | ------------------------- | ------- | -------------------------------------- |
-| core    | `absdiff`              | `cv.absdiff`              | Partial | Matching U8 matrices                   |
-| core    | `add`                  | `cv.add`                  | Partial | Saturating U8 matrix operands          |
-| core    | `addWeighted`          | `cv.addWeighted`          | Partial | All depths and finite weights          |
-| core    | `bitwiseAnd`           | `cv.bitwise_and`          | Partial | U8 matrix operands, no mask            |
-| core    | `bitwiseNot`           | `cv.bitwise_not`          | Partial | U8 matrix, no mask                     |
-| core    | `bitwiseOr`            | `cv.bitwise_or`           | Partial | U8 matrix operands, no mask            |
-| core    | `bitwiseXor`           | `cv.bitwise_xor`          | Partial | U8 matrix operands, no mask            |
-| core    | `compareEqual`         | `cv.compare`              | Partial | U8 equality mode                       |
-| core    | `countNonZero`         | `cv.countNonZero`         | Partial | All single-channel scalar depths       |
-| core    | `convertScaleAbs`      | `cv.convertScaleAbs`      | Partial | All input depths to saturated U8       |
-| core    | `copyMakeBorder`       | `cv.copyMakeBorder`       | Partial | All depths and five border modes       |
-| core    | `determinant`          | `cv.determinant`          | Partial | Square single-channel matrices         |
-| core    | `divide`               | `cv.divide`               | Partial | All depths and matching matrices       |
-| core    | `cartToPolar`          | `cv.cartToPolar`          | Partial | F32/F64 with mutable outputs           |
-| core    | `exp`                  | `cv.exp`                  | Partial | F32/F64 element-wise output            |
-| core    | `flip`                 | `cv.flip`                 | Partial | All depths and destination mutation    |
-| core    | `hconcat`              | `cv.hconcat`              | Partial | All depths, two through four inputs    |
-| core    | `inRange`              | `cv.inRange`              | Partial | U8 matrix bounds                       |
-| core    | `invert`               | `cv.invert`               | Partial | Square matrices and three methods      |
-| core    | `log`                  | `cv.log`                  | Partial | F32/F64 natural logarithm              |
-| core    | `lut`                  | `cv.LUT`                  | Partial | Byte sources and every table depth     |
-| core    | `magnitude`            | `cv.magnitude`            | Partial | Matching F32/F64 matrices              |
-| core    | `max`                  | `cv.max`                  | Partial | U8 matrix operands                     |
-| core    | `mean`                 | `cv.mean`                 | Partial | All depths, no mask                    |
-| core    | `meanStdDev`           | `cv.meanStdDev`           | Partial | All depths, masks, and F64 outputs     |
-| core    | `merge`                | `cv.merge`                | Partial | Two through four all-depth inputs      |
-| core    | `min`                  | `cv.min`                  | Partial | U8 matrix operands                     |
-| core    | `minMaxLoc`            | `cv.minMaxLoc`            | Partial | All single-channel depths, no mask     |
-| core    | `mixChannels`          | `cv.mixChannels`          | Partial | One source and destination, all depths |
-| core    | `multiply`             | `cv.multiply`             | Partial | All depths and matching matrices       |
-| core    | `norm`                 | `cv.norm`                 | Partial | All depths, masks, and norm modes      |
-| core    | `normalize`            | `cv.normalize`            | Partial | All depths and mutable destinations    |
-| core    | `polarToCart`          | `cv.polarToCart`          | Partial | F32/F64 with mutable outputs           |
-| core    | `perspectiveTransform` | `cv.perspectiveTransform` | Partial | F32/F64 2D and 3D vectors              |
-| core    | `pow`                  | `cv.pow`                  | Partial | F32/F64 and finite scalar exponent     |
-| core    | `randn`                | `cv.randn`                | Partial | All depths and diagonal deviations     |
-| core    | `randu`                | `cv.randu`                | Partial | All depths and per-channel ranges      |
-| core    | `repeat`               | `cv.repeat`               | Partial | All depths, positive tile counts       |
-| core    | `reduce`               | `cv.reduce`               | Partial | Both axes, four modes, all depths      |
-| core    | `rotate`               | `cv.rotate`               | Partial | All depths and rotation codes          |
-| core    | `setIdentity`          | `cv.setIdentity`          | Partial | All depths and in-place output         |
-| core    | `setRNGSeed`           | `cv.setRNGSeed`           | Partial | Deterministic package-owned RNG        |
-| core    | `solve`                | `cv.solve`                | Partial | LU, Cholesky, and QR methods           |
-| core    | `subtract`             | `cv.subtract`             | Partial | Saturating U8 matrix operands          |
-| core    | `split`                | `cv.split`                | Partial | All depths and strided regions         |
-| core    | `sqrt`                 | `cv.sqrt`                 | Partial | F32/F64 element-wise output            |
-| core    | `transpose`            | `cv.transpose`            | Partial | All depths and destination mutation    |
-| core    | `trace`                | `cv.trace`                | Partial | All depths, channel zero only          |
-| core    | `transform`            | `cv.transform`            | Partial | All depths and F32/F64 coefficients    |
-| core    | `vconcat`              | `cv.vconcat`              | Partial | All depths, two through four inputs    |
-| imgproc | `grayscale`            | `cv.cvtColor`             | Partial | RGBA-to-gray specialization            |
-| imgproc | `resizeNearest`        | `cv.resize`               | Partial | RGBA nearest-neighbor specialization   |
-| imgproc | `threshold`            | `cv.threshold`            | Partial | Luma-derived U8 binary specialization  |
-| imgproc | `gaussianBlur`         | `cv.GaussianBlur`         | Planned | Not started                            |
-| imgproc | `canny`                | `cv.Canny`                | Planned | Not started                            |
-| imgproc | `findContours`         | `cv.findContours`         | Planned | Not started                            |
-| imgproc | `warpPerspective`      | `cv.warpPerspective`      | Planned | Not started                            |
+| Module  | Package method            | OpenCV.js family             | Status  | Current scope                          |
+| ------- | ------------------------- | ---------------------------- | ------- | -------------------------------------- |
+| core    | `absdiff`                 | `cv.absdiff`                 | Partial | Matching U8 matrices                   |
+| core    | `add`                     | `cv.add`                     | Partial | Saturating U8 matrix operands          |
+| core    | `addWeighted`             | `cv.addWeighted`             | Partial | All depths and finite weights          |
+| core    | `bitwiseAnd`              | `cv.bitwise_and`             | Partial | U8 matrix operands, no mask            |
+| core    | `bitwiseNot`              | `cv.bitwise_not`             | Partial | U8 matrix, no mask                     |
+| core    | `bitwiseOr`               | `cv.bitwise_or`              | Partial | U8 matrix operands, no mask            |
+| core    | `bitwiseXor`              | `cv.bitwise_xor`             | Partial | U8 matrix operands, no mask            |
+| core    | `compareEqual`            | `cv.compare`                 | Partial | U8 equality mode                       |
+| core    | `countNonZero`            | `cv.countNonZero`            | Partial | All single-channel scalar depths       |
+| core    | `convertScaleAbs`         | `cv.convertScaleAbs`         | Partial | All input depths to saturated U8       |
+| core    | `copyMakeBorder`          | `cv.copyMakeBorder`          | Partial | All depths and five border modes       |
+| core    | `determinant`             | `cv.determinant`             | Partial | Square single-channel matrices         |
+| core    | `divide`                  | `cv.divide`                  | Partial | All depths and matching matrices       |
+| core    | `cartToPolar`             | `cv.cartToPolar`             | Partial | F32/F64 with mutable outputs           |
+| core    | `exp`                     | `cv.exp`                     | Partial | F32/F64 element-wise output            |
+| core    | `flip`                    | `cv.flip`                    | Partial | All depths and destination mutation    |
+| core    | `hconcat`                 | `cv.hconcat`                 | Partial | All depths, two through four inputs    |
+| core    | `inRange`                 | `cv.inRange`                 | Partial | U8 matrix bounds                       |
+| core    | `invert`                  | `cv.invert`                  | Partial | Square matrices and three methods      |
+| core    | `log`                     | `cv.log`                     | Partial | F32/F64 natural logarithm              |
+| core    | `lut`                     | `cv.LUT`                     | Partial | Byte sources and every table depth     |
+| core    | `magnitude`               | `cv.magnitude`               | Partial | Matching F32/F64 matrices              |
+| core    | `max`                     | `cv.max`                     | Partial | U8 matrix operands                     |
+| core    | `mean`                    | `cv.mean`                    | Partial | All depths, no mask                    |
+| core    | `meanStdDev`              | `cv.meanStdDev`              | Partial | All depths, masks, and F64 outputs     |
+| core    | `merge`                   | `cv.merge`                   | Partial | Two through four all-depth inputs      |
+| core    | `min`                     | `cv.min`                     | Partial | U8 matrix operands                     |
+| core    | `minMaxLoc`               | `cv.minMaxLoc`               | Partial | All single-channel depths, no mask     |
+| core    | `mixChannels`             | `cv.mixChannels`             | Partial | One source and destination, all depths |
+| core    | `multiply`                | `cv.multiply`                | Partial | All depths and matching matrices       |
+| core    | `norm`                    | `cv.norm`                    | Partial | All depths, masks, and norm modes      |
+| core    | `normalize`               | `cv.normalize`               | Partial | All depths and mutable destinations    |
+| core    | `polarToCart`             | `cv.polarToCart`             | Partial | F32/F64 with mutable outputs           |
+| core    | `perspectiveTransform`    | `cv.perspectiveTransform`    | Partial | F32/F64 2D and 3D vectors              |
+| core    | `pow`                     | `cv.pow`                     | Partial | F32/F64 and finite scalar exponent     |
+| core    | `randn`                   | `cv.randn`                   | Partial | All depths and diagonal deviations     |
+| core    | `randu`                   | `cv.randu`                   | Partial | All depths and per-channel ranges      |
+| core    | `repeat`                  | `cv.repeat`                  | Partial | All depths, positive tile counts       |
+| core    | `reduce`                  | `cv.reduce`                  | Partial | Both axes, four modes, all depths      |
+| core    | `rotate`                  | `cv.rotate`                  | Partial | All depths and rotation codes          |
+| core    | `setIdentity`             | `cv.setIdentity`             | Partial | All depths and in-place output         |
+| core    | `setRNGSeed`              | `cv.setRNGSeed`              | Partial | Deterministic package-owned RNG        |
+| core    | `solve`                   | `cv.solve`                   | Partial | LU, Cholesky, and QR methods           |
+| core    | `subtract`                | `cv.subtract`                | Partial | Saturating U8 matrix operands          |
+| core    | `split`                   | `cv.split`                   | Partial | All depths and strided regions         |
+| core    | `sqrt`                    | `cv.sqrt`                    | Partial | F32/F64 element-wise output            |
+| core    | `transpose`               | `cv.transpose`               | Partial | All depths and destination mutation    |
+| core    | `trace`                   | `cv.trace`                   | Partial | All depths, channel zero only          |
+| core    | `transform`               | `cv.transform`               | Partial | All depths and F32/F64 coefficients    |
+| core    | `vconcat`                 | `cv.vconcat`                 | Partial | All depths, two through four inputs    |
+| imgproc | `arcLength`               | `cv.arcLength`               | Partial | I32/F32/F64 2D contour layouts         |
+| imgproc | `boundingRect`            | `cv.boundingRect`            | Partial | Inclusive bounds for 2D contours       |
+| imgproc | `clipLine`                | `cv.clipLine`                | Partial | Integer rectangle and segment form     |
+| imgproc | `contourArea`             | `cv.contourArea`             | Partial | Unsigned or oriented 2D contour area   |
+| imgproc | `createHanningWindow`     | `cv.createHanningWindow`     | Partial | F32/F64 two-dimensional windows        |
+| imgproc | `ellipse2Poly`            | `cv.ellipse2Poly`            | Partial | Ordered integer ellipse arcs           |
+| imgproc | `getAffineTransform`      | `cv.getAffineTransform`      | Partial | Three F32/F64 point pairs to F64       |
+| imgproc | `getPerspectiveTransform` | `cv.getPerspectiveTransform` | Partial | Four F32/F64 point pairs to F64        |
+| imgproc | `getRotationMatrix2D`     | `cv.getRotationMatrix2D`     | Partial | Finite scalars to a 2x3 F64 matrix     |
+| imgproc | `getStructuringElement`   | `cv.getStructuringElement`   | Partial | U8 rectangle, cross, or ellipse kernel |
+| imgproc | `grayscale`               | `cv.cvtColor`                | Partial | RGBA-to-gray specialization            |
+| imgproc | `invertAffineTransform`   | `cv.invertAffineTransform`   | Partial | F32/F64 2x3 input to F64 inverse       |
+| imgproc | `isContourConvex`         | `cv.isContourConvex`         | Partial | Convexity for supported 2D contours    |
+| imgproc | `pointPolygonTest`        | `cv.pointPolygonTest`        | Partial | Classification or signed distance      |
+| imgproc | `resizeNearest`           | `cv.resize`                  | Partial | RGBA nearest-neighbor specialization   |
+| imgproc | `threshold`               | `cv.threshold`               | Partial | Luma-derived U8 binary specialization  |
+| imgproc | `gaussianBlur`            | `cv.GaussianBlur`            | Planned | Not started                            |
+| imgproc | `canny`                   | `cv.Canny`                   | Planned | Not started                            |
+| imgproc | `findContours`            | `cv.findContours`            | Planned | Not started                            |
+| imgproc | `warpPerspective`         | `cv.warpPerspective`         | Planned | Not started                            |
 
-Current full parity is **0 of 488 (0%)**. There are **53 partial families** with working Rust/WASM slices. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+Current full parity is **0 of 488 (0%)**. There are **66 partial families** with working Rust/WASM slices. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
 
 Read [the inventory](docs/INVENTORY.md) and [complete parity contract](docs/PARITY.md) for the denominator, exclusions, and definition of done.
 

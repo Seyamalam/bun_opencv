@@ -145,6 +145,82 @@ The random functions use an independently authored SplitMix64 stream and Box-Mul
 
 Both methods compact strided inputs and snapshot inputs before destination writes. Differential fixtures against the pinned browser build remain.
 
+### Contour geometry
+
+```ts
+interface Point {
+  readonly x: number;
+  readonly y: number;
+}
+
+interface Size {
+  readonly height: number;
+  readonly width: number;
+}
+
+interface Rect extends Size, Point {}
+
+arcLength(contour: Mat, closed: boolean): number;
+contourArea(contour: Mat, oriented?: boolean): number;
+boundingRect(contour: Mat): Rect;
+isContourConvex(contour: Mat): boolean;
+pointPolygonTest(contour: Mat, point: Point, measureDistance: boolean): number;
+```
+
+These methods accept I32, F32, and F64 contours stored as `Nx1C2`, `1xNC2`, or `Nx2C1`. They read strided regions through their logical bytes. Other curve containers and points with more than two dimensions are not supported.
+
+`arcLength` measures an open or closed perimeter. `contourArea` returns unsigned area by default and signed, oriented area when `oriented` is true. Fewer than three points have zero area. `boundingRect` floors fractional coordinates and returns inclusive integer bounds, so one integer point produces a 1-by-1 rectangle. Empty contours are rejected by perimeter and bounds operations.
+
+`isContourConvex` accepts collinear points along an otherwise convex boundary. It returns false for fewer than three points or an entirely collinear contour, and it does not separately diagnose self-intersection. `pointPolygonTest` requires at least three points. It returns positive inside, negative outside, and zero on an edge. Without distance measurement, nonzero results are exactly `1` or `-1`. With distance measurement, the magnitude is the nearest-boundary distance. All five methods reject non-finite coordinates and numeric overflow.
+
+### Image-processing helpers
+
+```ts
+type StructuringElementKind = 0 | 1 | 2;
+type HanningWindowDepth = "f32" | "f64";
+
+getStructuringElement(kind: StructuringElementKind, size: Size, anchor?: Point): Mat;
+createHanningWindow(size: Size, depth: HanningWindowDepth): Mat;
+ellipse2Poly(
+  center: Point,
+  axes: Size,
+  rotationDegrees: number,
+  arcStart: number,
+  arcEnd: number,
+  delta: number,
+): Point[];
+clipLine(rectangle: Rect, start: Point, end: Point): readonly [Point, Point] | undefined;
+```
+
+`getStructuringElement` returns a single-channel U8 kernel. Kind `0` is a rectangle, `1` is a cross, and `2` is an ellipse. Width and height must be positive. The default anchor is `{ x: -1, y: -1 }`, which selects the center of each dimension. A custom anchor moves the cross intersection. Rectangle and ellipse geometry stay centered. The compact result must fit the WASM matrix limit.
+
+`createHanningWindow` returns a single-channel F32 or F64 matrix. Each dimension must be at least two. The implementation caps allocation at the conservative F64 WASM matrix limit. The values are the outer product of non-negative sine weights, which are the square roots of one-dimensional Hann coefficients.
+
+`ellipse2Poly` accepts non-negative integer axes. Arc bounds must satisfy `0 <= arcStart <= arcEnd <= 360`, and `delta` must be from 1 through 180. It always samples the exact end angle and removes consecutive points that round to the same signed 32-bit coordinate. It does not normalize or swap arc bounds.
+
+`clipLine` accepts a positive-size integer rectangle and signed 32-bit segment coordinates. It clips against inclusive pixel bounds. A visible segment returns two points; a disjoint segment returns `undefined`. Unlike the OpenCV call shape, this package returns new points instead of mutating caller-owned point objects. Rectangle right and bottom edges must fit signed 32-bit coordinates.
+
+### Transform matrix constructors
+
+```ts
+getRotationMatrix2D(center: Point, angleDegrees: number, scale: number): Mat;
+getAffineTransform(source: Mat, destination: Mat): Mat;
+invertAffineTransform(transform: Mat): Mat;
+getPerspectiveTransform(source: Mat, destination: Mat): Mat;
+```
+
+`getRotationMatrix2D` accepts finite center, angle, and scale values and returns a 2x3 single-channel F64 matrix.
+
+`getAffineTransform` reads three source and destination points. Each point set may be `3x2C1`, `3x1C2`, or `1x3C2` at F32 or F64 depth. Strided regions are supported. The method rejects non-finite coordinates and collinear source points, then returns a 2x3 single-channel F64 matrix.
+
+`invertAffineTransform` accepts a finite, nonsingular `2x3C1` F32 or F64 matrix, including a strided region, and returns a `2x3C1` F64 inverse.
+
+`getPerspectiveTransform` reads four source and destination points. Each point set may be `4x2C1`, `4x1C2`, or `1x4C2` at F32 or F64 depth. Strided regions are supported. It uses one scaled partial-pivoting solver, fixes the lower-right output coefficient to one, and returns a `3x3C1` F64 matrix. It rejects non-finite values, degenerate point configurations, and transforms that cannot use that normalization.
+
+All four constructors allocate their results. Mutable destination forms and browser differential fixtures remain before these families can move beyond partial status.
+
+The pinned OpenCV.js 4.13.0 browser harness passes worked fixtures for `arcLength`, `contourArea`, `boundingRect`, `isContourConvex`, `pointPolygonTest`, `getStructuringElement`, and `getRotationMatrix2D`. The remaining layouts, modes, invalid inputs, and numeric boundary cases still require differential audit before full-family credit.
+
 ### Dense matrix algebra
 
 - `determinant(source)` returns an F64 determinant for a square, single-channel matrix. It accepts every scalar depth and uses partial-pivoted elimination.

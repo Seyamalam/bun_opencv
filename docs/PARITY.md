@@ -25,7 +25,7 @@ Desktop modules that the official OpenCV.js build disables are outside this pari
 
 ## Working partial families
 
-Fifty-three families have useful original Rust/WASM slices. None yet satisfies the full-family definition, so full parity remains 0 of 488.
+Sixty-six families have useful original Rust/WASM slices. None yet satisfies the full-family definition, so full parity remains 0 of 488.
 
 | Package methods                                        | OpenCV.js families                                                    | Current limit                                 |
 | ------------------------------------------------------ | --------------------------------------------------------------------- | --------------------------------------------- |
@@ -47,6 +47,12 @@ Fifty-three families have useful original Rust/WASM slices. None yet satisfies t
 | `setIdentity`, `randu`, `randn`, `setRNGSeed`          | Matching `cv` initialization and random families                      | Package RNG sequences differ from OpenCV      |
 | `transform`, `perspectiveTransform`                    | `cv.transform`, `cv.perspectiveTransform`                             | Selected channel and coefficient forms        |
 | `determinant`, `invert`, `solve`                       | `cv.determinant`, `cv.invert`, `cv.solve`                             | Selected dense single-channel methods         |
+| `arcLength`, `contourArea`, `boundingRect`             | Matching `cv` contour geometry families                               | I32/F32/F64 2D contour layouts                |
+| `isContourConvex`, `pointPolygonTest`                  | Matching `cv` polygon-query families                                  | Convexity, classification, or signed distance |
+| `getStructuringElement`, `createHanningWindow`         | Matching `cv` kernel and window families                              | U8 kernels or F32/F64 windows                 |
+| `ellipse2Poly`, `clipLine`                             | Matching `cv` integer geometry helpers                                | Selected integer argument and return forms    |
+| `getRotationMatrix2D`, `getAffineTransform`            | Matching `cv` affine matrix constructors                              | Selected finite inputs with F64 output        |
+| `invertAffineTransform`, `getPerspectiveTransform`     | Matching `cv` transform matrix families                               | Selected F32/F64 inputs with F64 output       |
 | `grayscale`, `resizeNearest`, `threshold`              | `cv.cvtColor`, `cv.resize`, `cv.threshold`                            | One RGBA or luma-derived specialization each  |
 
 ## Tracked planned sample
