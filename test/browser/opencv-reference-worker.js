@@ -646,6 +646,102 @@ function auditFlip(reference) {
   };
 }
 
+function auditCountNonZeroType(reference, name, type, values) {
+  if (typeof type !== "number") return { name, available: false };
+  let source;
+  try {
+    source = makeSeedMat(reference, 2, 3, type, values);
+    return {
+      name,
+      available: true,
+      before: capturePrimitive(() => summarizeTypedMat(source)),
+      call: captureCall(() => reference.countNonZero(source)),
+      after: capturePrimitive(() => summarizeTypedMat(source)),
+    };
+  } catch (error) {
+    return {
+      name,
+      available: true,
+      setup: captureCall(() => {
+        throw error;
+      }),
+    };
+  } finally {
+    safeDelete(source);
+  }
+}
+
+function auditCountNonZero(reference) {
+  const source = makeSeedMat(reference, 2, 3, reference.CV_8UC1, [0, 1, 2, 0, 3, 0]);
+  const arity = {
+    functionLength: capturePrimitive(() => reference.countNonZero.length),
+    zero: captureCall(() => reference.countNonZero()),
+    one: captureCall(() => reference.countNonZero(source)),
+    two: captureCall(() => reference.countNonZero(source, 1)),
+  };
+  const argumentTypes = {
+    null: captureCall(() => reference.countNonZero(null)),
+    undefined: captureCall(() => reference.countNonZero(undefined)),
+    object: captureCall(() => reference.countNonZero({})),
+  };
+  safeDelete(source);
+
+  const empty = new reference.Mat();
+  const emptyAudit = {
+    before: capturePrimitive(() => summarizeMat(empty)),
+    call: captureCall(() => reference.countNonZero(empty)),
+    after: capturePrimitive(() => summarizeMat(empty)),
+  };
+  safeDelete(empty);
+
+  const parent = makeSeedMat(
+    reference,
+    4,
+    5,
+    reference.CV_16SC1,
+    [0, 1, 0, 2, 0, 3, 0, 0, 4, 0, 0, 5, 0, 0, 6, 7, 0, 8, 0, 9],
+  );
+  const region = parent.roi(new reference.Rect(1, 1, 3, 2));
+  const roi = {
+    before: capturePrimitive(() => summarizeTypedMat(region)),
+    call: captureCall(() => reference.countNonZero(region)),
+    after: capturePrimitive(() => summarizeTypedMat(region)),
+    parentAfter: capturePrimitive(() => summarizeTypedMat(parent)),
+  };
+  safeDelete(region);
+  safeDelete(parent);
+
+  const deleted = makeSeedMat(reference, 1, 1, reference.CV_8UC1, [1]);
+  deleted.delete();
+  const deletedAudit = captureCall(() => reference.countNonZero(deleted));
+
+  const types = [
+    ["CV_8UC1", reference.CV_8UC1, [0, 1, 255, 0, 2, 0]],
+    ["CV_8SC1", reference.CV_8SC1, [0, -1, 127, -128, 0, 2]],
+    ["CV_16UC1", reference.CV_16UC1, [0, 1, 65535, 0, 2, 0]],
+    ["CV_16SC1", reference.CV_16SC1, [0, -1, 32767, -32768, 0, 2]],
+    ["CV_32SC1", reference.CV_32SC1, [0, -1, 2147483647, -2147483648, 0, 2]],
+    ["CV_32FC1", reference.CV_32FC1, [0, -0, 1.5, Number.NaN, Infinity, -Infinity]],
+    ["CV_64FC1", reference.CV_64FC1, [0, -0, 1.5, Number.NaN, Infinity, -Infinity]],
+    ["CV_16FC1", reference.CV_16FC1, [0, -0, 1.5, Number.NaN, Infinity, -Infinity]],
+  ].map(([name, type, values]) => auditCountNonZeroType(reference, name, type, values));
+
+  const multiChannel = [
+    ["CV_8UC2", reference.CV_8UC2, [0, 1, 2, 0, 0, 3, 4, 0, 0, 5, 6, 0]],
+    ["CV_64FC2", reference.CV_64FC2, [0, 1, 2, 0, 0, 3, 4, 0, 0, 5, 6, 0]],
+  ].map(([name, type, values]) => auditCountNonZeroType(reference, name, type, values));
+
+  return {
+    arity,
+    argumentTypes,
+    empty: emptyAudit,
+    roi,
+    deleted: deletedAudit,
+    types,
+    multiChannel,
+  };
+}
+
 function encodeValue(value) {
   if (value === undefined) {
     return { type: "undefined" };
@@ -1810,6 +1906,10 @@ self.addEventListener("message", async ({ data: input }) => {
       self.postMessage({ outputs: { flipAudit: auditFlip(reference) } });
       return;
     }
+    if (request === "count-non-zero") {
+      self.postMessage({ outputs: { countNonZeroAudit: auditCountNonZero(reference) } });
+      return;
+    }
     const source = reference.matFromArray(2, 3, reference.CV_8UC1, sourceInput);
     const outputs = {};
     const operations = [
@@ -1982,6 +2082,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.fastPrimitiveAudit = auditThresholdDetector(() => new reference.FastFeatureDetector());
     outputs.flipAudit = auditFlip(reference);
     outputs.transposeAudit = auditTranspose(reference);
+    outputs.countNonZeroAudit = auditCountNonZero(reference);
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });

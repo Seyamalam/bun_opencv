@@ -1959,7 +1959,9 @@
           ? "transpose"
           : searchParameters.has("reference-flip")
             ? "flip"
-            : undefined;
+            : searchParameters.has("reference-count-non-zero")
+              ? "count-non-zero"
+              : undefined;
         const referenceOutputs = await runReference(input, referenceRequest);
         if (searchParameters.has("reference-transpose")) {
           packageSource.dispose();
@@ -1973,6 +1975,13 @@
           globalThis.flipReferenceAudit = referenceOutputs.flipAudit;
           result.style.whiteSpace = "pre-wrap";
           result.textContent = JSON.stringify(referenceOutputs.flipAudit, null, 2);
+          break differential;
+        }
+        if (searchParameters.has("reference-count-non-zero")) {
+          packageSource.dispose();
+          globalThis.countNonZeroReferenceAudit = referenceOutputs.countNonZeroAudit;
+          result.style.whiteSpace = "pre-wrap";
+          result.textContent = JSON.stringify(referenceOutputs.countNonZeroAudit, null, 2);
           break differential;
         }
         const packageFlipAudit = auditPackageFlip(packageCv);
