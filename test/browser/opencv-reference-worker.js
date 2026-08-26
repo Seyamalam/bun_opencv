@@ -3559,6 +3559,77 @@ function safeDelete(detector) {
   }
 }
 
+function auditNumericCall(reference, operation, args) {
+  const left = makeSeedMat(reference, 1, 3, reference.CV_32FC1, [2, -4, 8]);
+  const right = makeSeedMat(reference, 1, 3, reference.CV_32FC1, [4, 2, 0]);
+  const destination = new reference.Mat();
+  const values = { left, right, destination };
+  const resolvedArgs = args.map((argument) =>
+    typeof argument === "string" ? values[argument] : argument,
+  );
+  const call = captureCall(() => reference[operation](...resolvedArgs));
+  const output = capturePrimitive(() => summarizeTypedMat(destination));
+  safeDelete(destination);
+  safeDelete(right);
+  safeDelete(left);
+  return { call, output };
+}
+
+function auditNumericContracts(reference) {
+  const calls = {
+    multiply: [
+      [],
+      ["left"],
+      ["left", "right"],
+      ["left", "right", "destination"],
+      ["left", "right", "destination", 0.5],
+      ["left", "right", "destination", 0.5, reference.CV_64F],
+      ["left", "right", "destination", 0.5, reference.CV_64F, 1],
+    ],
+    divide: [
+      [],
+      ["left"],
+      ["left", "right"],
+      ["left", "right", "destination"],
+      ["left", "right", "destination", 2],
+      ["left", "right", "destination", 2, reference.CV_64F],
+      [2, "right", "destination"],
+      [2, "right", "destination", reference.CV_64F],
+      [2, "right", "destination", reference.CV_64F, 1],
+    ],
+    addWeighted: [
+      [],
+      ["left"],
+      ["left", 0.5, "right", 0.25, 1],
+      ["left", 0.5, "right", 0.25, 1, "destination"],
+      ["left", 0.5, "right", 0.25, 1, "destination", reference.CV_64F],
+      ["left", 0.5, "right", 0.25, 1, "destination", reference.CV_64F, 1],
+    ],
+    convertScaleAbs: [
+      [],
+      ["left"],
+      ["left", "destination"],
+      ["left", "destination", 2],
+      ["left", "destination", 2, 1],
+      ["left", "destination", 2, 1, 0],
+    ],
+  };
+  return Object.fromEntries(
+    Object.entries(calls).map(([operation, argumentLists]) => [
+      operation,
+      {
+        functionLength: capturePrimitive(() => reference[operation].length),
+        calls: argumentLists.map((args) => ({
+          args: args.map((argument) =>
+            typeof argument === "string" ? argument : encodeValue(argument),
+          ),
+          ...auditNumericCall(reference, operation, args),
+        })),
+      },
+    ]),
+  );
+}
+
 function auditSetterCases(createDetector, setter, getter, cases) {
   return cases.map(([label, value]) => {
     const detector = createDetector();
@@ -4268,6 +4339,10 @@ self.addEventListener("message", async ({ data: input }) => {
       self.postMessage({
         outputs: { coordinateAudit: auditCoordinateConversions(reference) },
       });
+      return;
+    }
+    if (request === "numeric-contracts") {
+      self.postMessage({ outputs: { numericAudit: auditNumericContracts(reference) } });
       return;
     }
     const source = reference.matFromArray(2, 3, reference.CV_8UC1, sourceInput);
