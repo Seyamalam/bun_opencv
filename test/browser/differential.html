@@ -48,6 +48,10 @@
             reject(new Error("OpenCV.js worker timed out after 180 seconds"));
           }, 180000);
           worker.addEventListener("message", ({ data }) => {
+            if (data.progress !== undefined) {
+              result.value = data.progress;
+              return;
+            }
             clearTimeout(timeout);
             worker.terminate();
             if (data.error !== undefined) {
