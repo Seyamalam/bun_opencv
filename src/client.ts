@@ -74,30 +74,39 @@ class WasmOpenCv implements OpenCv {
     return this.#backend.matArcLength(contour.handleForBackend(), closed);
   }
 
-  addWeighted(a: Mat, alpha: number, b: Mat, beta: number, gamma: number): Mat;
-  addWeighted(a: Mat, alpha: number, b: Mat, beta: number, gamma: number, destination: Mat): void;
   addWeighted(
-    a: Mat,
-    alpha: number,
-    b: Mat,
-    beta: number,
-    gamma: number,
-    destination?: Mat,
-  ): Mat | void {
-    validateFiniteNumbers({ alpha, beta, gamma });
-    if (destination !== undefined) {
-      this.#backend.matAddWeightedInto(
-        a.handleForBackend(),
-        alpha,
-        b.handleForBackend(),
-        beta,
-        gamma,
-        destination.handleForBackend(),
-      );
-      return;
-    }
+    ...arguments_: [
+      a: Mat,
+      alpha: number,
+      b: Mat,
+      beta: number,
+      gamma: number,
+      destination: Mat,
+      dtype?: number,
+    ]
+  ): void {
+    requireOverloadArity(arguments_.length, 6, 7, "addWeighted");
+    const [a, alpha, b, beta, gamma, destination, dtype = -1] = arguments_;
+    this.#backend.matAddWeightedInto(
+      matHandleForBinding(a),
+      toWasmF64(alpha),
+      matHandleForBinding(b),
+      toWasmF64(beta),
+      toWasmF64(gamma),
+      matHandleForBinding(destination),
+      toWasmI32(dtype),
+    );
+  }
+
+  addWeightedAlloc(a: Mat, alpha: number, b: Mat, beta: number, gamma: number): Mat {
     return new Mat(
-      this.#backend.matAddWeighted(a.handleForBackend(), alpha, b.handleForBackend(), beta, gamma),
+      this.#backend.matAddWeighted(
+        a.handleForBackend(),
+        toWasmF64(alpha),
+        b.handleForBackend(),
+        toWasmF64(beta),
+        toWasmF64(gamma),
+      ),
     );
   }
 
@@ -245,27 +254,26 @@ class WasmOpenCv implements OpenCv {
     return this.#backend.matDeterminant(source.handleForBackend());
   }
 
-  convertScaleAbs(source: Mat, alpha?: number, beta?: number): Mat;
-  convertScaleAbs(source: Mat, destination: Mat, alpha?: number, beta?: number): void;
   convertScaleAbs(
-    source: Mat,
-    destinationOrAlpha: Mat | number = 1,
-    alphaOrBeta = 0,
-    beta = 0,
-  ): Mat | void {
-    if (destinationOrAlpha instanceof Mat) {
-      validateFiniteNumbers({ alpha: alphaOrBeta, beta });
-      this.#backend.matConvertScaleAbsInto(
-        source.handleForBackend(),
-        destinationOrAlpha.handleForBackend(),
-        alphaOrBeta,
-        beta,
-      );
-      return;
-    }
-    validateFiniteNumbers({ alpha: destinationOrAlpha, beta: alphaOrBeta });
+    ...arguments_: [source: Mat, destination: Mat, alpha?: number, beta?: number]
+  ): void {
+    requireArityRange(arguments_.length, 2, 4, "convertScaleAbs");
+    const [source, destination, alpha = 1, beta = 0] = arguments_;
+    this.#backend.matConvertScaleAbsInto(
+      matHandleForBinding(source),
+      matHandleForBinding(destination),
+      toWasmF64(alpha),
+      toWasmF64(beta),
+    );
+  }
+
+  convertScaleAbsAlloc(source: Mat, alpha = 1, beta = 0): Mat {
     return new Mat(
-      this.#backend.matConvertScaleAbs(source.handleForBackend(), destinationOrAlpha, alphaOrBeta),
+      this.#backend.matConvertScaleAbs(
+        source.handleForBackend(),
+        toWasmF64(alpha),
+        toWasmF64(beta),
+      ),
     );
   }
 
@@ -301,22 +309,22 @@ class WasmOpenCv implements OpenCv {
     );
   }
 
-  divide(a: Mat, b: Mat, scale?: number): Mat;
-  divide(a: Mat, b: Mat, destination: Mat, scale?: number): void;
-  divide(a: Mat, b: Mat, destinationOrScale: Mat | number = 1, scale = 1): Mat | void {
-    if (destinationOrScale instanceof Mat) {
-      validateFiniteNumbers({ scale });
-      this.#backend.matDivideInto(
-        a.handleForBackend(),
-        b.handleForBackend(),
-        destinationOrScale.handleForBackend(),
-        scale,
-      );
-      return;
-    }
-    scale = destinationOrScale;
-    validateFiniteNumbers({ scale });
-    return new Mat(this.#backend.matDivide(a.handleForBackend(), b.handleForBackend(), scale));
+  divide(...arguments_: [a: Mat, b: Mat, destination: Mat, scale?: number, dtype?: number]): void {
+    requireArityRange(arguments_.length, 3, 5, "divide");
+    const [a, b, destination, scale = 1, dtype = -1] = arguments_;
+    this.#backend.matDivideInto(
+      matHandleForBinding(a),
+      matHandleForBinding(b),
+      matHandleForBinding(destination),
+      toWasmF64(scale),
+      toWasmI32(dtype),
+    );
+  }
+
+  divideAlloc(a: Mat, b: Mat, scale = 1): Mat {
+    return new Mat(
+      this.#backend.matDivide(a.handleForBackend(), b.handleForBackend(), toWasmF64(scale)),
+    );
   }
 
   extractChannel(source: Mat, channel: number): Mat {
@@ -635,22 +643,24 @@ class WasmOpenCv implements OpenCv {
     this.#backend.matMixChannels(source.handleForBackend(), destination.handleForBackend(), fromTo);
   }
 
-  multiply(a: Mat, b: Mat, scale?: number): Mat;
-  multiply(a: Mat, b: Mat, destination: Mat, scale?: number): void;
-  multiply(a: Mat, b: Mat, destinationOrScale: Mat | number = 1, scale = 1): Mat | void {
-    if (destinationOrScale instanceof Mat) {
-      validateFiniteNumbers({ scale });
-      this.#backend.matMultiplyInto(
-        a.handleForBackend(),
-        b.handleForBackend(),
-        destinationOrScale.handleForBackend(),
-        scale,
-      );
-      return;
-    }
-    scale = destinationOrScale;
-    validateFiniteNumbers({ scale });
-    return new Mat(this.#backend.matMultiply(a.handleForBackend(), b.handleForBackend(), scale));
+  multiply(
+    ...arguments_: [a: Mat, b: Mat, destination: Mat, scale?: number, dtype?: number]
+  ): void {
+    requireArityRange(arguments_.length, 3, 5, "multiply");
+    const [a, b, destination, scale = 1, dtype = -1] = arguments_;
+    this.#backend.matMultiplyInto(
+      matHandleForBinding(a),
+      matHandleForBinding(b),
+      matHandleForBinding(destination),
+      toWasmF64(scale),
+      toWasmI32(dtype),
+    );
+  }
+
+  multiplyAlloc(a: Mat, b: Mat, scale = 1): Mat {
+    return new Mat(
+      this.#backend.matMultiply(a.handleForBackend(), b.handleForBackend(), toWasmF64(scale)),
+    );
   }
 
   norm(source: Mat, normType?: NormType, mask?: Mat): number;
@@ -1182,6 +1192,14 @@ function requireOverloadArity(
   if (actual !== firstExpected && actual !== secondExpected) {
     throw new BindingError(
       `Function '${method}' called with an invalid number of arguments (${actual}); expected ${firstExpected} or ${secondExpected}`,
+    );
+  }
+}
+
+function requireArityRange(actual: number, minimum: number, maximum: number, method: string): void {
+  if (actual < minimum || actual > maximum) {
+    throw new BindingError(
+      `function ${method} called with ${actual} arguments, expected ${minimum} to ${maximum} args!`,
     );
   }
 }

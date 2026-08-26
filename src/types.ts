@@ -272,6 +272,7 @@ export interface OpenCvBackend {
     b: WasmMatHandle,
     destination: WasmMatHandle,
     scale: number,
+    dtype: number,
   ): void;
   matDivide(a: WasmMatHandle, b: WasmMatHandle, scale: number): WasmMatHandle;
   matDivideInto(
@@ -279,6 +280,7 @@ export interface OpenCvBackend {
     b: WasmMatHandle,
     destination: WasmMatHandle,
     scale: number,
+    dtype: number,
   ): void;
   matAddWeighted(
     a: WasmMatHandle,
@@ -294,6 +296,7 @@ export interface OpenCvBackend {
     beta: number,
     gamma: number,
     destination: WasmMatHandle,
+    dtype: number,
   ): void;
   matConvertScaleAbs(source: WasmMatHandle, alpha: number, beta: number): WasmMatHandle;
   matConvertScaleAbsInto(
@@ -378,8 +381,16 @@ export interface OpenCv {
   readonly ROTATE_90_COUNTERCLOCKWISE: 2;
   absdiff(left: Mat, right: Mat): Mat;
   add(left: Mat, right: Mat): Mat;
-  addWeighted(a: Mat, alpha: number, b: Mat, beta: number, gamma: number): Mat;
-  addWeighted(a: Mat, alpha: number, b: Mat, beta: number, gamma: number, destination: Mat): void;
+  addWeighted(
+    a: Mat,
+    alpha: number,
+    b: Mat,
+    beta: number,
+    gamma: number,
+    destination: Mat,
+    dtype?: number,
+  ): void;
+  addWeightedAlloc(a: Mat, alpha: number, b: Mat, beta: number, gamma: number): Mat;
   bitwiseAnd(left: Mat, right: Mat): Mat;
   bitwiseNot(source: Mat): Mat;
   bitwiseOr(left: Mat, right: Mat): Mat;
@@ -398,8 +409,8 @@ export interface OpenCv {
   createFastFeatureDetector(options?: FastFeatureDetectorOptions): FastFeatureDetector;
   createGFTTDetector(options?: GFTTDetectorOptions): GFTTDetector;
   determinant(source: Mat): number;
-  convertScaleAbs(source: Mat, alpha?: number, beta?: number): Mat;
   convertScaleAbs(source: Mat, destination: Mat, alpha?: number, beta?: number): void;
+  convertScaleAbsAlloc(source: Mat, alpha?: number, beta?: number): Mat;
   copyMakeBorder(
     source: Mat,
     top: number,
@@ -409,8 +420,8 @@ export interface OpenCv {
     borderType: BorderType,
     constant?: Scalar,
   ): Mat;
-  divide(a: Mat, b: Mat, scale?: number): Mat;
-  divide(a: Mat, b: Mat, destination: Mat, scale?: number): void;
+  divide(a: Mat, b: Mat, destination: Mat, scale?: number, dtype?: number): void;
+  divideAlloc(a: Mat, b: Mat, scale?: number): Mat;
   extractChannel(source: Mat, channel: number): Mat;
   ellipse2Poly(
     center: Point,
@@ -463,8 +474,8 @@ export interface OpenCv {
   minMaxLoc(source: Mat): MinMaxLocation;
   min(left: Mat, right: Mat): Mat;
   mixChannels(source: Mat, destination: Mat, fromTo: Uint16Array): void;
-  multiply(a: Mat, b: Mat, scale?: number): Mat;
-  multiply(a: Mat, b: Mat, destination: Mat, scale?: number): void;
+  multiply(a: Mat, b: Mat, destination: Mat, scale?: number, dtype?: number): void;
+  multiplyAlloc(a: Mat, b: Mat, scale?: number): Mat;
   norm(source: Mat, normType?: NormType, mask?: Mat): number;
   norm(first: Mat, second: Mat, normType?: NormType, mask?: Mat): number;
   normalize(

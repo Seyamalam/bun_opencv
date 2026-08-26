@@ -663,6 +663,11 @@ class CopyingBackend implements OpenCvBackend {
   #logLevel = 3;
   #randomState = 0;
   readonly cartToPolarDegreeFlags: boolean[] = [];
+  readonly numericIntoCalls: Array<{
+    readonly method: string;
+    readonly scale: number;
+    readonly dtype: number;
+  }> = [];
   readonly optimalDftSizeInputs: number[] = [];
   readonly polarToCartDegreeFlags: boolean[] = [];
 
@@ -1303,7 +1308,9 @@ class CopyingBackend implements OpenCvBackend {
     b: WasmMatHandle,
     destination: WasmMatHandle,
     scale: number,
+    dtype: number,
   ): void {
+    this.numericIntoCalls.push({ method: "multiply", scale, dtype });
     destination.copyFromBytes(this.matMultiply(a, b, scale).toUint8Array());
   }
 
@@ -1316,7 +1323,9 @@ class CopyingBackend implements OpenCvBackend {
     b: WasmMatHandle,
     destination: WasmMatHandle,
     scale: number,
+    dtype: number,
   ): void {
+    this.numericIntoCalls.push({ method: "divide", scale, dtype });
     destination.copyFromBytes(this.matDivide(a, b, scale).toUint8Array());
   }
 
@@ -1337,7 +1346,9 @@ class CopyingBackend implements OpenCvBackend {
     beta: number,
     gamma: number,
     destination: WasmMatHandle,
+    dtype: number,
   ): void {
+    this.numericIntoCalls.push({ method: "addWeighted", scale: 1, dtype });
     destination.copyFromBytes(this.matAddWeighted(a, alpha, b, beta, gamma).toUint8Array());
   }
 
@@ -2892,12 +2903,16 @@ describe("OpenCv client", () => {
   test("runs scaled all-depth numeric operations", () => {
     const left = client.matFromU8(1, 3, 1, new Uint8Array([10, 20, 250]));
     const right = client.matFromU8(1, 3, 1, new Uint8Array([2, 0, 2]));
-    const product = client.multiply(left, right, 0.5);
-    const quotient = client.divide(left, right, 2);
-    const blended = client.addWeighted(left, 0.5, right, 0.5, 1);
-    const absolute = client.convertScaleAbs(left, -1, 5);
+    const product = client.multiplyAlloc(left, right, 0.5);
+    const quotient = client.divideAlloc(left, right, 2);
+    const blended = client.addWeightedAlloc(left, 0.5, right, 0.5, 1);
+    const absolute = client.convertScaleAbsAlloc(left, -1, 5);
     const destination = client.zerosU8(1, 3, 1);
     client.multiply(left, right, destination, 0.5);
+    expect(client.multiply.length).toBe(0);
+    expect(client.divide.length).toBe(0);
+    expect(client.addWeighted.length).toBe(0);
+    expect(client.convertScaleAbs.length).toBe(0);
     expect(product.toUint8Array()).toEqual(new Uint8Array([10, 0, 250]));
     expect(quotient.toUint8Array()).toEqual(new Uint8Array([10, 0, 250]));
     expect(blended.toUint8Array()).toEqual(new Uint8Array([7, 11, 127]));
@@ -2905,6 +2920,34 @@ describe("OpenCv client", () => {
     expect(destination.toUint8Array()).toEqual(product.toUint8Array());
     for (const matrix of [destination, absolute, blended, quotient, product, right, left])
       matrix.dispose();
+  });
+
+  test("matches numeric destination overloads and dtype forwarding", () => {
+    const backend = new CopyingBackend();
+    const localClient = createOpenCv(backend);
+    const left = localClient.matFromU8(1, 1, 1, new Uint8Array([6]));
+    const right = localClient.matFromU8(1, 1, 1, new Uint8Array([3]));
+    const destination = localClient.zerosU8(1, 1, 1);
+
+    localClient.multiply(left, right, destination);
+    localClient.multiply(left, right, destination, 0.5, 6);
+    localClient.divide(left, right, destination, 2, 5);
+    localClient.addWeighted(left, 0.25, right, 0.75, 1, destination, 4);
+
+    expect(backend.numericIntoCalls).toEqual([
+      { method: "multiply", scale: 1, dtype: -1 },
+      { method: "multiply", scale: 0.5, dtype: 6 },
+      { method: "divide", scale: 2, dtype: 5 },
+      { method: "addWeighted", scale: 1, dtype: 4 },
+    ]);
+    // @ts-expect-error Runtime parity rejects missing destination arguments.
+    expect(() => localClient.multiply(left, right)).toThrow(BindingError);
+    // @ts-expect-error Runtime parity rejects missing destination arguments.
+    expect(() => localClient.convertScaleAbs(left)).toThrow(BindingError);
+
+    destination.dispose();
+    right.dispose();
+    left.dispose();
   });
 
   test("adds typed matrix borders", () => {

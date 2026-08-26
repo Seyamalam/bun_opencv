@@ -11,16 +11,14 @@ use wasm_bindgen::prelude::*;
 #[derive(Debug)]
 enum NumericError {
     InputMetadata,
-    DestinationMetadata,
+    InvalidOutputDepth(i32),
     Matrix(MatError),
 }
 impl fmt::Display for NumericError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InputMetadata => f.write_str("input matrix metadata must match"),
-            Self::DestinationMetadata => {
-                f.write_str("destination matrix metadata does not match the result")
-            }
+            Self::InvalidOutputDepth(depth) => write!(f, "unsupported output depth {depth}"),
             Self::Matrix(e) => e.fmt(f),
         }
     }
@@ -43,16 +41,22 @@ pub fn mat_multiply(a: &Mat, b: &Mat, scale: f64) -> Result<Mat, JsError> {
     binary(a, b, scale, Binary::Multiply).map_err(Into::into)
 }
 #[wasm_bindgen(js_name = matMultiplyInto)]
-pub fn mat_multiply_into(a: &Mat, b: &Mat, dst: &Mat, scale: f64) -> Result<(), JsError> {
-    binary_into(a, b, dst, scale, Binary::Multiply).map_err(Into::into)
+pub fn mat_multiply_into(
+    a: &Mat,
+    b: &Mat,
+    dst: &Mat,
+    scale: f64,
+    dtype: i32,
+) -> Result<(), JsError> {
+    binary_into(a, b, dst, scale, dtype, Binary::Multiply).map_err(Into::into)
 }
 #[wasm_bindgen(js_name = matDivide)]
 pub fn mat_divide(a: &Mat, b: &Mat, scale: f64) -> Result<Mat, JsError> {
     binary(a, b, scale, Binary::Divide).map_err(Into::into)
 }
 #[wasm_bindgen(js_name = matDivideInto)]
-pub fn mat_divide_into(a: &Mat, b: &Mat, dst: &Mat, scale: f64) -> Result<(), JsError> {
-    binary_into(a, b, dst, scale, Binary::Divide).map_err(Into::into)
+pub fn mat_divide_into(a: &Mat, b: &Mat, dst: &Mat, scale: f64, dtype: i32) -> Result<(), JsError> {
+    binary_into(a, b, dst, scale, dtype, Binary::Divide).map_err(Into::into)
 }
 #[wasm_bindgen(js_name = matAddWeighted)]
 pub fn mat_add_weighted(
@@ -72,11 +76,11 @@ pub fn mat_add_weighted_into(
     beta: f64,
     gamma: f64,
     dst: &Mat,
+    dtype: i32,
 ) -> Result<(), JsError> {
-    ensure_dst(a, dst, a.depth()).map_err(JsError::from)?;
-    let out = weighted(a, alpha, b, beta, gamma).map_err(JsError::from)?;
-    dst.write_compact_bytes(&out.compact_bytes())
-        .map_err(Into::into)
+    let depth = output_depth(a.depth(), dtype).map_err(JsError::from)?;
+    let out = weighted_with_depth(a, alpha, b, beta, gamma, depth).map_err(JsError::from)?;
+    write_result(dst, &out).map_err(Into::into)
 }
 #[wasm_bindgen(js_name = matConvertScaleAbs)]
 pub fn mat_convert_scale_abs(src: &Mat, alpha: f64, beta: f64) -> Result<Mat, JsError> {
@@ -89,10 +93,8 @@ pub fn mat_convert_scale_abs_into(
     alpha: f64,
     beta: f64,
 ) -> Result<(), JsError> {
-    ensure_dst(src, dst, MatDepth::U8).map_err(JsError::from)?;
     let out = scale_abs(src, alpha, beta).map_err(JsError::from)?;
-    dst.write_compact_bytes(&out.compact_bytes())
-        .map_err(Into::into)
+    write_result(dst, &out).map_err(Into::into)
 }
 
 fn matches(a: &Mat, b: &Mat) -> bool {
@@ -101,18 +103,29 @@ fn matches(a: &Mat, b: &Mat) -> bool {
         && a.channels() == b.channels()
         && a.depth() == b.depth()
 }
-fn ensure_dst(src: &Mat, dst: &Mat, depth: MatDepth) -> Result<(), NumericError> {
-    if src.rows() == dst.rows()
-        && src.columns() == dst.columns()
-        && src.channels() == dst.channels()
-        && dst.depth() == depth
-    {
-        Ok(())
-    } else {
-        Err(NumericError::DestinationMetadata)
+fn output_depth(input: MatDepth, dtype: i32) -> Result<MatDepth, NumericError> {
+    match dtype {
+        -1 => Ok(input),
+        0 => Ok(MatDepth::U8),
+        1 => Ok(MatDepth::I8),
+        2 => Ok(MatDepth::U16),
+        3 => Ok(MatDepth::I16),
+        4 => Ok(MatDepth::I32),
+        5 => Ok(MatDepth::F32),
+        6 => Ok(MatDepth::F64),
+        other => Err(NumericError::InvalidOutputDepth(other)),
     }
 }
 fn binary(a: &Mat, b: &Mat, scale: f64, op: Binary) -> Result<Mat, NumericError> {
+    binary_with_depth(a, b, scale, a.depth(), op)
+}
+fn binary_with_depth(
+    a: &Mat,
+    b: &Mat,
+    scale: f64,
+    depth: MatDepth,
+    op: Binary,
+) -> Result<Mat, NumericError> {
     if !matches(a, b) {
         return Err(NumericError::InputMetadata);
     }
@@ -126,18 +139,34 @@ fn binary(a: &Mat, b: &Mat, scale: f64, op: Binary) -> Result<Mat, NumericError>
             }
             Binary::Divide => x * scale / y,
         });
-    from_values(a, a.depth(), values)
+    from_values(a, depth, values)
 }
-fn binary_into(a: &Mat, b: &Mat, dst: &Mat, scale: f64, op: Binary) -> Result<(), NumericError> {
+fn binary_into(
+    a: &Mat,
+    b: &Mat,
+    dst: &Mat,
+    scale: f64,
+    dtype: i32,
+    op: Binary,
+) -> Result<(), NumericError> {
     if !matches(a, b) {
         return Err(NumericError::InputMetadata);
     }
-    ensure_dst(a, dst, a.depth())?;
-    let out = binary(a, b, scale, op)?;
-    dst.write_compact_bytes(&out.compact_bytes())?;
-    Ok(())
+    let depth = output_depth(a.depth(), dtype)?;
+    let out = binary_with_depth(a, b, scale, depth, op)?;
+    write_result(dst, &out)
 }
 fn weighted(a: &Mat, alpha: f64, b: &Mat, beta: f64, gamma: f64) -> Result<Mat, NumericError> {
+    weighted_with_depth(a, alpha, b, beta, gamma, a.depth())
+}
+fn weighted_with_depth(
+    a: &Mat,
+    alpha: f64,
+    b: &Mat,
+    beta: f64,
+    gamma: f64,
+    depth: MatDepth,
+) -> Result<Mat, NumericError> {
     if !matches(a, b) {
         return Err(NumericError::InputMetadata);
     }
@@ -145,7 +174,7 @@ fn weighted(a: &Mat, alpha: f64, b: &Mat, beta: f64, gamma: f64) -> Result<Mat, 
         .into_iter()
         .zip(decode(&b.compact_bytes(), b.depth()))
         .map(|(x, y)| x * alpha + y * beta + gamma);
-    from_values(a, a.depth(), values)
+    from_values(a, depth, values)
 }
 fn scale_abs(src: &Mat, alpha: f64, beta: f64) -> Result<Mat, NumericError> {
     let values = decode(&src.compact_bytes(), src.depth())
@@ -158,6 +187,10 @@ fn from_values(
     depth: MatDepth,
     values: impl IntoIterator<Item = f64>,
 ) -> Result<Mat, NumericError> {
+    if src.rows() == 0 || src.columns() == 0 {
+        return Mat::empty_with_layout(src.rows(), src.columns(), src.channels(), depth, true)
+            .map_err(Into::into);
+    }
     Mat::from_owned_bytes(
         encode(values, depth),
         src.rows(),
@@ -166,6 +199,27 @@ fn from_values(
         depth,
     )
     .map_err(Into::into)
+}
+
+fn write_result(destination: &Mat, output: &Mat) -> Result<(), NumericError> {
+    if output.rows() == 0 || output.columns() == 0 {
+        destination.write_empty_layout(
+            output.rows(),
+            output.columns(),
+            output.channels(),
+            output.depth(),
+            output.is_continuous(),
+        )?;
+        return Ok(());
+    }
+    destination.write_output(
+        output.compact_bytes(),
+        output.rows(),
+        output.columns(),
+        output.channels(),
+        output.depth(),
+    )?;
+    Ok(())
 }
 
 fn decode(bytes: &[u8], depth: MatDepth) -> Vec<f64> {
@@ -285,15 +339,25 @@ mod tests {
         let b = mat(&[2.; 4], MatDepth::U8, 2, 2);
         let dp = mat(&[7.; 6], MatDepth::U8, 2, 3);
         let d = dp.roi(0, 0, 2, 2).unwrap();
-        binary_into(&a, &b, &d, 1., Binary::Multiply).unwrap();
+        binary_into(&a, &b, &d, 1., -1, Binary::Multiply).unwrap();
         assert_eq!(dp.compact_bytes(), vec![2, 4, 7, 6, 8, 7]);
     }
     #[test]
-    fn invalid_destination_is_not_mutated() {
+    fn incompatible_destination_is_replaced() {
         let a = mat(&[1., 2.], MatDepth::U8, 1, 2);
         let b = mat(&[2., 2.], MatDepth::U8, 1, 2);
         let d = mat(&[9.], MatDepth::U8, 1, 1);
-        assert!(binary_into(&a, &b, &d, 1., Binary::Multiply).is_err());
-        assert_eq!(d.compact_bytes(), vec![9]);
+        binary_into(&a, &b, &d, 1., -1, Binary::Multiply).unwrap();
+        assert_eq!((d.rows(), d.columns(), d.depth()), (1, 2, MatDepth::U8));
+        assert_eq!(d.compact_bytes(), vec![2, 4]);
+    }
+    #[test]
+    fn destination_dtype_changes_output_depth() {
+        let a = mat(&[2., -4.], MatDepth::F32, 1, 2);
+        let b = mat(&[4., 2.], MatDepth::F32, 1, 2);
+        let d = Mat::empty_output();
+        binary_into(&a, &b, &d, 0.5, 6, Binary::Multiply).unwrap();
+        assert_eq!(d.depth(), MatDepth::F64);
+        assert_eq!(decode(&d.compact_bytes(), MatDepth::F64), vec![4., -4.]);
     }
 }
