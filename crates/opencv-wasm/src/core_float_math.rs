@@ -199,18 +199,22 @@ pub(crate) fn pow_scalar(
 }
 
 fn pow_value_f32(value: f32, exponent: f32) -> f32 {
-    if value == 0.0 && value.is_sign_negative() && exponent.fract() != 0.0 {
-        value.abs().powf(exponent).copysign(value)
-    } else {
-        value.powf(exponent)
+    match exponent {
+        0.0 => 1.0,
+        0.5 => value.sqrt(),
+        -0.5 => value.sqrt().recip(),
+        _ if exponent.is_finite() && exponent.fract() == 0.0 => value.powf(exponent),
+        _ => (value.ln() * exponent).exp(),
     }
 }
 
 fn pow_value_f64(value: f64, exponent: f64) -> f64 {
-    if value == 0.0 && value.is_sign_negative() && exponent.fract() != 0.0 {
-        value.abs().powf(exponent).copysign(value)
-    } else {
-        value.powf(exponent)
+    match exponent {
+        0.0 => 1.0,
+        0.5 => value.sqrt(),
+        -0.5 => value.sqrt().recip(),
+        _ if exponent.is_finite() && exponent.fract() == 0.0 => value.powf(exponent),
+        _ => (value.ln() * exponent).exp(),
     }
 }
 
@@ -592,6 +596,18 @@ mod tests {
         let root =
             decode_f64(&pow_depth(&f64_bytes(&[-0.0]), MatDepth::F64, 0.5).unwrap()).unwrap()[0];
         assert_eq!(root.to_bits(), (-0.0_f64).to_bits());
+
+        let near_one = decode_f64(
+            &pow_depth(
+                &f64_bytes(&[-0.0, 2.0]),
+                MatDepth::F64,
+                1.000_000_000_000_000_2,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(near_one[0].to_bits(), 0.0_f64.to_bits());
+        assert_eq!(near_one[1].to_bits(), 2.0_f64.to_bits());
 
         for exponent in [0.0, -0.0] {
             let values = decode_f64(
