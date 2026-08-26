@@ -1,5 +1,6 @@
 import type { WasmMatHandle } from "./mat.js";
 import type { WasmAKAZEHandle } from "./akaze.js";
+import type { WasmKAZEHandle } from "./kaze.js";
 import type {
   WasmAgastFeatureDetectorHandle,
   WasmFastFeatureDetectorHandle,
@@ -68,6 +69,32 @@ declare module "#wasm" {
     setNOctaveLayers(value: number): void;
     setNOctaves(value: number): void;
     setThreshold(value: number): void;
+  }
+
+  export class KAZE implements WasmKAZEHandle {
+    private constructor();
+    static create(
+      extended?: boolean | null,
+      upright?: boolean | null,
+      threshold?: number | null,
+      octaves?: number | null,
+      octaveLayers?: number | null,
+      diffusivity?: number | null,
+    ): KAZE;
+    free(): void;
+    getDefaultName(): string;
+    getDiffusivity(): number;
+    getExtended(): boolean;
+    getNOctaveLayers(): number;
+    getNOctaves(): number;
+    getThreshold(): number;
+    getUpright(): boolean;
+    setDiffusivity(value: number): void;
+    setExtended(value: boolean): void;
+    setNOctaveLayers(value: number): void;
+    setNOctaves(value: number): void;
+    setThreshold(value: number): void;
+    setUpright(value: boolean): void;
   }
 
   export default function initialize(): Promise<void>;

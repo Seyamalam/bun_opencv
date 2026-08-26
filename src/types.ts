@@ -1,4 +1,5 @@
 import type { AKAZE, AKAZEOptions, WasmAKAZEFactory } from "./akaze.js";
+import type { KAZE, KAZEOptions, WasmKAZEFactory } from "./kaze.js";
 import type {
   AgastFeatureDetector,
   AgastFeatureDetectorOptions,
@@ -71,6 +72,7 @@ export interface OpenCvBackend {
   readonly AgastFeatureDetector: WasmAgastFeatureDetectorFactory;
   readonly AKAZE: WasmAKAZEFactory;
   readonly FastFeatureDetector: WasmFastFeatureDetectorFactory;
+  readonly KAZE: WasmKAZEFactory;
   clipLine(
     rectangleX: number,
     rectangleY: number,
@@ -368,6 +370,7 @@ export interface OpenCv {
   contourArea(contour: Mat, oriented?: boolean): number;
   createHanningWindow(size: Size, depth: HanningWindowDepth): Mat;
   createAKAZE(options?: AKAZEOptions): AKAZE;
+  createKAZE(options?: KAZEOptions): KAZE;
   createAgastFeatureDetector(options?: AgastFeatureDetectorOptions): AgastFeatureDetector;
   createFastFeatureDetector(options?: FastFeatureDetectorOptions): FastFeatureDetector;
   determinant(source: Mat): number;

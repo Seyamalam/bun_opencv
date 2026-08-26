@@ -1,5 +1,7 @@
 import { AKAZE, validateAKAZEOptions } from "./akaze.js";
 import type { AKAZEOptions } from "./akaze.js";
+import { KAZE, validateKAZEOptions } from "./kaze.js";
+import type { KAZEOptions } from "./kaze.js";
 import {
   AgastFeatureDetector,
   FastFeatureDetector,
@@ -164,6 +166,20 @@ class WasmOpenCv implements OpenCv {
         options.octaveLayers,
         options.diffusivity,
         options.maxPoints,
+      ),
+    );
+  }
+
+  createKAZE(options: KAZEOptions = {}): KAZE {
+    validateKAZEOptions(options);
+    return new KAZE(
+      this.#backend.KAZE.create(
+        options.extended,
+        options.upright,
+        options.threshold,
+        options.octaves,
+        options.octaveLayers,
+        options.diffusivity,
       ),
     );
   }

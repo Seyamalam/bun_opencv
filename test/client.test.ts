@@ -9,6 +9,7 @@ import {
   createRgbaImage,
   FAST_FEATURE_DETECTOR_DEFAULTS,
   FastFeatureDetectorType,
+  KAZE_DEFAULTS,
   KAZEDiffusivity,
   OpenCvInputError,
 } from "../src/index.js";
@@ -20,6 +21,8 @@ import type {
   WasmAKAZEHandle,
   WasmFastFeatureDetectorFactory,
   WasmFastFeatureDetectorHandle,
+  WasmKAZEFactory,
+  WasmKAZEHandle,
   WasmMatHandle,
 } from "../src/index.js";
 
@@ -204,6 +207,103 @@ class CopyingAKAZEHandle implements WasmAKAZEHandle {
       throw new OpenCvInputError("invalid AKAZE threshold");
     }
     this.#threshold = value;
+  }
+}
+
+class CopyingKAZEHandle implements WasmKAZEHandle {
+  #diffusivity: number;
+  #extended: boolean;
+  #freed = false;
+  #octaveLayers: number;
+  #octaves: number;
+  #threshold: number;
+  #upright: boolean;
+
+  constructor(
+    extended: boolean,
+    upright: boolean,
+    threshold: number,
+    octaves: number,
+    octaveLayers: number,
+    diffusivity: number,
+    readonly onFree: () => void,
+  ) {
+    this.#extended = extended;
+    this.#upright = upright;
+    this.#threshold = threshold;
+    this.#octaves = octaves;
+    this.#octaveLayers = octaveLayers;
+    this.#diffusivity = diffusivity;
+  }
+
+  free(): void {
+    if (this.#freed) return;
+    this.#freed = true;
+    this.onFree();
+  }
+
+  getDefaultName(): string {
+    return "Feature2D.KAZE";
+  }
+
+  getDiffusivity(): number {
+    return this.#diffusivity;
+  }
+
+  getExtended(): boolean {
+    return this.#extended;
+  }
+
+  getNOctaveLayers(): number {
+    return this.#octaveLayers;
+  }
+
+  getNOctaves(): number {
+    return this.#octaves;
+  }
+
+  getThreshold(): number {
+    return this.#threshold;
+  }
+
+  getUpright(): boolean {
+    return this.#upright;
+  }
+
+  setDiffusivity(value: number): void {
+    if (!Number.isInteger(value) || value < 0 || value > 3) {
+      throw new OpenCvInputError("invalid KAZE diffusivity");
+    }
+    this.#diffusivity = value;
+  }
+
+  setExtended(value: boolean): void {
+    this.#extended = value;
+  }
+
+  setNOctaveLayers(value: number): void {
+    if (!Number.isInteger(value) || value <= 0) {
+      throw new OpenCvInputError("invalid KAZE octave layer count");
+    }
+    this.#octaveLayers = value;
+  }
+
+  setNOctaves(value: number): void {
+    if (!Number.isInteger(value) || value <= 0) {
+      throw new OpenCvInputError("invalid KAZE octave count");
+    }
+    this.#octaves = value;
+  }
+
+  setThreshold(value: number): void {
+    if (!Number.isFinite(value)) {
+      throw new OpenCvInputError("invalid KAZE threshold");
+    }
+    this.#threshold = value;
+  }
+
+  setUpright(value: boolean): void {
+    this.#upright = value;
   }
 }
 
@@ -490,6 +590,7 @@ class CopyingBackend implements OpenCvBackend {
   #agastFeatureDetectorFreeCount = 0;
   #akazeFreeCount = 0;
   #fastFeatureDetectorFreeCount = 0;
+  #kazeFreeCount = 0;
   #logLevel = 3;
   #randomState = 0;
 
@@ -523,6 +624,21 @@ class CopyingBackend implements OpenCvBackend {
     },
   };
 
+  readonly KAZE: WasmKAZEFactory = {
+    create: (extended, upright, threshold, octaves, octaveLayers, diffusivity): WasmKAZEHandle =>
+      new CopyingKAZEHandle(
+        extended ?? KAZE_DEFAULTS.extended,
+        upright ?? KAZE_DEFAULTS.upright,
+        threshold ?? KAZE_DEFAULTS.threshold,
+        octaves ?? KAZE_DEFAULTS.octaves,
+        octaveLayers ?? KAZE_DEFAULTS.octaveLayers,
+        diffusivity ?? KAZE_DEFAULTS.diffusivity,
+        () => {
+          this.#kazeFreeCount += 1;
+        },
+      ),
+  };
+
   readonly AgastFeatureDetector: WasmAgastFeatureDetectorFactory = {
     create: (threshold, nonmaxSuppression, type): WasmAgastFeatureDetectorHandle =>
       new CopyingAgastFeatureDetectorHandle(
@@ -537,6 +653,10 @@ class CopyingBackend implements OpenCvBackend {
 
   get agastFeatureDetectorFreeCount(): number {
     return this.#agastFeatureDetectorFreeCount;
+  }
+
+  get kazeFreeCount(): number {
+    return this.#kazeFreeCount;
   }
 
   readonly FastFeatureDetector: WasmFastFeatureDetectorFactory = {
@@ -2393,5 +2513,75 @@ describe("OpenCv client", () => {
     akaze.dispose();
     expect(() => akaze.setThreshold(0.2)).toThrow(OpenCvInputError);
     expect(() => localClient.createAKAZE({ descriptorSize: -1 })).toThrow(OpenCvInputError);
+  });
+
+  test("owns a KAZE configuration with OpenCV 4.13 defaults", () => {
+    const backend = new CopyingBackend();
+    const localClient = createOpenCv(backend);
+    const kaze = localClient.createKAZE();
+
+    expect(kaze.getDefaultName()).toBe("Feature2D.KAZE");
+    expect(kaze.getExtended()).toBe(KAZE_DEFAULTS.extended);
+    expect(kaze.getUpright()).toBe(KAZE_DEFAULTS.upright);
+    expect(kaze.getThreshold()).toBe(0.0010000000474974513);
+    expect(kaze.getNOctaves()).toBe(KAZE_DEFAULTS.octaves);
+    expect(kaze.getNOctaveLayers()).toBe(KAZE_DEFAULTS.octaveLayers);
+    expect(kaze.getDiffusivity()).toBe(KAZE_DEFAULTS.diffusivity);
+
+    kaze.dispose();
+    expect(backend.kazeFreeCount).toBe(1);
+    kaze.dispose();
+    expect(backend.kazeFreeCount).toBe(1);
+    expect(() => kaze.getThreshold()).toThrow(OpenCvInputError);
+  });
+
+  test("creates and mutates an explicit KAZE configuration", () => {
+    const localClient = createOpenCv(new CopyingBackend());
+    const kaze = localClient.createKAZE({
+      diffusivity: KAZEDiffusivity.WEICKERT,
+      extended: true,
+      octaveLayers: 6,
+      octaves: 5,
+      threshold: -1,
+      upright: true,
+    });
+
+    expect(kaze.getExtended()).toBe(true);
+    expect(kaze.getUpright()).toBe(true);
+    expect(kaze.getThreshold()).toBe(-1);
+    expect(kaze.getNOctaves()).toBe(5);
+    expect(kaze.getNOctaveLayers()).toBe(6);
+    expect(kaze.getDiffusivity()).toBe(KAZEDiffusivity.WEICKERT);
+
+    kaze.setExtended(false);
+    kaze.setUpright(false);
+    kaze.setThreshold(-0.25);
+    kaze.setNOctaves(7);
+    kaze.setNOctaveLayers(8);
+    kaze.setDiffusivity(KAZEDiffusivity.CHARBONNIER);
+    expect(kaze.getExtended()).toBe(false);
+    expect(kaze.getUpright()).toBe(false);
+    expect(kaze.getThreshold()).toBe(-0.25);
+    expect(kaze.getNOctaves()).toBe(7);
+    expect(kaze.getNOctaveLayers()).toBe(8);
+    expect(kaze.getDiffusivity()).toBe(KAZEDiffusivity.CHARBONNIER);
+
+    kaze.dispose();
+    expect(() => kaze.setExtended(true)).toThrow(OpenCvInputError);
+  });
+
+  test("rejects invalid KAZE configuration before calling WASM", () => {
+    const localClient = createOpenCv(new CopyingBackend());
+
+    expect(() => localClient.createKAZE({ threshold: Number.NaN })).toThrow(OpenCvInputError);
+    expect(() => localClient.createKAZE({ octaves: 0 })).toThrow(OpenCvInputError);
+    expect(() => localClient.createKAZE({ octaveLayers: 2_147_483_648 })).toThrow(OpenCvInputError);
+    const kaze = localClient.createKAZE();
+    expect(() => kaze.setNOctaves(1.5)).toThrow(OpenCvInputError);
+    expect(() => kaze.setThreshold(Number.POSITIVE_INFINITY)).toThrow(OpenCvInputError);
+    expect(kaze.getDiffusivity()).toBe(KAZE_DEFAULTS.diffusivity);
+    expect(kaze.getNOctaves()).toBe(KAZE_DEFAULTS.octaves);
+    expect(kaze.getThreshold()).toBe(KAZE_DEFAULTS.threshold);
+    kaze.dispose();
   });
 });

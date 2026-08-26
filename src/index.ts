@@ -4,6 +4,8 @@ import type { OpenCvBackend } from "./types.js";
 export { createOpenCv } from "./client.js";
 export { AKAZE, AKAZE_DEFAULTS, AKAZEDescriptorType, KAZEDiffusivity } from "./akaze.js";
 export type { AKAZEOptions, WasmAKAZEFactory, WasmAKAZEHandle } from "./akaze.js";
+export { KAZE, KAZE_DEFAULTS } from "./kaze.js";
+export type { KAZEOptions, WasmKAZEFactory, WasmKAZEHandle } from "./kaze.js";
 export { OpenCvInputError } from "./error.js";
 export {
   AGAST_FEATURE_DETECTOR_DEFAULTS,
