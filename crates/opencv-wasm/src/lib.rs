@@ -28,6 +28,8 @@ mod core_transform_wasm;
 mod core_wasm;
 mod imgproc_border;
 mod imgproc_border_wasm;
+mod imgproc_geometry;
+mod imgproc_geometry_wasm;
 mod mat;
 mod mutable_storage;
 
