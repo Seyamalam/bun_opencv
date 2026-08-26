@@ -178,11 +178,15 @@ mod tests {
         let source = matrix(&bytes, 2, 3, 1, 1);
 
         assert_eq!(
-            flip_bytes(source, 2).expect("positive codes flip columns").bytes(),
+            flip_bytes(source, 2)
+                .expect("positive codes flip columns")
+                .bytes(),
             [3, 2, 1, 6, 5, 4]
         );
         assert_eq!(
-            flip_bytes(source, -2).expect("negative codes flip both axes").bytes(),
+            flip_bytes(source, -2)
+                .expect("negative codes flip both axes")
+                .bytes(),
             [6, 5, 4, 3, 2, 1]
         );
     }

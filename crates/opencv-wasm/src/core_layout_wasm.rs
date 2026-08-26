@@ -79,6 +79,9 @@ impl From<MatError> for LayoutWasmError {
 /// Returns an error when the output cannot be allocated.
 #[wasm_bindgen(js_name = matFlip)]
 pub fn mat_flip(source: &Mat, flip_code: i32) -> Result<Mat, JsError> {
+    if source.rows() == 0 && source.columns() == 0 {
+        return Ok(Mat::empty_output());
+    }
     apply_layout(source, |matrix| flip_bytes(matrix, flip_code)).map_err(JsError::from)
 }
 
@@ -89,6 +92,16 @@ pub fn mat_flip(source: &Mat, flip_code: i32) -> Result<Mat, JsError> {
 /// Returns an error for output allocation failure.
 #[wasm_bindgen(js_name = matFlipInto)]
 pub fn mat_flip_into(source: &Mat, destination: &Mat, flip_code: i32) -> Result<(), JsError> {
+    if source.rows() == 0 && source.columns() == 0 {
+        destination.write_empty_output();
+        return Ok(());
+    }
+    if destination
+        .try_write_shared_flip(source, flip_code)
+        .map_err(JsError::from)?
+    {
+        return Ok(());
+    }
     apply_layout_into(source, destination, |matrix| flip_bytes(matrix, flip_code))
         .map_err(JsError::from)
 }
@@ -400,6 +413,26 @@ mod tests {
     }
 
     #[test]
+    fn flip_marks_empty_outputs_continuous_without_changing_fresh_empty_matrices() {
+        let source = crate::mat::mat_empty();
+        let allocated = mat_flip(&source, 1).expect("flip empty matrix");
+        let destination = u8_matrix(vec![1, 2, 3, 4], 2, 2, 1);
+
+        assert!(!source.is_continuous());
+        mat_flip_into(&source, &destination, 1).expect("flip empty into destination");
+
+        for output in [&allocated, &destination] {
+            assert_eq!(
+                (output.rows(), output.columns(), output.channels()),
+                (0, 0, 1)
+            );
+            assert_eq!(output.depth(), MatDepth::U8);
+            assert!(output.is_continuous());
+            assert!(output.to_u8_array().is_empty());
+        }
+    }
+
+    #[test]
     fn transpose_matches_opencv_for_overlapping_regions_on_one_parent() {
         let parent = u8_matrix((1..=20).collect(), 4, 5, 1);
         let source = parent.roi(0, 0, 2, 3).expect("valid source region");
@@ -417,6 +450,91 @@ mod tests {
         );
         assert_eq!(source.to_u8_array(), [1, 1, 6, 6, 1, 1]);
         assert_eq!(destination.to_u8_array(), [1, 6, 1, 1, 6, 1]);
+    }
+
+    #[test]
+    fn horizontal_flip_matches_opencv_for_overlapping_regions_on_one_parent() {
+        let parent = u8_matrix((1..=30).collect(), 5, 6, 1);
+        let source = parent.roi(0, 0, 2, 3).expect("valid source region");
+        let destination = parent
+            .roi(0, 1, 2, 3)
+            .expect("valid overlapping destination region");
+
+        mat_flip_into(&source, &destination, 1).expect("flip overlapping regions");
+
+        assert_eq!(
+            parent.to_u8_array(),
+            [
+                1, 3, 3, 1, 5, 6, 7, 9, 9, 7, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                24, 25, 26, 27, 28, 29, 30
+            ]
+        );
+        assert_eq!(source.to_u8_array(), [1, 3, 3, 7, 9, 9]);
+        assert_eq!(destination.to_u8_array(), [3, 3, 1, 9, 9, 7]);
+    }
+
+    #[test]
+    fn vertical_flip_matches_opencv_for_overlapping_regions_on_one_parent() {
+        let parent = u8_matrix((1..=30).collect(), 5, 6, 1);
+        let source = parent.roi(0, 0, 3, 3).expect("valid source region");
+        let destination = parent
+            .roi(1, 0, 3, 3)
+            .expect("valid overlapping destination region");
+
+        mat_flip_into(&source, &destination, 0).expect("flip overlapping regions");
+
+        assert_eq!(
+            parent.to_u8_array(),
+            [
+                1, 2, 3, 4, 5, 6, 13, 14, 15, 10, 11, 12, 13, 14, 15, 16, 17, 18, 1, 2, 3, 22, 23,
+                24, 25, 26, 27, 28, 29, 30
+            ]
+        );
+        assert_eq!(source.to_u8_array(), [1, 2, 3, 13, 14, 15, 13, 14, 15]);
+        assert_eq!(destination.to_u8_array(), [13, 14, 15, 13, 14, 15, 1, 2, 3]);
+    }
+
+    #[test]
+    fn flip_keeps_exact_same_views_on_the_snapshot_safe_path() {
+        let matrix = u8_matrix((1..=6).collect(), 2, 3, 1);
+        mat_flip_into(&matrix, &matrix, 1).expect("flip root matrix in place");
+        assert_eq!(matrix.to_u8_array(), [3, 2, 1, 6, 5, 4]);
+
+        let parent = u8_matrix((1..=20).collect(), 4, 5, 1);
+        let source = parent.roi(1, 1, 2, 3).expect("valid source region");
+        let destination = parent
+            .roi(1, 1, 2, 3)
+            .expect("separate header for the same view");
+        mat_flip_into(&source, &destination, 0).expect("flip exact ROI view in place");
+
+        assert_eq!(
+            parent.to_u8_array(),
+            [
+                1, 2, 3, 4, 5, 6, 12, 13, 14, 10, 11, 7, 8, 9, 15, 16, 17, 18, 19, 20
+            ]
+        );
+        assert_eq!(source.to_u8_array(), [12, 13, 14, 7, 8, 9]);
+        assert_eq!(destination.to_u8_array(), [12, 13, 14, 7, 8, 9]);
+    }
+
+    #[test]
+    fn flip_detaches_an_incompatible_roi_destination() {
+        let parent = u8_matrix((1..=30).collect(), 5, 6, 1);
+        let source = parent.roi(0, 0, 2, 3).expect("valid source region");
+        let destination = parent
+            .roi(2, 3, 3, 2)
+            .expect("valid incompatible destination region");
+        let old_alias = parent
+            .roi(2, 3, 3, 2)
+            .expect("alias of the old destination view");
+        let before = parent.to_u8_array();
+
+        mat_flip_into(&source, &destination, 1).expect("flip into incompatible ROI");
+
+        assert_eq!(parent.to_u8_array(), before);
+        assert_eq!((destination.rows(), destination.columns()), (2, 3));
+        assert_eq!(destination.to_u8_array(), [3, 2, 1, 9, 8, 7]);
+        assert_eq!(old_alias.to_u8_array(), [16, 17, 22, 23, 28, 29]);
     }
 
     #[test]

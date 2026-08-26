@@ -143,6 +143,7 @@ struct MatHeader {
     columns: u32,
     channels: u16,
     depth: MatDepth,
+    empty_is_continuous: bool,
 }
 
 impl Mat {
@@ -202,6 +203,7 @@ impl Mat {
                 columns,
                 channels,
                 depth,
+                empty_is_continuous: false,
             }),
         })
     }
@@ -233,11 +235,20 @@ impl Mat {
                 columns,
                 channels,
                 depth,
+                empty_is_continuous: false,
             }),
         })
     }
 
     fn empty() -> Self {
+        Self::empty_with_continuity(false)
+    }
+
+    pub(crate) fn empty_output() -> Self {
+        Self::empty_with_continuity(true)
+    }
+
+    fn empty_with_continuity(empty_is_continuous: bool) -> Self {
         Self {
             header: RefCell::new(MatHeader {
                 storage: None,
@@ -245,8 +256,14 @@ impl Mat {
                 columns: 0,
                 channels: 1,
                 depth: MatDepth::U8,
+                empty_is_continuous,
             }),
         }
+    }
+
+    pub(crate) fn write_empty_output(&self) {
+        self.header
+            .replace(Self::empty_output().header.into_inner());
     }
 
     fn logical_byte_length(&self) -> usize {
@@ -354,6 +371,44 @@ impl Mat {
         Ok(true)
     }
 
+    pub(crate) fn try_write_shared_flip(
+        &self,
+        source: &Self,
+        flip_code: i32,
+    ) -> Result<bool, MatError> {
+        let source_header = source.header.borrow();
+        let destination_header = self.header.borrow();
+        let compatible = destination_header.rows == source_header.rows
+            && destination_header.columns == source_header.columns
+            && destination_header.channels == source_header.channels
+            && destination_header.depth == source_header.depth;
+        if !compatible || flip_code < 0 {
+            return Ok(false);
+        }
+
+        let Some(source_storage) = source_header.storage.as_ref() else {
+            return Ok(false);
+        };
+        let Some(destination_storage) = destination_header.storage.as_ref() else {
+            return Ok(false);
+        };
+        if !source_storage.shares_allocation_with(destination_storage)
+            || source_storage.describes_same_view_as(destination_storage)
+        {
+            return Ok(false);
+        }
+
+        if flip_code == 0 {
+            destination_storage.write_vertical_flip_from_shared(source_storage)?;
+        } else {
+            let pixel_bytes = usize::from(source_header.channels)
+                .checked_mul(source_header.depth.byte_width())
+                .ok_or(MatError::BufferSizeOverflow)?;
+            destination_storage.write_horizontal_flip_from_shared(source_storage, pixel_bytes)?;
+        }
+        Ok(true)
+    }
+
     fn compact_u8(&self) -> Vec<u8> {
         self.compact_bytes()
     }
@@ -415,16 +470,17 @@ impl Mat {
                 columns,
                 channels: header.channels,
                 depth: header.depth,
+                empty_is_continuous: false,
             }),
         })
     }
 
     fn is_continuous_storage(&self) -> bool {
-        self.header
-            .borrow()
+        let header = self.header.borrow();
+        header
             .storage
             .as_ref()
-            .is_some_and(MutableStorage::is_continuous)
+            .map_or(header.empty_is_continuous, MutableStorage::is_continuous)
     }
 }
 

@@ -96,6 +96,95 @@ impl MutableStorage {
         Ok(())
     }
 
+    pub(crate) fn write_horizontal_flip_from_shared(
+        &self,
+        source: &Self,
+        pixel_bytes: usize,
+    ) -> Result<(), MutableStorageError> {
+        if !self.shares_allocation_with(source)
+            || self.rows != source.rows
+            || self.row_bytes != source.row_bytes
+            || pixel_bytes == 0
+            || self.row_bytes % pixel_bytes != 0
+        {
+            return Err(MutableStorageError::IncorrectBufferLength {
+                expected: source.row_bytes,
+                actual: self.row_bytes,
+            });
+        }
+
+        let columns = self.row_bytes / pixel_bytes;
+        let mut data = self.data.borrow_mut();
+        let mut left_pixel = vec![0; pixel_bytes];
+        let mut right_pixel = vec![0; pixel_bytes];
+        for row in 0..self.rows {
+            let source_row = source.offset + row * source.row_stride;
+            let destination_row = self.offset + row * self.row_stride;
+            for left_column in 0..columns / 2 {
+                let right_column = columns - left_column - 1;
+                let source_left = source_row + left_column * pixel_bytes;
+                let source_right = source_row + right_column * pixel_bytes;
+                left_pixel.copy_from_slice(&data[source_left..source_left + pixel_bytes]);
+                right_pixel.copy_from_slice(&data[source_right..source_right + pixel_bytes]);
+
+                let destination_left = destination_row + left_column * pixel_bytes;
+                let destination_right = destination_row + right_column * pixel_bytes;
+                data[destination_right..destination_right + pixel_bytes]
+                    .copy_from_slice(&left_pixel);
+                data[destination_left..destination_left + pixel_bytes]
+                    .copy_from_slice(&right_pixel);
+            }
+            if columns % 2 == 1 {
+                let center = columns / 2;
+                let source_center = source_row + center * pixel_bytes;
+                left_pixel.copy_from_slice(&data[source_center..source_center + pixel_bytes]);
+                let destination_center = destination_row + center * pixel_bytes;
+                data[destination_center..destination_center + pixel_bytes]
+                    .copy_from_slice(&left_pixel);
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn write_vertical_flip_from_shared(
+        &self,
+        source: &Self,
+    ) -> Result<(), MutableStorageError> {
+        if !self.shares_allocation_with(source)
+            || self.rows != source.rows
+            || self.row_bytes != source.row_bytes
+        {
+            return Err(MutableStorageError::IncorrectBufferLength {
+                expected: source.row_bytes,
+                actual: self.row_bytes,
+            });
+        }
+
+        let mut data = self.data.borrow_mut();
+        let mut top_row = vec![0; self.row_bytes];
+        let mut bottom_row = vec![0; self.row_bytes];
+        for top in 0..self.rows / 2 {
+            let bottom = self.rows - top - 1;
+            let source_top = source.offset + top * source.row_stride;
+            let source_bottom = source.offset + bottom * source.row_stride;
+            top_row.copy_from_slice(&data[source_top..source_top + source.row_bytes]);
+            bottom_row.copy_from_slice(&data[source_bottom..source_bottom + source.row_bytes]);
+
+            let destination_top = self.offset + top * self.row_stride;
+            let destination_bottom = self.offset + bottom * self.row_stride;
+            data[destination_bottom..destination_bottom + self.row_bytes].copy_from_slice(&top_row);
+            data[destination_top..destination_top + self.row_bytes].copy_from_slice(&bottom_row);
+        }
+        if self.rows % 2 == 1 {
+            let center = self.rows / 2;
+            let source_center = source.offset + center * source.row_stride;
+            top_row.copy_from_slice(&data[source_center..source_center + source.row_bytes]);
+            let destination_center = self.offset + center * self.row_stride;
+            data[destination_center..destination_center + self.row_bytes].copy_from_slice(&top_row);
+        }
+        Ok(())
+    }
+
     pub(crate) fn from_compact(
         data: Vec<u8>,
         rows: usize,
