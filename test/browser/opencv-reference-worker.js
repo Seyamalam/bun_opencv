@@ -1581,6 +1581,7 @@ self.addEventListener("message", async ({ data: input }) => {
       () => new reference.AgastFeatureDetector(),
     );
     outputs.fastPrimitiveAudit = auditThresholdDetector(() => new reference.FastFeatureDetector());
+    outputs.transposeAudit = auditTranspose(reference);
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });
