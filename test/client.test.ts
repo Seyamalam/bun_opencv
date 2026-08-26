@@ -2687,7 +2687,7 @@ describe("OpenCv client", () => {
     detector.dispose();
   });
 
-  test("rejects GFTTDetector integer values that WebAssembly cannot represent", () => {
+  test("validates GFTTDetector constructor integers and coerces instance setters", () => {
     const localClient = createOpenCv(new CopyingBackend());
 
     expect(() => localClient.createGFTTDetector({ maxFeatures: -2_147_483_649 })).toThrow(
@@ -2698,10 +2698,10 @@ describe("OpenCv client", () => {
     );
     expect(() => localClient.createGFTTDetector({ blockSize: 1.5 })).toThrow(OpenCvInputError);
     const detector = localClient.createGFTTDetector();
-    expect(() => detector.setMaxFeatures(Number.NaN)).toThrow(OpenCvInputError);
-    expect(() => detector.setBlockSize(Number.POSITIVE_INFINITY)).toThrow(OpenCvInputError);
-    expect(detector.getMaxFeatures()).toBe(GFTT_DETECTOR_DEFAULTS.maxFeatures);
-    expect(detector.getBlockSize()).toBe(GFTT_DETECTOR_DEFAULTS.blockSize);
+    expect(detector.setMaxFeatures(Number.NaN)).toBeUndefined();
+    expect(detector.setBlockSize(Number.POSITIVE_INFINITY)).toBeUndefined();
+    expect(detector.getMaxFeatures()).toBe(0);
+    expect(detector.getBlockSize()).toBe(0);
     detector.dispose();
   });
 

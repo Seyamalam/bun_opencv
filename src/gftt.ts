@@ -60,57 +60,75 @@ export class GFTTDetector {
   }
 
   getBlockSize(): number {
+    requireExactArity(arguments.length, 0, "GFTTDetector.getBlockSize");
     return this.#owned().getBlockSize();
   }
 
   getDefaultName(): string {
+    requireExactArity(arguments.length, 0, "GFTTDetector.getDefaultName");
     return this.#owned().getDefaultName();
   }
 
   getHarrisDetector(): boolean {
+    requireExactArity(arguments.length, 0, "GFTTDetector.getHarrisDetector");
     return this.#owned().getHarrisDetector();
   }
 
   getK(): number {
+    requireExactArity(arguments.length, 0, "GFTTDetector.getK");
     return this.#owned().getK();
   }
 
   getMaxFeatures(): number {
+    requireExactArity(arguments.length, 0, "GFTTDetector.getMaxFeatures");
     return this.#owned().getMaxFeatures();
   }
 
   getMinDistance(): number {
+    requireExactArity(arguments.length, 0, "GFTTDetector.getMinDistance");
     return this.#owned().getMinDistance();
   }
 
   getQualityLevel(): number {
+    requireExactArity(arguments.length, 0, "GFTTDetector.getQualityLevel");
     return this.#owned().getQualityLevel();
   }
 
   setBlockSize(value: number): void {
-    validateSignedI32(value, "GFTT block size");
-    this.#owned().setBlockSize(value);
+    requireExactArity(arguments.length, 1, "GFTTDetector.setBlockSize");
+    this.#owned().setBlockSize(toWasmI32(value));
   }
 
   setHarrisDetector(value: boolean): void {
-    this.#owned().setHarrisDetector(value);
+    requireExactArity(arguments.length, 1, "GFTTDetector.setHarrisDetector");
+    this.#owned().setHarrisDetector(toWasmI32(value) !== 0);
   }
 
   setK(value: number): void {
+    requireExactArity(arguments.length, 1, "GFTTDetector.setK");
     this.#owned().setK(value);
   }
 
   setMaxFeatures(value: number): void {
-    validateSignedI32(value, "GFTT maximum feature count");
-    this.#owned().setMaxFeatures(value);
+    requireExactArity(arguments.length, 1, "GFTTDetector.setMaxFeatures");
+    this.#owned().setMaxFeatures(toWasmI32(value));
   }
 
   setMinDistance(value: number): void {
+    requireExactArity(arguments.length, 1, "GFTTDetector.setMinDistance");
     this.#owned().setMinDistance(value);
   }
 
   setQualityLevel(value: number): void {
+    requireExactArity(arguments.length, 1, "GFTTDetector.setQualityLevel");
     this.#owned().setQualityLevel(value);
+  }
+
+  /** Releases the WASM handle with OpenCV.js-compatible repeated-delete behavior. */
+  delete(): void {
+    requireExactArity(arguments.length, 0, "GFTTDetector.delete");
+    this.#owned();
+    this.dispose();
   }
 
   /** Releases the WASM handle. Repeated calls do nothing. */
@@ -144,5 +162,22 @@ export function validateGFTTDetectorOptions(options: GFTTDetectorOptions): void 
 function validateSignedI32(value: number, name: string): void {
   if (!Number.isSafeInteger(value) || value < -2_147_483_648 || value > 2_147_483_647) {
     throw new OpenCvInputError(`${name} must be a signed 32-bit integer`);
+  }
+}
+
+function toWasmI32(value: number | boolean): number {
+  if (value === true) {
+    return 1;
+  }
+  if (value === false) {
+    return 0;
+  }
+  return value | 0;
+}
+
+function requireExactArity(actual: number, expected: number, method: string): void {
+  if (actual !== expected) {
+    const noun = expected === 1 ? "argument" : "arguments";
+    throw new OpenCvInputError(`${method} expects exactly ${expected} ${noun}`);
   }
 }
