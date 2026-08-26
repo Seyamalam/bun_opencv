@@ -80,6 +80,8 @@ These operations preserve all seven scalar depths and every interleaved channel.
 
 Each layout operation also accepts an OpenCV-style destination overload: `flip(source, destination, code)`, `transpose(source, destination)`, `rotate(source, destination, code)`, and `repeat(source, rows, columns, destination)`. Destinations must have the exact output shape, channels, and depth. Writes through regions update their shared parent storage.
 
+The browser differential harness passes the pinned OpenCV.js 4.13.0 U8 fixtures for all four layout operations. Empty-matrix behavior and differential coverage across the remaining depths still need audit before these families receive full-parity credit.
+
 ### Matrix channels
 
 - `split(source)` returns one single-channel matrix per input channel.
@@ -122,6 +124,33 @@ Integer outputs use nearest-even rounding and saturation. Integer division by ze
 ### Statistics and dimensional reduction
 
 `meanStdDev(source, means, standardDeviations, mask)` writes one F64 mean and population standard deviation per channel. `reduce(source, destination, axis, kind)` reduces rows or columns with sum, average, maximum, or minimum. Reduction converts between every scalar depth and uses nearest-even saturated integer output.
+
+### Matrix initialization and random fills
+
+- `setIdentity(destination, value)` clears a matrix and writes `value` on its diagonal. The default scalar is `[1, 0, 0, 0]`.
+- `randu(destination, lower, upper)` fills each channel from a half-open uniform range.
+- `randn(destination, mean, standardDeviation)` fills each channel from a normal distribution.
+- `setRNGSeed(seed)` resets the random stream from a signed 32-bit seed.
+
+These methods mutate existing matrices and support all seven scalar depths, strided regions, and one through four channels. Uniform integer draws use floor conversion. Normal integer draws and identity values use nearest-even rounding and saturation. `randn` accepts channel-specific standard deviations but not a covariance matrix.
+
+The random functions use an independently authored SplitMix64 stream and Box-Muller normal sampler. Resetting a seed reproduces package results. It does not reproduce OpenCV's random sequence, so these families remain partial.
+
+### Per-element transforms
+
+`transform(source, coefficients)` allocates a result. `transform(source, coefficients, destination)` writes into an exact destination. The source may use any scalar depth and one through four channels. Coefficients must be a single-channel F32 or F64 matrix with one row per output channel. It may contain one column per input channel for a linear transform or one extra column for an affine bias. The output keeps the source depth and may have a different channel count.
+
+`perspectiveTransform(source, coefficients)` and its destination overload transform interleaved two- or three-component vectors. The source must use F32 or F64. Coefficients must be a single-channel square F32 or F64 matrix with one extra homogeneous row and column. The output keeps the source shape, channels, and depth.
+
+Both methods compact strided inputs and snapshot inputs before destination writes. Differential fixtures against the pinned browser build remain.
+
+### Dense matrix algebra
+
+- `determinant(source)` returns an F64 determinant for a square, single-channel matrix. It accepts every scalar depth and uses partial-pivoted elimination.
+- `invert(source, destination, method)` writes an inverse into an exact single-channel F32 or F64 destination. It returns `1` on success and `0` for a singular or rank-deficient source.
+- `solve(coefficients, rightHandSides, destination, method)` solves one or more right-hand sides. It returns `false` on rank loss.
+
+The decomposition method defaults to `0` for LU. Method `3` selects Cholesky and method `4` selects QR. LU and Cholesky require square coefficient matrices. QR also accepts overdetermined systems. SVD, eigen, normal-equation flags, pseudo-inverses, and underdetermined systems remain. Failed inverse and solve calls leave the destination unchanged. Inputs must be single-channel and finite. Inverse and solve destinations must use F32 or F64.
 
 ### Matrix reductions
 

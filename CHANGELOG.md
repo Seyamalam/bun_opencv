@@ -11,6 +11,9 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - Twelve U8 matrix core slices: saturating arithmetic, absolute difference, bitwise operations, minimum, maximum, equality comparison, inclusive range masks, and non-zero reduction.
 - All-depth matrix flip, transpose, rotation, and repeat operations with strided-region handling.
 - All-depth count, sum, mean, extrema-location, and trace reductions with explicit NaN rules.
+- All-depth identity, uniform random, and normal random matrix fills with reproducible package-owned seed control.
+- Per-element linear, affine, and perspective transforms with allocating and mutable destination forms.
+- Dense determinant, inverse, and linear-system solvers with LU, Cholesky, and QR methods.
 - Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
 
 ### Planned

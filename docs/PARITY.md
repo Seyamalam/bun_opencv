@@ -25,7 +25,7 @@ Desktop modules that the official OpenCV.js build disables are outside this pari
 
 ## Working partial families
 
-Forty-three families have useful original Rust/WASM slices. None yet satisfies the full-family definition, so full parity remains 0 of 488.
+Fifty-two families have useful original Rust/WASM slices. None yet satisfies the full-family definition, so full parity remains 0 of 488.
 
 | Package methods                                        | OpenCV.js families                                                    | Current limit                                |
 | ------------------------------------------------------ | --------------------------------------------------------------------- | -------------------------------------------- |
@@ -43,6 +43,9 @@ Forty-three families have useful original Rust/WASM slices. None yet satisfies t
 | `norm`, `normalize`                                    | `cv.norm`, `cv.normalize`                                             | All depths, masks, and major norm modes      |
 | `meanStdDev`, `reduce`                                 | `cv.meanStdDev`, `cv.reduce`                                          | All depths and mutable outputs               |
 | `mean`, `minMaxLoc`, `trace`                           | `cv.mean`, `cv.minMaxLoc`, `cv.trace`                                 | Masks or multi-channel trace remain          |
+| `setIdentity`, `randu`, `randn`, `setRNGSeed`          | Matching `cv` initialization and random families                      | Package RNG sequences differ from OpenCV     |
+| `transform`, `perspectiveTransform`                    | `cv.transform`, `cv.perspectiveTransform`                             | Selected channel and coefficient forms       |
+| `determinant`, `invert`, `solve`                       | `cv.determinant`, `cv.invert`, `cv.solve`                             | Selected dense single-channel methods        |
 | `grayscale`, `resizeNearest`, `threshold`              | `cv.cvtColor`, `cv.resize`, `cv.threshold`                            | One RGBA or luma-derived specialization each |
 
 ## Tracked planned sample
