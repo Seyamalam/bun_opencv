@@ -285,6 +285,37 @@ The pinned OpenCV.js 4.13.0 browser fixture passes the documented defaults and o
 
 Call `dispose()` when the handle is no longer needed. Repeated disposal does nothing. Any getter or setter after disposal throws `OpenCvInputError`.
 
+### KAZE configuration
+
+`cv.createKAZE(options)` allocates a Rust-owned KAZE configuration handle. It stores detector and descriptor settings but does not accept images, detect keypoints, or compute descriptors yet.
+
+```ts
+import { KAZEDiffusivity } from "bun-opencv";
+
+const kaze = cv.createKAZE({
+  diffusivity: KAZEDiffusivity.PM_G2,
+  extended: false,
+  octaveLayers: 4,
+  octaves: 4,
+  threshold: 0.001,
+  upright: false,
+});
+
+try {
+  kaze.setThreshold(-1);
+  kaze.setDiffusivity(KAZEDiffusivity.CHARBONNIER);
+  console.log(kaze.getThreshold(), kaze.getDiffusivity());
+} finally {
+  kaze.dispose();
+}
+```
+
+The OpenCV 4.13 defaults are `extended: false`, `upright: false`, threshold `0.0010000000474974513`, four octaves, four octave layers, and `KAZEDiffusivity.PM_G2`. Diffusivity accepts the typed PM G1, PM G2, Weickert, and Charbonnier enum members. Octaves and octave layers must be positive signed 32-bit integers. The threshold may be any finite number, including `-1`.
+
+The instance exposes `getDefaultName()`, getters and setters for every option, and `dispose()`. `getDefaultName()` returns `"Feature2D.KAZE"`. A rejected diffusivity, octave, or threshold update preserves the previous value. Repeated disposal does nothing, and every getter or setter throws `OpenCvInputError` after disposal.
+
+The pinned OpenCV.js 4.13.0 browser fixture exposes the direct `KAZE` constructor and all 13 instance methods. Its documented defaults and mutations pass, including threshold `-1` and typed diffusivity changes. The artifact omits the config-listed static `KAZE.create`, so the package factory has no direct static-factory comparator for that baseline.
+
 ### AGAST and FAST configuration
 
 `cv.createAgastFeatureDetector(options)` and `cv.createFastFeatureDetector(options)` allocate Rust-owned detector configuration handles. They do not accept images or detect keypoints yet.

@@ -138,6 +138,20 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | features2d | `AKAZE.setNOctaveLayers`                    | `cv.AKAZE.setNOctaveLayers`                    | Partial | Validated configuration mutation        |
 | features2d | `AKAZE.setNOctaves`                         | `cv.AKAZE.setNOctaves`                         | Partial | Validated configuration mutation        |
 | features2d | `AKAZE.setThreshold`                        | `cv.AKAZE.setThreshold`                        | Partial | Validated configuration mutation        |
+| features2d | `createKAZE`                                | `cv.KAZE.create`                               | Partial | Configuration handle only; no detection |
+| features2d | `KAZE.getDefaultName`                       | `cv.KAZE.getDefaultName`                       | Partial | Package-owned configuration name        |
+| features2d | `KAZE.getDiffusivity`                       | `cv.KAZE.getDiffusivity`                       | Partial | Typed diffusivity state                 |
+| features2d | `KAZE.getExtended`                          | `cv.KAZE.getExtended`                          | Partial | Extended-descriptor flag                |
+| features2d | `KAZE.getNOctaveLayers`                     | `cv.KAZE.getNOctaveLayers`                     | Partial | Positive octave-layer state             |
+| features2d | `KAZE.getNOctaves`                          | `cv.KAZE.getNOctaves`                          | Partial | Positive octave-count state             |
+| features2d | `KAZE.getThreshold`                         | `cv.KAZE.getThreshold`                         | Partial | Any finite threshold                    |
+| features2d | `KAZE.getUpright`                           | `cv.KAZE.getUpright`                           | Partial | Upright-descriptor flag                 |
+| features2d | `KAZE.setDiffusivity`                       | `cv.KAZE.setDiffusivity`                       | Partial | Validated configuration mutation        |
+| features2d | `KAZE.setExtended`                          | `cv.KAZE.setExtended`                          | Partial | Configuration mutation                  |
+| features2d | `KAZE.setNOctaveLayers`                     | `cv.KAZE.setNOctaveLayers`                     | Partial | Validated configuration mutation        |
+| features2d | `KAZE.setNOctaves`                          | `cv.KAZE.setNOctaves`                          | Partial | Validated configuration mutation        |
+| features2d | `KAZE.setThreshold`                         | `cv.KAZE.setThreshold`                         | Partial | Finite threshold mutation               |
+| features2d | `KAZE.setUpright`                           | `cv.KAZE.setUpright`                           | Partial | Configuration mutation                  |
 | features2d | `createAgastFeatureDetector`                | `cv.AgastFeatureDetector.create`               | Partial | Configuration handle only; no detection |
 | features2d | `AgastFeatureDetector.getDefaultName`       | `cv.AgastFeatureDetector.getDefaultName`       | Partial | Package-owned configuration name        |
 | features2d | `AgastFeatureDetector.getNonmaxSuppression` | `cv.AgastFeatureDetector.getNonmaxSuppression` | Partial | Boolean configuration state             |
@@ -175,9 +189,11 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `findContours`                              | `cv.findContours`                              | Planned | Not started                             |
 | imgproc    | `warpPerspective`                           | `cv.warpPerspective`                           | Planned | Not started                             |
 
-Current full parity is **0 of 488 (0%)**. There are **101 partial families** with working Rust/WASM slices. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+Current full parity is **0 of 488 (0%)**. There are **115 partial families** with working Rust/WASM slices. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
 
 The pinned OpenCV.js 4.13.0 browser fixture passes AKAZE defaults and mutations for all 15 instance members. The same artifact exposes `AKAZE` as a directly constructible class but omits the config-listed static `AKAZE.create`, so the `createAKAZE` factory cannot receive direct runtime credit from that artifact.
+
+The fixture passes KAZE defaults and mutations for all 13 instance methods, including threshold `-1` and typed diffusivity changes. The artifact exposes a direct `KAZE` constructor but omits the config-listed static `KAZE.create` method.
 
 The fixture also passes AGAST and FAST defaults and mutations for all seven instance methods on each class. It preserves the signed AGAST threshold `-1` and the FAST threshold `256`. Both classes are directly constructible in the official artifact, but neither exposes the config-listed static `create` method.
 

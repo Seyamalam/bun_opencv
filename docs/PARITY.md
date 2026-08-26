@@ -25,7 +25,7 @@ Desktop modules that the official OpenCV.js build disables are outside this pari
 
 ## Working partial families
 
-One hundred one families have useful original Rust/WASM slices. None yet satisfies the full-family definition, so full parity remains 0 of 488.
+One hundred fifteen families have useful original Rust/WASM slices. None yet satisfies the full-family definition, so full parity remains 0 of 488.
 
 | Package methods                                                                                                  | OpenCV.js families                                                    | Current limit                                            |
 | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------- |
@@ -59,6 +59,11 @@ One hundred one families have useful original Rust/WASM slices. None yet satisfi
 | `AKAZE.getDiffusivity`, `AKAZE.getNOctaveLayers`, `AKAZE.getNOctaves`, `AKAZE.getThreshold`                      | Matching `cv.AKAZE` detector getters                                  | Validated configuration state only                       |
 | `AKAZE.setDescriptorChannels`, `AKAZE.setDescriptorSize`, `AKAZE.setDescriptorType`                              | Matching `cv.AKAZE` descriptor setters                                | Atomic configuration mutation only                       |
 | `AKAZE.setDiffusivity`, `AKAZE.setNOctaveLayers`, `AKAZE.setNOctaves`, `AKAZE.setThreshold`                      | Matching `cv.AKAZE` detector setters                                  | Atomic configuration mutation only                       |
+| `createKAZE`, `KAZE.getDefaultName`                                                                              | `cv.KAZE.create`, `cv.KAZE.getDefaultName`                            | Owned configuration only; detection remains              |
+| `KAZE.getDiffusivity`, `KAZE.getExtended`, `KAZE.getNOctaveLayers`, `KAZE.getNOctaves`                           | Matching `cv.KAZE` configuration getters                              | Rust-owned configuration state only                      |
+| `KAZE.getThreshold`, `KAZE.getUpright`                                                                           | Matching `cv.KAZE` detector and descriptor getters                    | Finite threshold and boolean state only                  |
+| `KAZE.setDiffusivity`, `KAZE.setExtended`, `KAZE.setNOctaveLayers`, `KAZE.setNOctaves`                           | Matching `cv.KAZE` configuration setters                              | Validated configuration mutation only                    |
+| `KAZE.setThreshold`, `KAZE.setUpright`                                                                           | Matching `cv.KAZE` detector and descriptor setters                    | Atomic configuration mutation only                       |
 | `createAgastFeatureDetector`, `AgastFeatureDetector.getDefaultName`                                              | Matching `cv.AgastFeatureDetector` factory and name families          | Owned configuration only; detection remains              |
 | `AgastFeatureDetector.getNonmaxSuppression`, `AgastFeatureDetector.getThreshold`, `AgastFeatureDetector.getType` | Matching `cv.AgastFeatureDetector` getters                            | Rust-owned configuration state only                      |
 | `AgastFeatureDetector.setNonmaxSuppression`, `AgastFeatureDetector.setThreshold`, `AgastFeatureDetector.setType` | Matching `cv.AgastFeatureDetector` setters                            | Validated configuration mutation only                    |
@@ -68,6 +73,8 @@ One hundred one families have useful original Rust/WASM slices. None yet satisfi
 | `grayscale`, `resizeNearest`, `threshold`                                                                        | `cv.cvtColor`, `cv.resize`, `cv.threshold`                            | One RGBA or luma-derived specialization each             |
 
 The pinned OpenCV.js 4.13.0 browser fixture passes the AKAZE defaults and state mutations for all 15 instance members. Its `AKAZE` class is directly constructible, but the artifact omits the static `AKAZE.create` binding listed by the browser configuration. That blocks a direct runtime comparison for `createAKAZE` without changing the 488-family inventory.
+
+The fixture also exposes the direct `KAZE` constructor and all 13 instance methods. Defaults and mutations pass, including the finite threshold `-1` and each typed diffusivity value. The artifact omits the config-listed static `KAZE.create` binding, so `createKAZE` has no direct static-factory comparison.
 
 The same fixture passes defaults and mutations for all seven AGAST and all seven FAST instance methods. The threshold checks include signed values outside the usual detector range: AGAST preserves `-1`, and FAST preserves `256`. The official artifact exposes both direct constructors but omits the config-listed static `create` method on each class. That leaves both package factories without a direct static-factory comparison.
 
