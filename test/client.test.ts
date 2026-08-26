@@ -2944,6 +2944,12 @@ describe("OpenCv client", () => {
     expect(() => localClient.multiply(left, right)).toThrow(BindingError);
     // @ts-expect-error Runtime parity rejects missing destination arguments.
     expect(() => localClient.convertScaleAbs(left)).toThrow(BindingError);
+    expect(() => localClient.multiply(left, right, destination, undefined)).toThrow(TypeError);
+    expect(() => localClient.divide(left, right, destination, undefined)).toThrow(TypeError);
+    expect(() => localClient.addWeighted(left, 1, right, 1, 0, destination, undefined)).toThrow(
+      TypeError,
+    );
+    expect(() => localClient.convertScaleAbs(left, destination, undefined)).toThrow(TypeError);
 
     destination.dispose();
     right.dispose();

@@ -86,7 +86,8 @@ class WasmOpenCv implements OpenCv {
     ]
   ): void {
     requireOverloadArity(arguments_.length, 6, 7, "addWeighted");
-    const [a, alpha, b, beta, gamma, destination, dtype = -1] = arguments_;
+    const [a, alpha, b, beta, gamma, destination] = arguments_;
+    const dtype = arguments_.length === 7 ? toWasmI32(arguments_[6]) : -1;
     this.#backend.matAddWeightedInto(
       matHandleForBinding(a),
       toWasmF64(alpha),
@@ -94,7 +95,7 @@ class WasmOpenCv implements OpenCv {
       toWasmF64(beta),
       toWasmF64(gamma),
       matHandleForBinding(destination),
-      toWasmI32(dtype),
+      dtype,
     );
   }
 
@@ -258,12 +259,14 @@ class WasmOpenCv implements OpenCv {
     ...arguments_: [source: Mat, destination: Mat, alpha?: number, beta?: number]
   ): void {
     requireArityRange(arguments_.length, 2, 4, "convertScaleAbs");
-    const [source, destination, alpha = 1, beta = 0] = arguments_;
+    const [source, destination] = arguments_;
+    const alpha = arguments_.length >= 3 ? toWasmF64(arguments_[2]) : 1;
+    const beta = arguments_.length === 4 ? toWasmF64(arguments_[3]) : 0;
     this.#backend.matConvertScaleAbsInto(
       matHandleForBinding(source),
       matHandleForBinding(destination),
-      toWasmF64(alpha),
-      toWasmF64(beta),
+      alpha,
+      beta,
     );
   }
 
@@ -311,13 +314,15 @@ class WasmOpenCv implements OpenCv {
 
   divide(...arguments_: [a: Mat, b: Mat, destination: Mat, scale?: number, dtype?: number]): void {
     requireArityRange(arguments_.length, 3, 5, "divide");
-    const [a, b, destination, scale = 1, dtype = -1] = arguments_;
+    const [a, b, destination] = arguments_;
+    const scale = arguments_.length >= 4 ? toWasmF64(arguments_[3]) : 1;
+    const dtype = arguments_.length === 5 ? toWasmI32(arguments_[4]) : -1;
     this.#backend.matDivideInto(
       matHandleForBinding(a),
       matHandleForBinding(b),
       matHandleForBinding(destination),
-      toWasmF64(scale),
-      toWasmI32(dtype),
+      scale,
+      dtype,
     );
   }
 
@@ -647,13 +652,15 @@ class WasmOpenCv implements OpenCv {
     ...arguments_: [a: Mat, b: Mat, destination: Mat, scale?: number, dtype?: number]
   ): void {
     requireArityRange(arguments_.length, 3, 5, "multiply");
-    const [a, b, destination, scale = 1, dtype = -1] = arguments_;
+    const [a, b, destination] = arguments_;
+    const scale = arguments_.length >= 4 ? toWasmF64(arguments_[3]) : 1;
+    const dtype = arguments_.length === 5 ? toWasmI32(arguments_[4]) : -1;
     this.#backend.matMultiplyInto(
       matHandleForBinding(a),
       matHandleForBinding(b),
       matHandleForBinding(destination),
-      toWasmF64(scale),
-      toWasmI32(dtype),
+      scale,
+      dtype,
     );
   }
 
