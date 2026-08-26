@@ -2530,10 +2530,10 @@ describe("OpenCv client", () => {
     detector.dispose();
     detector.dispose();
     expect(backend.agastFeatureDetectorFreeCount).toBe(1);
-    expect(() => detector.getThreshold()).toThrow(OpenCvInputError);
+    expect(() => detector.getThreshold()).toThrow(BindingError);
   });
 
-  test("rejects invalid AgastFeatureDetector configuration before calling WASM", () => {
+  test("validates AGAST construction and coerces instance thresholds", () => {
     const localClient = createOpenCv(new CopyingBackend());
 
     expect(() => localClient.createAgastFeatureDetector({ threshold: -2_147_483_649 })).toThrow(
@@ -2546,8 +2546,8 @@ describe("OpenCv client", () => {
     expect(detector.getThreshold()).toBe(-2_147_483_648);
     detector.setThreshold(2_147_483_647);
     expect(detector.getThreshold()).toBe(2_147_483_647);
-    expect(() => detector.setThreshold(1.5)).toThrow(OpenCvInputError);
-    expect(detector.getThreshold()).toBe(2_147_483_647);
+    expect(detector.setThreshold(1.5)).toBeUndefined();
+    expect(detector.getThreshold()).toBe(1);
     detector.dispose();
   });
 
@@ -2571,10 +2571,10 @@ describe("OpenCv client", () => {
     detector.dispose();
     detector.dispose();
     expect(backend.fastFeatureDetectorFreeCount).toBe(1);
-    expect(() => detector.setNonmaxSuppression(true)).toThrow(OpenCvInputError);
+    expect(() => detector.setNonmaxSuppression(true)).toThrow(BindingError);
   });
 
-  test("rejects invalid FastFeatureDetector configuration before calling WASM", () => {
+  test("validates FAST construction and coerces instance thresholds", () => {
     const localClient = createOpenCv(new CopyingBackend());
 
     expect(() => localClient.createFastFeatureDetector({ threshold: -2_147_483_649 })).toThrow(
@@ -2587,8 +2587,8 @@ describe("OpenCv client", () => {
     expect(detector.getThreshold()).toBe(-2_147_483_648);
     detector.setThreshold(2_147_483_647);
     expect(detector.getThreshold()).toBe(2_147_483_647);
-    expect(() => detector.setThreshold(Number.NaN)).toThrow(OpenCvInputError);
-    expect(detector.getThreshold()).toBe(2_147_483_647);
+    expect(detector.setThreshold(Number.NaN)).toBeUndefined();
+    expect(detector.getThreshold()).toBe(0);
     detector.dispose();
   });
 

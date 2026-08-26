@@ -1,4 +1,10 @@
-import { OpenCvInputError } from "./error.js";
+import { BindingError, OpenCvInputError } from "./error.js";
+
+interface EmbindObjectInput {
+  toString(): string;
+}
+
+type EmbindScalarInput = boolean | number | EmbindObjectInput | string | null | undefined;
 
 /** Neighborhood pattern used by OpenCV's AGAST detector. */
 export enum AgastFeatureDetectorType {
@@ -97,15 +103,18 @@ export class AgastFeatureDetector {
   }
 
   getDefaultName(): string {
+    requireExactArity(arguments.length, 0, "AgastFeatureDetector.getDefaultName");
     return this.#owned().getDefaultName();
   }
 
   getNonmaxSuppression(): boolean {
-    return this.#owned().getNonmaxSuppression();
+    requireExactArity(arguments.length, 0, "AgastFeatureDetector.getNonmaxSuppression");
+    return this.#ownedConst().getNonmaxSuppression();
   }
 
   getThreshold(): number {
-    return this.#owned().getThreshold();
+    requireExactArity(arguments.length, 0, "AgastFeatureDetector.getThreshold");
+    return this.#ownedConst().getThreshold();
   }
 
   getType(): AgastFeatureDetectorType {
@@ -113,17 +122,26 @@ export class AgastFeatureDetector {
   }
 
   setNonmaxSuppression(value: boolean): void {
-    this.#owned().setNonmaxSuppression(value);
+    requireExactArity(arguments.length, 1, "AgastFeatureDetector.setNonmaxSuppression");
+    this.#owned().setNonmaxSuppression(toWasmBoolean(value));
   }
 
   setThreshold(value: number): void {
-    validateDetectorThreshold(value, "AGAST threshold");
-    this.#owned().setThreshold(value);
+    requireExactArity(arguments.length, 1, "AgastFeatureDetector.setThreshold");
+    this.#owned().setThreshold(toWasmI32(value));
   }
 
   setType(value: AgastFeatureDetectorType): void {
     validateAgastType(value);
     this.#owned().setType(value);
+  }
+
+  /** Releases the WASM handle with OpenCV.js-compatible repeated-delete behavior. */
+  delete(): void {
+    if (this.#handle === undefined) {
+      throw new BindingError("AgastFeatureDetector instance already deleted");
+    }
+    this.dispose();
   }
 
   /** Releases the WASM handle. Repeated calls do nothing. */
@@ -139,7 +157,19 @@ export class AgastFeatureDetector {
   #owned(): WasmAgastFeatureDetectorHandle {
     const handle = this.#handle;
     if (handle === undefined) {
-      throw new OpenCvInputError("AgastFeatureDetector has been disposed");
+      throw new BindingError(
+        "Cannot pass deleted object as a pointer of type AgastFeatureDetector",
+      );
+    }
+    return handle;
+  }
+
+  #ownedConst(): WasmAgastFeatureDetectorHandle {
+    const handle = this.#handle;
+    if (handle === undefined) {
+      throw new BindingError(
+        "Cannot pass deleted object as a pointer of type AgastFeatureDetector const*",
+      );
     }
     return handle;
   }
@@ -155,15 +185,18 @@ export class FastFeatureDetector {
   }
 
   getDefaultName(): string {
+    requireExactArity(arguments.length, 0, "FastFeatureDetector.getDefaultName");
     return this.#owned().getDefaultName();
   }
 
   getNonmaxSuppression(): boolean {
-    return this.#owned().getNonmaxSuppression();
+    requireExactArity(arguments.length, 0, "FastFeatureDetector.getNonmaxSuppression");
+    return this.#ownedConst().getNonmaxSuppression();
   }
 
   getThreshold(): number {
-    return this.#owned().getThreshold();
+    requireExactArity(arguments.length, 0, "FastFeatureDetector.getThreshold");
+    return this.#ownedConst().getThreshold();
   }
 
   getType(): FastFeatureDetectorType {
@@ -171,17 +204,26 @@ export class FastFeatureDetector {
   }
 
   setNonmaxSuppression(value: boolean): void {
-    this.#owned().setNonmaxSuppression(value);
+    requireExactArity(arguments.length, 1, "FastFeatureDetector.setNonmaxSuppression");
+    this.#owned().setNonmaxSuppression(toWasmBoolean(value));
   }
 
   setThreshold(value: number): void {
-    validateDetectorThreshold(value, "FAST threshold");
-    this.#owned().setThreshold(value);
+    requireExactArity(arguments.length, 1, "FastFeatureDetector.setThreshold");
+    this.#owned().setThreshold(toWasmI32(value));
   }
 
   setType(value: FastFeatureDetectorType): void {
     validateFastType(value);
     this.#owned().setType(value);
+  }
+
+  /** Releases the WASM handle with OpenCV.js-compatible repeated-delete behavior. */
+  delete(): void {
+    if (this.#handle === undefined) {
+      throw new BindingError("FastFeatureDetector instance already deleted");
+    }
+    this.dispose();
   }
 
   /** Releases the WASM handle. Repeated calls do nothing. */
@@ -197,7 +239,17 @@ export class FastFeatureDetector {
   #owned(): WasmFastFeatureDetectorHandle {
     const handle = this.#handle;
     if (handle === undefined) {
-      throw new OpenCvInputError("FastFeatureDetector has been disposed");
+      throw new BindingError("Cannot pass deleted object as a pointer of type FastFeatureDetector");
+    }
+    return handle;
+  }
+
+  #ownedConst(): WasmFastFeatureDetectorHandle {
+    const handle = this.#handle;
+    if (handle === undefined) {
+      throw new BindingError(
+        "Cannot pass deleted object as a pointer of type FastFeatureDetector const*",
+      );
     }
     return handle;
   }
@@ -268,5 +320,36 @@ function fastTypeFromNumber(value: number): FastFeatureDetectorType {
 function validateDetectorThreshold(value: number, name: string): void {
   if (!Number.isSafeInteger(value) || value < -2_147_483_648 || value > 2_147_483_647) {
     throw new OpenCvInputError(`${name} must be a signed 32-bit integer`);
+  }
+}
+
+function toWasmI32(value: EmbindScalarInput): number {
+  if (value === true) {
+    return 1;
+  }
+  if (value === false) {
+    return 0;
+  }
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- This is the JS-to-Embind scalar parser boundary.
+  if (typeof value !== "number") {
+    throw new TypeError(`Cannot convert "${String(value)}" to int`);
+  }
+  if (value < -2_147_483_648 || value > 2_147_483_647) {
+    throw new TypeError(
+      `Passing a number "${String(value)}" from JS side to C/C++ side to an argument of type "int", which is outside the valid range [-2147483648, 2147483647]!`,
+    );
+  }
+  return value | 0;
+}
+
+function toWasmBoolean(value: EmbindScalarInput): boolean {
+  return Boolean(value);
+}
+
+function requireExactArity(actual: number, expected: number, method: string): void {
+  if (actual !== expected) {
+    throw new BindingError(
+      `function ${method} called with ${actual} arguments, expected ${expected} args!`,
+    );
   }
 }
