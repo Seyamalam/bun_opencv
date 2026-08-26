@@ -2302,6 +2302,38 @@ describe("OpenCv client", () => {
     }
   });
 
+  test("matches the exact one-argument countNonZero call contract", () => {
+    const source = client.matFromU8(2, 3, 1, new Uint8Array([0, 1, 2, 0, 3, 0]));
+
+    expect(client.countNonZero.length).toBe(1);
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing missing arguments from plain JavaScript.
+      client.countNonZero();
+    }).toThrow(new BindingError("function countNonZero called with 0 arguments, expected 1 args!"));
+    expect(client.countNonZero(source)).toBe(3);
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing an extra argument from plain JavaScript.
+      client.countNonZero(source, 1);
+    }).toThrow(new BindingError("function countNonZero called with 2 arguments, expected 1 args!"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a null Mat from plain JavaScript.
+      client.countNonZero(null);
+    }).toThrow(new BindingError("null is not a valid Mat"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing an undefined Mat from plain JavaScript.
+      client.countNonZero(undefined);
+    }).toThrow(new TypeError("Cannot read properties of undefined (reading '$$')"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a structural object from plain JavaScript.
+      client.countNonZero({});
+    }).toThrow(new BindingError('Cannot pass "[object Object]" as a Mat'));
+
+    source.dispose();
+    expect(() => client.countNonZero(source)).toThrow(
+      new BindingError("Cannot pass deleted object as a pointer of type Mat"),
+    );
+  });
+
   test("exposes matrix layout operations", () => {
     expect(client).toHaveProperty("flip");
     expect(client).toHaveProperty("transpose");

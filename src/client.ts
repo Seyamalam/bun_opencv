@@ -155,7 +155,8 @@ class WasmOpenCv implements OpenCv {
   }
 
   countNonZero(source: Mat): number {
-    return this.#backend.matCountNonZero(source.handleForBackend());
+    requireExactArity(arguments.length, 1, "countNonZero");
+    return this.#backend.matCountNonZero(matHandleForBinding(source));
   }
 
   contourArea(contour: Mat, oriented = false): number {
