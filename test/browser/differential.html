@@ -162,7 +162,8 @@
 
       function summarizePackageMat(matrix) {
         const depthCode = PACKAGE_DEPTH_CODES[matrix.depth];
-        const elementSize = PACKAGE_DEPTH_WIDTHS[matrix.depth] * matrix.channels;
+        const empty = matrix.rows === 0 || matrix.columns === 0;
+        const elementSize = empty ? 0 : PACKAGE_DEPTH_WIDTHS[matrix.depth] * matrix.channels;
         return {
           rows: matrix.rows,
           cols: matrix.columns,
@@ -170,7 +171,7 @@
           depth: depthCode,
           channels: matrix.channels,
           elementSize,
-          empty: matrix.rows === 0 || matrix.columns === 0,
+          empty,
           continuous: matrix.isContinuous,
           bytes: Array.from(matrix.toUint8Array()),
         };
