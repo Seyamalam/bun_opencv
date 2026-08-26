@@ -85,6 +85,7 @@ export interface OpenCvBackend {
     third: WasmMatHandle,
     fourth: WasmMatHandle,
   ): WasmMatHandle;
+  matMixChannels(source: WasmMatHandle, destination: WasmMatHandle, fromTo: Uint16Array): void;
   matExtractChannel(source: WasmMatHandle, channel: number): WasmMatHandle;
   matInsertChannel(source: WasmMatHandle, destination: WasmMatHandle, channel: number): void;
   matLut(source: WasmMatHandle, table: WasmMatHandle): WasmMatHandle;
@@ -326,6 +327,7 @@ export interface OpenCv {
   ): Mat;
   minMaxLoc(source: Mat): MinMaxLocation;
   min(left: Mat, right: Mat): Mat;
+  mixChannels(source: Mat, destination: Mat, fromTo: Uint16Array): void;
   multiply(a: Mat, b: Mat, scale?: number): Mat;
   multiply(a: Mat, b: Mat, destination: Mat, scale?: number): void;
   norm(source: Mat, normType?: NormType, mask?: Mat): number;

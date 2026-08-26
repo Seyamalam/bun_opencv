@@ -335,6 +335,22 @@ class CopyingBackend implements OpenCvBackend {
     return mergeHandles([first, second, third, fourth]);
   }
 
+  matMixChannels(source: WasmMatHandle, destination: WasmMatHandle, fromTo: Uint16Array): void {
+    const scalarWidth = depthByteWidth(source.depth);
+    const input = source.toUint8Array();
+    const output = destination.toUint8Array();
+    for (let pixel = 0; pixel < source.rows * source.columns; pixel += 1) {
+      for (let index = 0; index < fromTo.length; index += 2) {
+        const sourceChannel = fromTo[index] ?? 0;
+        const destinationChannel = fromTo[index + 1] ?? 0;
+        const sourceOffset = (pixel * source.channels + sourceChannel) * scalarWidth;
+        const destinationOffset = (pixel * destination.channels + destinationChannel) * scalarWidth;
+        output.set(input.subarray(sourceOffset, sourceOffset + scalarWidth), destinationOffset);
+      }
+    }
+    destination.copyFromBytes(output);
+  }
+
   matExtractChannel(source: WasmMatHandle, channel: number): WasmMatHandle {
     const output = this.matSplit(source)[channel];
     if (output === undefined) {
@@ -1383,6 +1399,10 @@ describe("OpenCv client", () => {
     const destination = client.zerosU8(1, 2, 3);
     client.insertChannel(extracted, destination, 2);
     expect(destination.toUint8Array()).toEqual(new Uint8Array([0, 0, 10, 0, 0, 20]));
+    const routed = client.matFromU8(1, 2, 3, new Uint8Array([7, 8, 9, 70, 80, 90]));
+    client.mixChannels(source, routed, new Uint16Array([2, 0, 0, 2]));
+    expect(routed.toUint8Array()).toEqual(new Uint8Array([100, 8, 1, 200, 80, 2]));
+    routed.dispose();
     destination.dispose();
     extracted.dispose();
     merged.dispose();

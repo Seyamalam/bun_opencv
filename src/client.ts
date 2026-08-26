@@ -383,6 +383,13 @@ class WasmOpenCv implements OpenCv {
     return new Mat(this.#backend.matMinU8(left.handleForBackend(), right.handleForBackend()));
   }
 
+  mixChannels(source: Mat, destination: Mat, fromTo: Uint16Array): void {
+    if (fromTo.length % 2 !== 0) {
+      throw new OpenCvInputError("fromTo must contain source/destination channel pairs");
+    }
+    this.#backend.matMixChannels(source.handleForBackend(), destination.handleForBackend(), fromTo);
+  }
+
   multiply(a: Mat, b: Mat, scale?: number): Mat;
   multiply(a: Mat, b: Mat, destination: Mat, scale?: number): void;
   multiply(a: Mat, b: Mat, destinationOrScale: Mat | number = 1, scale = 1): Mat | void {
