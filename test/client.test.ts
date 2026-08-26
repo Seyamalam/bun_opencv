@@ -2467,6 +2467,18 @@ describe("OpenCv client", () => {
       client.repeat();
     }).toThrow(new BindingError("function repeat called with 0 arguments, expected 4 args!"));
     expect(() => {
+      // @ts-expect-error Runtime parity requires testing missing arguments from plain JavaScript.
+      client.repeat(source);
+    }).toThrow(new BindingError("function repeat called with 1 arguments, expected 4 args!"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing missing arguments from plain JavaScript.
+      client.repeat(source, 1);
+    }).toThrow(new BindingError("function repeat called with 2 arguments, expected 4 args!"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a missing destination from plain JavaScript.
+      client.repeat(source, 1, 2);
+    }).toThrow(new BindingError("function repeat called with 3 arguments, expected 4 args!"));
+    expect(() => {
       // @ts-expect-error Runtime parity requires testing an extra argument from plain JavaScript.
       client.repeat(source, 1, 2, destination, 5);
     }).toThrow(new BindingError("function repeat called with 5 arguments, expected 4 args!"));
@@ -2487,9 +2499,32 @@ describe("OpenCv client", () => {
       client.repeat(null, 1, 1, destination);
     }).toThrow(new BindingError("null is not a valid Mat"));
     expect(() => {
+      // @ts-expect-error Runtime parity requires testing an undefined Mat from plain JavaScript.
+      client.repeat(undefined, 1, 1, destination);
+    }).toThrow(new TypeError("Cannot read properties of undefined (reading '$$')"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a structural Mat from plain JavaScript.
+      client.repeat({}, 1, 1, destination);
+    }).toThrow(new BindingError('Cannot pass "[object Object]" as a Mat'));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a null destination from plain JavaScript.
+      client.repeat(source, 1, 1, null);
+    }).toThrow(new BindingError("null is not a valid Mat"));
+    expect(() => {
       // @ts-expect-error Runtime parity requires testing an invalid repeat count.
       client.repeat(source, "1", 1, destination);
     }).toThrow(new TypeError('Cannot convert "1" to int'));
+    expect(() => client.repeat(source, 2_147_483_648, 1, destination)).toThrow(
+      new TypeError(
+        'Passing a number "2147483648" from JS side to C/C++ side to an argument of type "int", which is outside the valid range [-2147483648, 2147483647]!',
+      ),
+    );
+
+    const deleted = client.matFromU8(1, 1, 1, new Uint8Array([1]));
+    deleted.dispose();
+    expect(() => client.repeat(deleted, 1, 1, destination)).toThrow(
+      new BindingError("Cannot pass deleted object as a pointer of type Mat"),
+    );
 
     booleanDestination.dispose();
     fractionalDestination.dispose();
