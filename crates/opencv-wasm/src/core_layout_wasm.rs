@@ -903,6 +903,52 @@ mod tests {
     }
 
     #[test]
+    fn rotate_public_adapter_preserves_depth_in_place_and_destination_replacement() {
+        let depths = [
+            MatDepth::U8,
+            MatDepth::I8,
+            MatDepth::U16,
+            MatDepth::I16,
+            MatDepth::I32,
+            MatDepth::F32,
+            MatDepth::F64,
+        ];
+
+        for depth in depths {
+            let width = depth.byte_width();
+            let bytes = (0..width * 4)
+                .map(|index| u8::try_from(index + 1).expect("test byte fits in U8"))
+                .collect::<Vec<_>>();
+            let source = Mat::from_owned_bytes(bytes.clone(), 2, 2, 1, depth)
+                .expect("valid matrix for scalar depth");
+
+            let output = mat_rotate(&source, 1).expect("rotate accepts scalar depth");
+            let expected = bytes
+                .chunks_exact(width)
+                .rev()
+                .flatten()
+                .copied()
+                .collect::<Vec<_>>();
+
+            assert_eq!(output.depth(), depth);
+            assert_eq!(output.to_u8_array(), expected);
+        }
+
+        let in_place = u8_matrix(vec![1, 2, 3, 4, 5, 6], 2, 3, 1);
+        mat_rotate_into(&in_place, &in_place, 0).expect("rotate rectangle in place");
+        assert_eq!((in_place.rows(), in_place.columns()), (3, 2));
+        assert_eq!(in_place.to_u8_array(), [4, 1, 5, 2, 6, 3]);
+
+        let source = u8_matrix(vec![1, 2, 3, 4, 5, 6], 2, 3, 1);
+        let destination = Mat::from_owned_bytes(vec![0; 8], 2, 2, 1, MatDepth::U16)
+            .expect("valid incompatible destination");
+        mat_rotate_into(&source, &destination, 2).expect("rotate rebinds destination");
+        assert_eq!((destination.rows(), destination.columns()), (3, 2));
+        assert_eq!(destination.depth(), MatDepth::U8);
+        assert_eq!(destination.to_u8_array(), [3, 6, 2, 5, 1, 4]);
+    }
+
+    #[test]
     fn rotate_and_repeat_return_expected_shapes() {
         let source = u8_matrix(vec![1, 2, 3, 4, 5, 6], 2, 3, 1);
 
