@@ -104,6 +104,388 @@
         }
       }
 
+      function captureEnumCall(callback, namespace, constants) {
+        try {
+          return {
+            threw: false,
+            returnValue: describeEnumValue(callback(), namespace, constants),
+          };
+        } catch (error) {
+          return {
+            threw: true,
+            error: {
+              name: error?.name,
+              constructor: error?.constructor?.name,
+              message: error?.message,
+              text: String(error),
+              instanceofError: error instanceof Error,
+            },
+          };
+        }
+      }
+
+      function capturePrimitive(callback) {
+        try {
+          return { threw: false, value: encodeValue(callback()) };
+        } catch (error) {
+          return {
+            threw: true,
+            error: {
+              name: error?.name,
+              constructor: error?.constructor?.name,
+              message: error?.message,
+              text: String(error),
+              instanceofError: error instanceof Error,
+            },
+          };
+        }
+      }
+
+      function propertyDescriptorSummary(owner, property) {
+        const descriptor = Object.getOwnPropertyDescriptor(owner, property);
+        if (descriptor === undefined) return { present: false };
+        return {
+          present: true,
+          configurable: descriptor.configurable,
+          enumerable: descriptor.enumerable,
+          writable: descriptor.writable,
+          hasGetter: descriptor.get !== undefined,
+          hasSetter: descriptor.set !== undefined,
+          valueType: descriptor.value === null ? "null" : typeof descriptor.value,
+          functionName: typeof descriptor.value === "function" ? descriptor.value.name : undefined,
+        };
+      }
+
+      function describeEnumValue(value, namespace, constants) {
+        const isObject =
+          (typeof value === "object" && value !== null) || typeof value === "function";
+        return {
+          encoded: encodeValue(isObject ? undefined : value),
+          type: typeof value,
+          isNull: value === null,
+          value: isObject ? capturePrimitive(() => value.value) : undefined,
+          objectKeys: isObject ? Object.keys(value).toSorted() : [],
+          ownNames: isObject ? Object.getOwnPropertyNames(value).toSorted() : [],
+          ownSymbolDescriptions: isObject
+            ? Object.getOwnPropertySymbols(value)
+                .map((symbol) => symbol.description ?? "")
+                .toSorted()
+            : [],
+          valueDescriptor: isObject ? propertyDescriptorSummary(value, "value") : undefined,
+          constructorDescriptor: isObject
+            ? propertyDescriptorSummary(value, "constructor")
+            : undefined,
+          prototypeIsNamespacePrototype: isObject
+            ? Object.getPrototypeOf(value) === namespace.prototype
+            : false,
+          instanceOfNamespace: isObject ? value instanceof namespace : false,
+          constructorName: isObject ? capturePrimitive(() => value.constructor?.name) : undefined,
+          objectTag: isObject
+            ? capturePrimitive(() => Object.prototype.toString.call(value))
+            : undefined,
+          string: capturePrimitive(() => String(value)),
+          number: capturePrimitive(() => Number(value)),
+          json: capturePrimitive(() => JSON.stringify(value)),
+          extensible: isObject ? Object.isExtensible(value) : false,
+          sealed: isObject ? Object.isSealed(value) : false,
+          frozen: isObject ? Object.isFrozen(value) : false,
+          matchingConstants: constants
+            .filter(([, constant]) => value === constant)
+            .map(([name]) => name),
+        };
+      }
+
+      function summarizeEnumNamespace(name, namespace, constantNames) {
+        const constants = constantNames.map((constantName) => [
+          constantName,
+          namespace[constantName],
+        ]);
+        const values = namespace.values;
+        return {
+          name,
+          type: typeof namespace,
+          ownKeys: Object.keys(namespace).toSorted(),
+          ownNames: Object.getOwnPropertyNames(namespace).toSorted(),
+          prototypeOwnNames: Object.getOwnPropertyNames(namespace.prototype).toSorted(),
+          descriptors: Object.fromEntries(
+            constantNames.map((constantName) => [
+              constantName,
+              propertyDescriptorSummary(namespace, constantName),
+            ]),
+          ),
+          constants: Object.fromEntries(
+            constants.map(([constantName, value]) => [
+              constantName,
+              describeEnumValue(value, namespace, constants),
+            ]),
+          ),
+          values: {
+            present: values !== undefined,
+            type: typeof values,
+            keys: values === undefined ? [] : Object.keys(values).toSorted(),
+            identities:
+              values === undefined
+                ? []
+                : Object.keys(values)
+                    .toSorted()
+                    .map((key) => ({
+                      key,
+                      matchingConstants: constants
+                        .filter(([, constant]) => values[key] === constant)
+                        .map(([constantName]) => constantName),
+                    })),
+          },
+        };
+      }
+
+      function auditDetectorEnumPair(configuration, allNamespaces) {
+        const { constants, createDetector, getter, label, namespace, setter } = configuration;
+        const captureState = (detector) =>
+          captureEnumCall(() => detector[getter](), namespace, constants);
+        const defaultDetector = createDetector();
+        const firstDefault = defaultDetector[getter]();
+        const secondDefault = defaultDetector[getter]();
+        const defaults = {
+          first: describeEnumValue(firstDefault, namespace, constants),
+          second: describeEnumValue(secondDefault, namespace, constants),
+          repeatedIdentity: firstDefault === secondDefault,
+        };
+        safeDelete(defaultDetector);
+
+        const defaultConstant = constants[0][1];
+        const auditGetterArity = (...arguments_) => {
+          const detector = createDetector();
+          const stateBefore = captureState(detector);
+          const call = captureEnumCall(() => detector[getter](...arguments_), namespace, constants);
+          const stateAfter = captureState(detector);
+          safeDelete(detector);
+          return { stateBefore, call, stateAfter };
+        };
+        const auditSetterArity = (...arguments_) => {
+          const detector = createDetector();
+          const stateBefore = captureState(detector);
+          const call = captureCall(() => detector[setter](...arguments_));
+          const stateAfter = captureState(detector);
+          safeDelete(detector);
+          return { stateBefore, call, stateAfter };
+        };
+        const lengthDetector = createDetector();
+        const arity = {
+          getterLength: lengthDetector[getter].length,
+          getterExact: auditGetterArity(),
+          getterExtraOne: auditGetterArity(1),
+          getterExtraTwo: auditGetterArity(1, 2),
+          setterLength: lengthDetector[setter].length,
+          setterMissing: auditSetterArity(),
+          setterExact: auditSetterArity(defaultConstant),
+          setterExtraOne: auditSetterArity(defaultConstant, 1),
+          setterExtraTwo: auditSetterArity(defaultConstant, 1, 2),
+        };
+        safeDelete(lengthDetector);
+
+        const foreignConstants = allNamespaces.map(({ constants: values, name }) => ({
+          create: () => values[0][1],
+          label: `foreign ${name}.${values[0][0]}`,
+        }));
+        const inputCases = [
+          ...constants.map(([name, value]) => ({
+            create: () => value,
+            label: `canonical ${name}`,
+          })),
+          ...foreignConstants,
+          { create: () => ({ value: constants[0][1].value }), label: "plain valid value" },
+          { create: () => ({ value: -1 }), label: "plain negative one" },
+          { create: () => ({ value: 1.9 }), label: "plain fraction" },
+          { create: () => ({ value: Number.NaN }), label: "plain NaN" },
+          { create: () => ({ value: Number.POSITIVE_INFINITY }), label: "plain infinity" },
+          { create: () => ({ value: 4_294_967_296 }), label: "plain u32 modulus" },
+          { create: () => ({ value: "2" }), label: "plain numeric string value" },
+          { create: () => ({ value: "opencv" }), label: "plain nonnumeric string value" },
+          { create: () => ({ value: true }), label: "plain boolean value" },
+          { create: () => ({ value: null }), label: "plain null value" },
+          { create: () => ({ value: undefined }), label: "plain undefined value" },
+          { create: () => Object.create({ value: 1 }), label: "inherited value" },
+          {
+            create: () => Object.assign(Object.create(null), { value: 1 }),
+            label: "null prototype value",
+          },
+          { create: () => ({}), label: "empty object" },
+          { create: () => 2, label: "number primitive" },
+          { create: () => "2", label: "string primitive" },
+          { create: () => true, label: "boolean primitive" },
+          { create: () => null, label: "null primitive" },
+          { create: () => undefined, label: "undefined primitive" },
+          {
+            create: () => {
+              let reads = 0;
+              return {
+                get reads() {
+                  return reads;
+                },
+                get value() {
+                  reads += 1;
+                  throw new Error("enum value getter sentinel");
+                },
+              };
+            },
+            label: "throwing value getter",
+          },
+        ];
+
+        const setterInputs = inputCases.map(({ create, label: inputLabel }) => {
+          const detector = createDetector();
+          const input = create();
+          const inputSummary = {
+            type: typeof input,
+            isNull: input === null,
+            ownNames:
+              (typeof input === "object" && input !== null) || typeof input === "function"
+                ? Object.getOwnPropertyNames(input).toSorted()
+                : [],
+            value:
+              (typeof input === "object" && input !== null) || typeof input === "function"
+                ? capturePrimitive(() => input.value)
+                : undefined,
+            matches: allNamespaces.flatMap(({ constants: values, name }) =>
+              values
+                .filter(([, constant]) => constant === input)
+                .map(([constantName]) => `${name}.${constantName}`),
+            ),
+            readsBefore:
+              typeof input === "object" && input !== null && "reads" in input
+                ? capturePrimitive(() => input.reads)
+                : undefined,
+          };
+          const call = captureCall(() => detector[setter](input));
+          const state = captureState(detector);
+          const readsAfter =
+            typeof input === "object" && input !== null && "reads" in input
+              ? capturePrimitive(() => input.reads)
+              : undefined;
+          safeDelete(detector);
+          return { label: inputLabel, input: inputSummary, call, state, readsAfter };
+        });
+
+        const deadDetector = createDetector();
+        const firstDelete = captureCall(() => deadDetector.delete());
+        const lifetime = {
+          firstDelete,
+          getterAfterDelete: captureEnumCall(() => deadDetector[getter](), namespace, constants),
+          setterAfterDelete: captureCall(() => deadDetector[setter](defaultConstant)),
+          secondDelete: captureCall(() => deadDetector.delete()),
+        };
+
+        return { label, defaults, arity, setterInputs, lifetime };
+      }
+
+      function auditDetectorEnums(reference) {
+        const namespaces = [
+          {
+            name: "AKAZE_DescriptorType",
+            namespace: reference.AKAZE_DescriptorType,
+            names: [
+              "DESCRIPTOR_KAZE_UPRIGHT",
+              "DESCRIPTOR_KAZE",
+              "DESCRIPTOR_MLDB_UPRIGHT",
+              "DESCRIPTOR_MLDB",
+            ],
+          },
+          {
+            name: "KAZE_DiffusivityType",
+            namespace: reference.KAZE_DiffusivityType,
+            names: ["DIFF_PM_G1", "DIFF_PM_G2", "DIFF_WEICKERT", "DIFF_CHARBONNIER"],
+          },
+          {
+            name: "AgastFeatureDetector_DetectorType",
+            namespace: reference.AgastFeatureDetector_DetectorType,
+            names: ["AGAST_5_8", "AGAST_7_12d", "AGAST_7_12s", "OAST_9_16"],
+          },
+          {
+            name: "FastFeatureDetector_DetectorType",
+            namespace: reference.FastFeatureDetector_DetectorType,
+            names: ["TYPE_5_8", "TYPE_7_12", "TYPE_9_16"],
+          },
+        ].map((entry) => ({
+          constants: entry.names.map((name) => [name, entry.namespace[name]]),
+          name: entry.name,
+          names: entry.names,
+          namespace: entry.namespace,
+        }));
+        const byName = Object.fromEntries(namespaces.map((entry) => [entry.name, entry]));
+        const configurations = [
+          [
+            "AKAZE descriptor type",
+            () => new reference.AKAZE(),
+            "getDescriptorType",
+            "setDescriptorType",
+            "AKAZE_DescriptorType",
+          ],
+          [
+            "AKAZE diffusivity",
+            () => new reference.AKAZE(),
+            "getDiffusivity",
+            "setDiffusivity",
+            "KAZE_DiffusivityType",
+          ],
+          [
+            "KAZE diffusivity",
+            () => new reference.KAZE(),
+            "getDiffusivity",
+            "setDiffusivity",
+            "KAZE_DiffusivityType",
+          ],
+          [
+            "AGAST detector type",
+            () => new reference.AgastFeatureDetector(),
+            "getType",
+            "setType",
+            "AgastFeatureDetector_DetectorType",
+          ],
+          [
+            "FAST detector type",
+            () => new reference.FastFeatureDetector(),
+            "getType",
+            "setType",
+            "FastFeatureDetector_DetectorType",
+          ],
+        ];
+        const pairs = configurations.map(
+          ([label, createDetector, getter, setter, namespaceName]) => {
+            const entry = byName[namespaceName];
+            return auditDetectorEnumPair(
+              {
+                label,
+                createDetector,
+                getter,
+                setter,
+                namespace: entry.namespace,
+                constants: entry.constants,
+              },
+              namespaces,
+            );
+          },
+        );
+        const akaze = new reference.AKAZE();
+        const kaze = new reference.KAZE();
+        const crossIdentity = {
+          akazeKazeDiffusivityDefaultSame: akaze.getDiffusivity() === kaze.getDiffusivity(),
+          zeroConstantsAcrossNamespaces: namespaces.map((left) =>
+            namespaces.map((right) => left.constants[0][1] === right.constants[0][1]),
+          ),
+        };
+        akaze.delete();
+        kaze.delete();
+        return {
+          namespaces: Object.fromEntries(
+            namespaces.map(({ name, namespace, names }) => [
+              name,
+              summarizeEnumNamespace(name, namespace, names),
+            ]),
+          ),
+          pairs,
+          crossIdentity,
+        };
+      }
       function auditOptimalDftSize(owner) {
         const i32Cases = [
           ["positive fraction", 1.9],
@@ -912,6 +1294,33 @@
           result.style.whiteSpace = "pre-wrap";
           result.textContent = JSON.stringify(referenceOutputs.detectorEnumAudit, null, 2);
           break differential;
+        }
+
+        const packageDetectorEnumAudit = auditDetectorEnums({
+          AKAZE: function PackageAKAZE() {
+            return packageCv.createAKAZE();
+          },
+          AKAZE_DescriptorType: packageCv.AKAZE_DescriptorType,
+          AgastFeatureDetector: function PackageAgastFeatureDetector() {
+            return packageCv.createAgastFeatureDetector();
+          },
+          AgastFeatureDetector_DetectorType: packageCv.AgastFeatureDetector_DetectorType,
+          FastFeatureDetector: function PackageFastFeatureDetector() {
+            return packageCv.createFastFeatureDetector();
+          },
+          FastFeatureDetector_DetectorType: packageCv.FastFeatureDetector_DetectorType,
+          KAZE: function PackageKAZE() {
+            return packageCv.createKAZE();
+          },
+          KAZE_DiffusivityType: packageCv.KAZE_DiffusivityType,
+        });
+        const detectorEnumDifference = findDifference(
+          packageDetectorEnumAudit,
+          referenceOutputs.detectorEnumAudit,
+          "detector enum audit",
+        );
+        if (detectorEnumDifference !== undefined) {
+          throw new Error(detectorEnumDifference);
         }
 
         const cases = [
