@@ -4,6 +4,30 @@
   "entries": [
     {
       "implementationOrigin": "original",
+      "method": "hconcat",
+      "module": "core",
+      "notes": "Two through four all-depth inputs; MatVector and mutable destination forms remain.",
+      "patentReview": "required",
+      "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
+      "status": "partial",
+      "upstream": "cv.hconcat",
+      "upstreamId": "core.function.hconcat",
+      "wasmExport": "matHconcat2"
+    },
+    {
+      "implementationOrigin": "original",
+      "method": "vconcat",
+      "module": "core",
+      "notes": "Two through four all-depth inputs; MatVector and mutable destination forms remain.",
+      "patentReview": "required",
+      "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
+      "status": "partial",
+      "upstream": "cv.vconcat",
+      "upstreamId": "core.function.vconcat",
+      "wasmExport": "matVconcat2"
+    },
+    {
+      "implementationOrigin": "original",
       "method": "cartToPolar",
       "module": "core",
       "notes": "F32/F64 matrices with radians or degrees and mutable magnitude/angle outputs.",

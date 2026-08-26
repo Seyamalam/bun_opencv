@@ -80,6 +80,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | core    | `cartToPolar`     | `cv.cartToPolar`     | Partial | F32/F64 with mutable outputs          |
 | core    | `exp`             | `cv.exp`             | Partial | F32/F64 element-wise output           |
 | core    | `flip`            | `cv.flip`            | Partial | All depths and destination mutation   |
+| core    | `hconcat`         | `cv.hconcat`         | Partial | All depths, two through four inputs   |
 | core    | `inRange`         | `cv.inRange`         | Partial | U8 matrix bounds                      |
 | core    | `log`             | `cv.log`             | Partial | F32/F64 natural logarithm             |
 | core    | `magnitude`       | `cv.magnitude`       | Partial | Matching F32/F64 matrices             |
@@ -97,6 +98,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | core    | `sqrt`            | `cv.sqrt`            | Partial | F32/F64 element-wise output           |
 | core    | `transpose`       | `cv.transpose`       | Partial | All depths and destination mutation   |
 | core    | `trace`           | `cv.trace`           | Partial | All depths, channel zero only         |
+| core    | `vconcat`         | `cv.vconcat`         | Partial | All depths, two through four inputs   |
 | imgproc | `grayscale`       | `cv.cvtColor`        | Partial | RGBA-to-gray specialization           |
 | imgproc | `resizeNearest`   | `cv.resize`          | Partial | RGBA nearest-neighbor specialization  |
 | imgproc | `threshold`       | `cv.threshold`       | Partial | Luma-derived U8 binary specialization |
@@ -105,7 +107,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc | `findContours`    | `cv.findContours`    | Planned | Not started                           |
 | imgproc | `warpPerspective` | `cv.warpPerspective` | Planned | Not started                           |
 
-Current full parity is **0 of 488 (0%)**. There are **31 partial families** with working Rust/WASM slices. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+Current full parity is **0 of 488 (0%)**. There are **33 partial families** with working Rust/WASM slices. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
 
 Read [the inventory](docs/INVENTORY.md) and [complete parity contract](docs/PARITY.md) for the denominator, exclusions, and definition of done.
 

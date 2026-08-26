@@ -111,6 +111,45 @@ function mergeHandles(sources: readonly WasmMatHandle[]): WasmMatHandle {
   return new CopyingMatHandle(first.rows, first.columns, channels, output, first.depth);
 }
 
+function concatHandles(
+  sources: readonly WasmMatHandle[],
+  direction: "horizontal" | "vertical",
+): WasmMatHandle {
+  const first = sources[0];
+  if (first === undefined) throw new OpenCvInputError("concat requires a source");
+  const rowBytes = (matrix: WasmMatHandle) =>
+    matrix.columns * matrix.channels * depthByteWidth(matrix.depth);
+  if (direction === "vertical") {
+    const output = new Uint8Array(sources.reduce((total, source) => total + source.byteLength, 0));
+    let offset = 0;
+    for (const source of sources) {
+      output.set(source.toUint8Array(), offset);
+      offset += source.byteLength;
+    }
+    return new CopyingMatHandle(
+      sources.reduce((total, source) => total + source.rows, 0),
+      first.columns,
+      first.channels,
+      output,
+      first.depth,
+    );
+  }
+  const outputColumns = sources.reduce((total, source) => total + source.columns, 0);
+  const output = new Uint8Array(
+    first.rows * outputColumns * first.channels * depthByteWidth(first.depth),
+  );
+  let offset = 0;
+  for (let row = 0; row < first.rows; row += 1) {
+    for (const source of sources) {
+      const bytes = source.toUint8Array();
+      const width = rowBytes(source);
+      output.set(bytes.subarray(row * width, (row + 1) * width), offset);
+      offset += width;
+    }
+  }
+  return new CopyingMatHandle(first.rows, outputColumns, first.channels, output, first.depth);
+}
+
 function floatValues(source: WasmMatHandle): Float32Array | Float64Array {
   return source.depth === 5 ? source.toFloat32Array() : source.toFloat64Array();
 }
@@ -252,6 +291,40 @@ class CopyingBackend implements OpenCvBackend {
       output.set(input.subarray(sourceOffset, sourceOffset + scalarWidth), destinationOffset);
     }
     destination.copyFromBytes(output);
+  }
+
+  matHconcat2(first: WasmMatHandle, second: WasmMatHandle): WasmMatHandle {
+    return concatHandles([first, second], "horizontal");
+  }
+
+  matHconcat3(first: WasmMatHandle, second: WasmMatHandle, third: WasmMatHandle): WasmMatHandle {
+    return concatHandles([first, second, third], "horizontal");
+  }
+
+  matHconcat4(
+    first: WasmMatHandle,
+    second: WasmMatHandle,
+    third: WasmMatHandle,
+    fourth: WasmMatHandle,
+  ): WasmMatHandle {
+    return concatHandles([first, second, third, fourth], "horizontal");
+  }
+
+  matVconcat2(first: WasmMatHandle, second: WasmMatHandle): WasmMatHandle {
+    return concatHandles([first, second], "vertical");
+  }
+
+  matVconcat3(first: WasmMatHandle, second: WasmMatHandle, third: WasmMatHandle): WasmMatHandle {
+    return concatHandles([first, second, third], "vertical");
+  }
+
+  matVconcat4(
+    first: WasmMatHandle,
+    second: WasmMatHandle,
+    third: WasmMatHandle,
+    fourth: WasmMatHandle,
+  ): WasmMatHandle {
+    return concatHandles([first, second, third, fourth], "vertical");
   }
 
   matExp(source: WasmMatHandle): WasmMatHandle {
@@ -850,5 +923,22 @@ describe("OpenCv client", () => {
       x,
     ])
       matrix.dispose();
+  });
+
+  test("concatenates matrices in both axes", () => {
+    const left = client.matFromU8(2, 1, 1, new Uint8Array([1, 2]));
+    const right = client.matFromU8(2, 2, 1, new Uint8Array([3, 4, 5, 6]));
+    const horizontal = client.hconcat([left, right]);
+    expect(horizontal.rows).toBe(2);
+    expect(horizontal.columns).toBe(3);
+    expect(horizontal.toUint8Array()).toEqual(new Uint8Array([1, 3, 4, 2, 5, 6]));
+
+    const top = client.matFromU8(1, 2, 1, new Uint8Array([7, 8]));
+    const bottom = client.matFromU8(2, 2, 1, new Uint8Array([9, 10, 11, 12]));
+    const vertical = client.vconcat([top, bottom]);
+    expect(vertical.rows).toBe(3);
+    expect(vertical.columns).toBe(2);
+    expect(vertical.toUint8Array()).toEqual(new Uint8Array([7, 8, 9, 10, 11, 12]));
+    for (const matrix of [vertical, bottom, top, horizontal, right, left]) matrix.dispose();
   });
 });

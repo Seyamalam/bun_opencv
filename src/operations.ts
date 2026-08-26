@@ -12,6 +12,7 @@ export const OPENCV_OPERATIONS = [
   { method: "exp", wasmExport: "matExp" },
   { method: "flip", wasmExport: "matFlip" },
   { method: "grayscale", wasmExport: "grayscaleRgba" },
+  { method: "hconcat", wasmExport: "matHconcat2" },
   { method: "inRange", wasmExport: "matInRangeU8" },
   { method: "log", wasmExport: "matLog" },
   { method: "magnitude", wasmExport: "matMagnitude" },
@@ -31,6 +32,7 @@ export const OPENCV_OPERATIONS = [
   { method: "threshold", wasmExport: "thresholdRgba" },
   { method: "transpose", wasmExport: "matTranspose" },
   { method: "trace", wasmExport: "matTrace" },
+  { method: "vconcat", wasmExport: "matVconcat2" },
 ] as const;
 
 /** Name of a public operation tracked by the compatibility ledger. */

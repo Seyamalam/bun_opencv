@@ -70,6 +70,22 @@ export interface OpenCvBackend {
   ): WasmMatHandle;
   matExtractChannel(source: WasmMatHandle, channel: number): WasmMatHandle;
   matInsertChannel(source: WasmMatHandle, destination: WasmMatHandle, channel: number): void;
+  matHconcat2(first: WasmMatHandle, second: WasmMatHandle): WasmMatHandle;
+  matHconcat3(first: WasmMatHandle, second: WasmMatHandle, third: WasmMatHandle): WasmMatHandle;
+  matHconcat4(
+    first: WasmMatHandle,
+    second: WasmMatHandle,
+    third: WasmMatHandle,
+    fourth: WasmMatHandle,
+  ): WasmMatHandle;
+  matVconcat2(first: WasmMatHandle, second: WasmMatHandle): WasmMatHandle;
+  matVconcat3(first: WasmMatHandle, second: WasmMatHandle, third: WasmMatHandle): WasmMatHandle;
+  matVconcat4(
+    first: WasmMatHandle,
+    second: WasmMatHandle,
+    third: WasmMatHandle,
+    fourth: WasmMatHandle,
+  ): WasmMatHandle;
   matExp(source: WasmMatHandle): WasmMatHandle;
   matLog(source: WasmMatHandle): WasmMatHandle;
   matSqrt(source: WasmMatHandle): WasmMatHandle;
@@ -131,6 +147,9 @@ export interface OpenCv {
   flip(source: Mat, flipCode: -1 | 0 | 1): Mat;
   flip(source: Mat, destination: Mat, flipCode: -1 | 0 | 1): void;
   grayscale(image: RgbaImage): RgbaImage;
+  hconcat(
+    sources: readonly [Mat, Mat] | readonly [Mat, Mat, Mat] | readonly [Mat, Mat, Mat, Mat],
+  ): Mat;
   invert(image: RgbaImage): RgbaImage;
   matFromF32(rows: number, columns: number, channels: number, data: Float32Array): Mat;
   matFromF64(rows: number, columns: number, channels: number, data: Float64Array): Mat;
@@ -165,6 +184,9 @@ export interface OpenCv {
   transpose(source: Mat): Mat;
   transpose(source: Mat, destination: Mat): void;
   trace(source: Mat): number;
+  vconcat(
+    sources: readonly [Mat, Mat] | readonly [Mat, Mat, Mat] | readonly [Mat, Mat, Mat, Mat],
+  ): Mat;
   zerosF32(rows: number, columns: number, channels: number): Mat;
   zerosF64(rows: number, columns: number, channels: number): Mat;
   zerosI16(rows: number, columns: number, channels: number): Mat;

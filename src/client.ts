@@ -104,6 +104,12 @@ class WasmOpenCv implements OpenCv {
     return createRgbaImage(image.width, image.height, data);
   }
 
+  hconcat(
+    sources: readonly [Mat, Mat] | readonly [Mat, Mat, Mat] | readonly [Mat, Mat, Mat, Mat],
+  ): Mat {
+    return this.#concat(sources, "horizontal");
+  }
+
   invert(image: RgbaImage): RgbaImage {
     validateRgbaImage(image);
     const data = this.#backend.invertRgba(image.data, image.width, image.height);
@@ -297,6 +303,31 @@ class WasmOpenCv implements OpenCv {
 
   trace(source: Mat): number {
     return this.#backend.matTrace(source.handleForBackend());
+  }
+
+  vconcat(
+    sources: readonly [Mat, Mat] | readonly [Mat, Mat, Mat] | readonly [Mat, Mat, Mat, Mat],
+  ): Mat {
+    return this.#concat(sources, "vertical");
+  }
+
+  #concat(
+    sources: readonly [Mat, Mat] | readonly [Mat, Mat, Mat] | readonly [Mat, Mat, Mat, Mat],
+    direction: "horizontal" | "vertical",
+  ): Mat {
+    const handles = sources.map((source) => source.handleForBackend());
+    const [first, second, third, fourth] = handles;
+    if (first === undefined || second === undefined) {
+      throw new OpenCvInputError("concat requires two through four matrices");
+    }
+    const prefix = direction === "horizontal" ? "matHconcat" : "matVconcat";
+    if (third === undefined) {
+      return new Mat(this.#backend[`${prefix}2`](first, second));
+    }
+    if (fourth === undefined) {
+      return new Mat(this.#backend[`${prefix}3`](first, second, third));
+    }
+    return new Mat(this.#backend[`${prefix}4`](first, second, third, fourth));
   }
 
   zerosF32(rows: number, columns: number, channels: number): Mat {

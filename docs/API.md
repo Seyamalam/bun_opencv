@@ -86,6 +86,7 @@ Each layout operation also accepts an OpenCV-style destination overload: `flip(s
 - `merge([first, second])`, `merge([first, second, third])`, and `merge([first, second, third, fourth])` interleave compatible inputs without invalidating them.
 - `extractChannel(source, channel)` returns one selected channel.
 - `insertChannel(source, destination, channel)` writes a single-channel source into one destination channel.
+- `hconcat([first, second, ...])` and `vconcat([first, second, ...])` join two through four compatible matrices without invalidating their inputs.
 
 Channel operations preserve raw scalar bytes for all seven depths and compact strided source regions. Insertions into a destination region update its shared parent storage.
 
