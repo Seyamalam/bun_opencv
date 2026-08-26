@@ -2043,6 +2043,740 @@
         };
       }
 
+      function auditPackagePowCall(packageCv, power, matrices, source, destination) {
+        return auditPackageTypedMatCall(() => packageCv.pow(source, power, destination), matrices);
+      }
+
+      function auditPackagePowRoi(packageCv, name, sourceRect, destinationRect, sameParent) {
+        const sourceParent = makePackageSeedMat(
+          packageCv,
+          4,
+          7,
+          "f32",
+          1,
+          Array.from({ length: 28 }, (_, index) => index + 1),
+        );
+        const destinationParent = sameParent
+          ? sourceParent
+          : makePackageSeedMat(
+              packageCv,
+              4,
+              7,
+              "f32",
+              1,
+              Array.from({ length: 28 }, () => 99),
+            );
+        const source = sourceParent.roi(sourceRect[1], sourceRect[0], sourceRect[3], sourceRect[2]);
+        const destination = destinationParent.roi(
+          destinationRect[1],
+          destinationRect[0],
+          destinationRect[3],
+          destinationRect[2],
+        );
+        const audit = auditPackagePowCall(
+          packageCv,
+          2,
+          [
+            ["source", source],
+            ["destination", destination],
+            ["sourceParent", sourceParent],
+            ["destinationParent", destinationParent],
+          ],
+          source,
+          destination,
+        );
+        disposePackageMat(destination);
+        disposePackageMat(source);
+        if (!sameParent) disposePackageMat(destinationParent);
+        disposePackageMat(sourceParent);
+        return { name, sameParent, audit };
+      }
+
+      function auditPackagePow(packageCv) {
+        const source = makePackageSeedMat(packageCv, 1, 5, "f64", 1, [4, -4, 0, -0, 2]);
+        const destination = packageCv.emptyMat();
+        const arity = {
+          functionLength: capturePrimitive(() => packageCv.pow.length),
+          zero: captureCall(() => packageCv.pow()),
+          one: captureCall(() => packageCv.pow(source)),
+          two: captureCall(() => packageCv.pow(source, 2)),
+          three: captureCall(() => packageCv.pow(source, 2, destination)),
+          four: captureCall(() => packageCv.pow(source, 2, destination, 1)),
+          destinationAfter: capturePrimitive(() => summarizePackageTypedMat(destination)),
+        };
+        const argumentTypes = {
+          source: {
+            null: captureCall(() => packageCv.pow(null, 2, destination)),
+            undefined: captureCall(() => packageCv.pow(undefined, 2, destination)),
+            object: captureCall(() => packageCv.pow({}, 2, destination)),
+            number: captureCall(() => packageCv.pow(1, 2, destination)),
+            string: captureCall(() => packageCv.pow("x", 2, destination)),
+          },
+          power: [
+            ["negative-zero", -0],
+            ["half", 0.5],
+            ["f64-precision", 1.0000000000000002],
+            ["NaN", Number.NaN],
+            ["positive-infinity", Number.POSITIVE_INFINITY],
+            ["negative-infinity", Number.NEGATIVE_INFINITY],
+            ["true", true],
+            ["false", false],
+            ["null", null],
+            ["undefined", undefined],
+            ["string", "2"],
+            ["object", {}],
+            ["array", []],
+          ].map(([label, power]) => {
+            const scalarDestination = packageCv.emptyMat();
+            const audit = auditPackagePowCall(
+              packageCv,
+              power,
+              [
+                ["source", source],
+                ["destination", scalarDestination],
+              ],
+              source,
+              scalarDestination,
+            );
+            disposePackageMat(scalarDestination);
+            return { label, audit };
+          }),
+          destination: {
+            null: captureCall(() => packageCv.pow(source, 2, null)),
+            undefined: captureCall(() => packageCv.pow(source, 2, undefined)),
+            object: captureCall(() => packageCv.pow(source, 2, {})),
+            number: captureCall(() => packageCv.pow(source, 2, 1)),
+            string: captureCall(() => packageCv.pow(source, 2, "x")),
+          },
+        };
+        disposePackageMat(destination);
+        disposePackageMat(source);
+
+        const destinationReplacement = [
+          ["empty", () => packageCv.emptyMat()],
+          [
+            "correct-metadata",
+            () =>
+              makePackageSeedMat(
+                packageCv,
+                2,
+                3,
+                "f32",
+                2,
+                Array.from({ length: 12 }, () => 99),
+              ),
+          ],
+          [
+            "wrong-shape",
+            () =>
+              makePackageSeedMat(
+                packageCv,
+                3,
+                2,
+                "f32",
+                2,
+                Array.from({ length: 12 }, () => 99),
+              ),
+          ],
+          [
+            "wrong-type-and-channels",
+            () =>
+              makePackageSeedMat(
+                packageCv,
+                2,
+                3,
+                "f64",
+                1,
+                Array.from({ length: 6 }, () => 99),
+              ),
+          ],
+        ].map(([name, createDestination]) => {
+          const replacementSource = makePackageSeedMat(
+            packageCv,
+            2,
+            3,
+            "f32",
+            2,
+            [1, -2, 3, -4, 5, -6, 7, -8, 9, -10, 11, -12],
+          );
+          const replacementDestination = createDestination();
+          const audit = auditPackagePowCall(
+            packageCv,
+            2,
+            [
+              ["source", replacementSource],
+              ["destination", replacementDestination],
+            ],
+            replacementSource,
+            replacementDestination,
+          );
+          disposePackageMat(replacementDestination);
+          disposePackageMat(replacementSource);
+          return { name, audit };
+        });
+
+        const types = [...FLOAT_INTEGER_TYPES, ...FLOAT_VALID_TYPES].map(
+          ([name, depth, channels, values]) => {
+            const typedSource = makePackageSeedMat(packageCv, 2, 3, depth, channels, values);
+            const typedDestination = packageCv.emptyMat();
+            const audit = auditPackagePowCall(
+              packageCv,
+              2,
+              [
+                ["source", typedSource],
+                ["destination", typedDestination],
+              ],
+              typedSource,
+              typedDestination,
+            );
+            disposePackageMat(typedDestination);
+            disposePackageMat(typedSource);
+            return { name, available: true, audit };
+          },
+        );
+
+        const integerPowers = FLOAT_INTEGER_TYPES.map(([name, depth]) => {
+          const signed = name.includes("8S") || name.includes("16S") || name.includes("32S");
+          const values = signed ? [-3, -2, -1, 0, 1, 2, 3] : [0, 1, 2, 3, 4];
+          return {
+            name,
+            input: values,
+            powers: [0, 1, 2, 3, -1, -2].map((power) => {
+              const integerSource = makePackageSeedMat(
+                packageCv,
+                1,
+                values.length,
+                depth,
+                1,
+                values,
+              );
+              const integerDestination = packageCv.emptyMat();
+              const audit = auditPackagePowCall(
+                packageCv,
+                power,
+                [
+                  ["source", integerSource],
+                  ["destination", integerDestination],
+                ],
+                integerSource,
+                integerDestination,
+              );
+              disposePackageMat(integerDestination);
+              disposePackageMat(integerSource);
+              return { power, audit };
+            }),
+          };
+        });
+
+        const numericEdges = [
+          ["F32", "f32"],
+          ["F64", "f64"],
+        ].map(([name, depth]) => ({
+          name,
+          powers: [-1, -0.5, -0, 0, 0.5, 1, 2, 3].map((power) => {
+            const edgeSource = makePackageSeedMat(packageCv, 1, 9, depth, 1, [
+              Number.NEGATIVE_INFINITY,
+              -4,
+              -0,
+              0,
+              4,
+              Number.POSITIVE_INFINITY,
+              Number.NaN,
+              1,
+              -1,
+            ]);
+            const edgeDestination = packageCv.emptyMat();
+            const audit = auditPackagePowCall(
+              packageCv,
+              power,
+              [
+                ["source", edgeSource],
+                ["destination", edgeDestination],
+              ],
+              edgeSource,
+              edgeDestination,
+            );
+            disposePackageMat(edgeDestination);
+            disposePackageMat(edgeSource);
+            return { power: encodeValue(power), audit };
+          }),
+        }));
+
+        const emptySource = packageCv.emptyMat();
+        const emptyDestination = packageCv.emptyMat();
+        const freshEmpty = auditPackagePowCall(
+          packageCv,
+          2,
+          [
+            ["source", emptySource],
+            ["destination", emptyDestination],
+          ],
+          emptySource,
+          emptyDestination,
+        );
+        disposePackageMat(emptyDestination);
+        disposePackageMat(emptySource);
+        const emptyIntoFullSource = packageCv.emptyMat();
+        const fullDestination = makePackageSeedMat(packageCv, 1, 2, "f32", 1, [7, 8]);
+        const freshEmptyIntoFull = auditPackagePowCall(
+          packageCv,
+          2,
+          [
+            ["source", emptyIntoFullSource],
+            ["destination", fullDestination],
+          ],
+          emptyIntoFullSource,
+          fullDestination,
+        );
+        disposePackageMat(fullDestination);
+        disposePackageMat(emptyIntoFullSource);
+
+        const deletedSource = makePackageSeedMat(packageCv, 1, 1, "f32", 1, [1]);
+        const liveDestination = packageCv.emptyMat();
+        deletedSource.dispose();
+        const deletedSourceAudit = auditPackagePowCall(
+          packageCv,
+          2,
+          [
+            ["source", deletedSource],
+            ["destination", liveDestination],
+          ],
+          deletedSource,
+          liveDestination,
+        );
+        disposePackageMat(liveDestination);
+        const liveSource = makePackageSeedMat(packageCv, 1, 1, "f32", 1, [1]);
+        const deletedDestination = packageCv.emptyMat();
+        deletedDestination.dispose();
+        const deletedDestinationAudit = auditPackagePowCall(
+          packageCv,
+          2,
+          [
+            ["source", liveSource],
+            ["destination", deletedDestination],
+          ],
+          liveSource,
+          deletedDestination,
+        );
+        disposePackageMat(liveSource);
+
+        return {
+          arity,
+          argumentTypes,
+          destinationReplacement,
+          roi: [
+            auditPackagePowRoi(packageCv, "compatible-separate", [1, 1, 3, 2], [2, 1, 3, 2], false),
+            auditPackagePowRoi(packageCv, "incompatible-detach", [1, 1, 3, 2], [2, 1, 2, 3], false),
+            auditPackagePowRoi(packageCv, "exact-alias", [1, 1, 3, 2], [1, 1, 3, 2], true),
+            auditPackagePowRoi(packageCv, "overlap-right", [0, 1, 3, 2], [1, 1, 3, 2], true),
+            auditPackagePowRoi(packageCv, "overlap-down", [1, 0, 3, 2], [1, 1, 3, 2], true),
+          ],
+          empty: { fresh: freshEmpty, freshIntoFull: freshEmptyIntoFull },
+          deleted: { source: deletedSourceAudit, destination: deletedDestinationAudit },
+          types,
+          integerPowers,
+          numericEdges,
+          excludedUnsafeIntegerPowers: [
+            "fractional",
+            "NaN",
+            "positive-infinity",
+            "negative-infinity",
+          ],
+        };
+      }
+
+      function auditPackageMagnitudeRoi(packageCv, name, aliasInput, sourceRect, destinationRect) {
+        const aliasParent = makePackageSeedMat(
+          packageCv,
+          4,
+          7,
+          "f32",
+          1,
+          Array.from({ length: 28 }, (_, index) => index + 1),
+        );
+        const other = makePackageSeedMat(packageCv, 2, 3, "f32", 1, [0, 0, 0, 0, 0, 0]);
+        const aliasedInput = aliasParent.roi(
+          sourceRect[1],
+          sourceRect[0],
+          sourceRect[3],
+          sourceRect[2],
+        );
+        const destination = aliasParent.roi(
+          destinationRect[1],
+          destinationRect[0],
+          destinationRect[3],
+          destinationRect[2],
+        );
+        const x = aliasInput === "x" ? aliasedInput : other;
+        const y = aliasInput === "y" ? aliasedInput : other;
+        const audit = auditPackageTypedMatCall(
+          () => packageCv.magnitude(x, y, destination),
+          [
+            ["x", x],
+            ["y", y],
+            ["destination", destination],
+            ["aliasParent", aliasParent],
+          ],
+        );
+        disposePackageMat(destination);
+        disposePackageMat(aliasedInput);
+        disposePackageMat(other);
+        disposePackageMat(aliasParent);
+        return { name, aliasInput, audit };
+      }
+
+      function auditPackageMagnitude(packageCv) {
+        const x = makePackageSeedMat(packageCv, 1, 2, "f32", 1, [3, 4]);
+        const y = makePackageSeedMat(packageCv, 1, 2, "f32", 1, [4, 3]);
+        const destination = packageCv.emptyMat();
+        const arity = {
+          functionLength: capturePrimitive(() => packageCv.magnitude.length),
+          zero: captureCall(() => packageCv.magnitude()),
+          one: captureCall(() => packageCv.magnitude(x)),
+          two: captureCall(() => packageCv.magnitude(x, y)),
+          three: captureCall(() => packageCv.magnitude(x, y, destination)),
+          four: captureCall(() => packageCv.magnitude(x, y, destination, 1)),
+          destinationAfter: capturePrimitive(() => summarizePackageTypedMat(destination)),
+        };
+        const invalidMat = (position, value) =>
+          captureCall(() =>
+            packageCv.magnitude(
+              position === "x" ? value : x,
+              position === "y" ? value : y,
+              position === "destination" ? value : destination,
+            ),
+          );
+        const argumentTypes = Object.fromEntries(
+          ["x", "y", "destination"].map((position) => [
+            position,
+            Object.fromEntries(
+              [
+                ["null", null],
+                ["undefined", undefined],
+                ["object", {}],
+                ["number", 1],
+                ["string", "x"],
+              ].map(([name, value]) => [name, invalidMat(position, value)]),
+            ),
+          ]),
+        );
+        disposePackageMat(destination);
+        disposePackageMat(y);
+        disposePackageMat(x);
+
+        const destinationReplacement = [
+          ["empty", () => packageCv.emptyMat()],
+          [
+            "correct-metadata",
+            () =>
+              makePackageSeedMat(
+                packageCv,
+                2,
+                3,
+                "f32",
+                1,
+                Array.from({ length: 6 }, () => 99),
+              ),
+          ],
+          [
+            "wrong-shape",
+            () =>
+              makePackageSeedMat(
+                packageCv,
+                3,
+                2,
+                "f32",
+                1,
+                Array.from({ length: 6 }, () => 99),
+              ),
+          ],
+          [
+            "wrong-type-and-channels",
+            () =>
+              makePackageSeedMat(
+                packageCv,
+                2,
+                3,
+                "f64",
+                2,
+                Array.from({ length: 12 }, () => 99),
+              ),
+          ],
+        ].map(([name, createDestination]) => {
+          const left = makePackageSeedMat(packageCv, 2, 3, "f32", 1, [1, -2, 3, -4, 5, -6]);
+          const right = makePackageSeedMat(packageCv, 2, 3, "f32", 1, [6, 5, 4, 3, 2, 1]);
+          const output = createDestination();
+          const audit = auditPackageTypedMatCall(
+            () => packageCv.magnitude(left, right, output),
+            [
+              ["x", left],
+              ["y", right],
+              ["destination", output],
+            ],
+          );
+          disposePackageMat(output);
+          disposePackageMat(right);
+          disposePackageMat(left);
+          return { name, audit };
+        });
+
+        const validTypes = FLOAT_VALID_TYPES.map(([name, depth, channels, values]) => {
+          const left = makePackageSeedMat(packageCv, 2, 3, depth, channels, values);
+          const right = makePackageSeedMat(
+            packageCv,
+            2,
+            3,
+            depth,
+            channels,
+            values.map((value) => Math.abs(value) + 1),
+          );
+          const output = packageCv.emptyMat();
+          const audit = auditPackageTypedMatCall(
+            () => packageCv.magnitude(left, right, output),
+            [
+              ["x", left],
+              ["y", right],
+              ["destination", output],
+            ],
+          );
+          disposePackageMat(output);
+          disposePackageMat(right);
+          disposePackageMat(left);
+          return { name, available: true, audit };
+        });
+        const unsupportedIntegerTypes = FLOAT_INTEGER_TYPES.map(
+          ([name, depth, channels, values]) => {
+            const left = makePackageSeedMat(packageCv, 2, 3, depth, channels, values);
+            const right = makePackageSeedMat(
+              packageCv,
+              2,
+              3,
+              depth,
+              channels,
+              values.map((value) => Math.abs(value) + 1),
+            );
+            const output = packageCv.emptyMat();
+            const audit = auditPackageTypedMatCall(
+              () => packageCv.magnitude(left, right, output),
+              [
+                ["x", left],
+                ["y", right],
+                ["destination", output],
+              ],
+            );
+            disposePackageMat(output);
+            disposePackageMat(right);
+            disposePackageMat(left);
+            return { name, audit };
+          },
+        );
+
+        const mismatchBase = makePackageSeedMat(packageCv, 2, 2, "f32", 1, [1, 2, 3, 4]);
+        const mismatches = [
+          ["shape", makePackageSeedMat(packageCv, 1, 4, "f32", 1, [1, 2, 3, 4])],
+          ["depth", makePackageSeedMat(packageCv, 2, 2, "f64", 1, [1, 2, 3, 4])],
+          ["channels", makePackageSeedMat(packageCv, 2, 2, "f32", 2, [1, 2, 3, 4, 5, 6, 7, 8])],
+          ["empty", packageCv.emptyMat()],
+        ].map(([name, right]) => {
+          const output = packageCv.emptyMat();
+          const audit = auditPackageTypedMatCall(
+            () => packageCv.magnitude(mismatchBase, right, output),
+            [
+              ["x", mismatchBase],
+              ["y", right],
+              ["destination", output],
+            ],
+          );
+          disposePackageMat(output);
+          disposePackageMat(right);
+          return { name, audit };
+        });
+        disposePackageMat(mismatchBase);
+
+        const numericEdges = [
+          [
+            "F32",
+            "f32",
+            [
+              0,
+              -0,
+              3,
+              -3,
+              3.4028234663852886e38,
+              3.4028234663852886e38,
+              1.1754943508222875e-38,
+              1.401298464324817e-45,
+              Infinity,
+              -Infinity,
+              NaN,
+              1,
+              Infinity,
+              NaN,
+            ],
+            [
+              0,
+              0,
+              4,
+              4,
+              0,
+              3.4028234663852886e38,
+              0,
+              1.401298464324817e-45,
+              1,
+              Infinity,
+              1,
+              NaN,
+              NaN,
+              Infinity,
+            ],
+          ],
+          [
+            "F64",
+            "f64",
+            [
+              0,
+              -0,
+              3,
+              -3,
+              Number.MAX_VALUE,
+              Number.MAX_VALUE,
+              Number.MIN_VALUE,
+              2.2250738585072014e-308,
+              Infinity,
+              -Infinity,
+              NaN,
+              1,
+              Infinity,
+              NaN,
+            ],
+            [
+              0,
+              0,
+              4,
+              4,
+              0,
+              Number.MAX_VALUE,
+              0,
+              Number.MIN_VALUE,
+              1,
+              Infinity,
+              1,
+              NaN,
+              NaN,
+              Infinity,
+            ],
+          ],
+        ].map(([name, depth, xValues, yValues]) => {
+          const left = makePackageSeedMat(packageCv, 1, xValues.length, depth, 1, xValues);
+          const right = makePackageSeedMat(packageCv, 1, yValues.length, depth, 1, yValues);
+          const output = packageCv.emptyMat();
+          const audit = auditPackageTypedMatCall(
+            () => packageCv.magnitude(left, right, output),
+            [
+              ["x", left],
+              ["y", right],
+              ["destination", output],
+            ],
+          );
+          disposePackageMat(output);
+          disposePackageMat(right);
+          disposePackageMat(left);
+          return { name, audit };
+        });
+
+        const emptyX = packageCv.emptyMat();
+        const emptyY = packageCv.emptyMat();
+        const emptyDestination = packageCv.emptyMat();
+        const empty = auditPackageTypedMatCall(
+          () => packageCv.magnitude(emptyX, emptyY, emptyDestination),
+          [
+            ["x", emptyX],
+            ["y", emptyY],
+            ["destination", emptyDestination],
+          ],
+        );
+        disposePackageMat(emptyDestination);
+        disposePackageMat(emptyY);
+        disposePackageMat(emptyX);
+
+        const deletedX = makePackageSeedMat(packageCv, 1, 1, "f32", 1, [1]);
+        const liveY = makePackageSeedMat(packageCv, 1, 1, "f32", 1, [2]);
+        const liveOutput = packageCv.emptyMat();
+        deletedX.dispose();
+        const deletedXAudit = auditPackageTypedMatCall(
+          () => packageCv.magnitude(deletedX, liveY, liveOutput),
+          [
+            ["x", deletedX],
+            ["y", liveY],
+            ["destination", liveOutput],
+          ],
+        );
+        disposePackageMat(liveOutput);
+        disposePackageMat(liveY);
+        const liveX = makePackageSeedMat(packageCv, 1, 1, "f32", 1, [1]);
+        const deletedY = makePackageSeedMat(packageCv, 1, 1, "f32", 1, [2]);
+        const secondOutput = packageCv.emptyMat();
+        deletedY.dispose();
+        const deletedYAudit = auditPackageTypedMatCall(
+          () => packageCv.magnitude(liveX, deletedY, secondOutput),
+          [
+            ["x", liveX],
+            ["y", deletedY],
+            ["destination", secondOutput],
+          ],
+        );
+        disposePackageMat(secondOutput);
+        disposePackageMat(liveX);
+        const thirdX = makePackageSeedMat(packageCv, 1, 1, "f32", 1, [1]);
+        const thirdY = makePackageSeedMat(packageCv, 1, 1, "f32", 1, [2]);
+        const deletedOutput = packageCv.emptyMat();
+        deletedOutput.dispose();
+        const deletedDestinationAudit = auditPackageTypedMatCall(
+          () => packageCv.magnitude(thirdX, thirdY, deletedOutput),
+          [
+            ["x", thirdX],
+            ["y", thirdY],
+            ["destination", deletedOutput],
+          ],
+        );
+        disposePackageMat(thirdY);
+        disposePackageMat(thirdX);
+
+        return {
+          arity,
+          argumentTypes,
+          destinationReplacement,
+          aliases: [
+            auditPackageMagnitudeRoi(packageCv, "exact-x", "x", [1, 1, 3, 2], [1, 1, 3, 2]),
+            auditPackageMagnitudeRoi(packageCv, "exact-y", "y", [1, 1, 3, 2], [1, 1, 3, 2]),
+            auditPackageMagnitudeRoi(packageCv, "x-overlap-right", "x", [0, 1, 3, 2], [1, 1, 3, 2]),
+            auditPackageMagnitudeRoi(packageCv, "x-overlap-down", "x", [1, 0, 3, 2], [1, 1, 3, 2]),
+            auditPackageMagnitudeRoi(packageCv, "y-overlap-right", "y", [0, 1, 3, 2], [1, 1, 3, 2]),
+            auditPackageMagnitudeRoi(packageCv, "y-overlap-down", "y", [1, 0, 3, 2], [1, 1, 3, 2]),
+          ],
+          empty,
+          deleted: { x: deletedXAudit, y: deletedYAudit, destination: deletedDestinationAudit },
+          validTypes,
+          unsupportedIntegerTypes,
+          mismatches,
+          numericEdges,
+        };
+      }
+
+      function auditPackageFloatMath(packageCv) {
+        return {
+          unary: Object.fromEntries(
+            FLOAT_UNARY_METHODS.map((method) => [method, auditPackageUnary(packageCv, method)]),
+          ),
+          pow: auditPackagePow(packageCv),
+          magnitude: auditPackageMagnitude(packageCv),
+          halfFloatConstants: {
+            CV_16F: encodeValue(undefined),
+            CV_16FC1: encodeValue(undefined),
+          },
+        };
+      }
+
       function propertyDescriptorSummary(owner, property) {
         const descriptor = Object.getOwnPropertyDescriptor(owner, property);
         if (descriptor === undefined) return { present: false };
