@@ -1254,7 +1254,7 @@
         return undefined;
       }
 
-      function runReference(input) {
+      function runReference(input, referenceRequest) {
         return new Promise((resolve, reject) => {
           const worker = new Worker("/test/browser/opencv-reference-worker.js");
           const timeout = setTimeout(() => {
@@ -1279,7 +1279,7 @@
             worker.terminate();
             reject(new Error(message));
           });
-          worker.postMessage(input);
+          worker.postMessage(referenceRequest === undefined ? input : { input, referenceRequest });
         });
       }
 
@@ -1287,8 +1287,19 @@
         const packageCv = await initOpenCv();
         const input = new Uint8Array([1, 2, 3, 4, 5, 6]);
         const packageSource = packageCv.matFromU8(2, 3, 1, input);
-        const referenceOutputs = await runReference(input);
-        if (new URLSearchParams(globalThis.location.search).has("reference-enums")) {
+        const searchParameters = new URLSearchParams(globalThis.location.search);
+        const referenceOutputs = await runReference(
+          input,
+          searchParameters.has("reference-transpose") ? "transpose" : undefined,
+        );
+        if (searchParameters.has("reference-transpose")) {
+          packageSource.dispose();
+          globalThis.transposeReferenceAudit = referenceOutputs.transposeAudit;
+          result.style.whiteSpace = "pre-wrap";
+          result.textContent = JSON.stringify(referenceOutputs.transposeAudit, null, 2);
+          break differential;
+        }
+        if (searchParameters.has("reference-enums")) {
           packageSource.dispose();
           globalThis.detectorEnumReferenceAudit = referenceOutputs.detectorEnumAudit;
           result.style.whiteSpace = "pre-wrap";

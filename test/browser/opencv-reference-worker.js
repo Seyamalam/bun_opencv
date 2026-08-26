@@ -9,6 +9,248 @@ function copyF64(matrix) {
   return Array.from(matrix.data64F);
 }
 
+function summarizeMat(matrix) {
+  const elementSize = matrix.elemSize();
+  const rowByteLength = matrix.cols * elementSize;
+  return {
+    rows: matrix.rows,
+    cols: matrix.cols,
+    type: matrix.type(),
+    depth: matrix.depth(),
+    channels: matrix.channels(),
+    elementSize,
+    empty: matrix.empty(),
+    continuous: matrix.isContinuous(),
+    bytes: Array.from({ length: matrix.rows }, (_, row) =>
+      Array.from(matrix.ucharPtr(row).subarray(0, rowByteLength)),
+    ).flat(),
+  };
+}
+
+function makeSeedMat(reference, rows, cols, type, values) {
+  return reference.matFromArray(rows, cols, type, values);
+}
+
+function auditTransposeCall(callback, matrices) {
+  const before = Object.fromEntries(
+    matrices.map(([name, matrix]) => [name, capturePrimitive(() => summarizeMat(matrix))]),
+  );
+  const call = captureCall(callback);
+  const after = Object.fromEntries(
+    matrices.map(([name, matrix]) => [name, capturePrimitive(() => summarizeMat(matrix))]),
+  );
+  return { before, call, after };
+}
+
+function auditTransposeDestination(reference, name, createDestination) {
+  const source = makeSeedMat(reference, 2, 3, reference.CV_8UC1, [1, 2, 3, 4, 5, 6]);
+  const destination = createDestination();
+  const result = {
+    name,
+    audit: auditTransposeCall(
+      () => reference.transpose(source, destination),
+      [
+        ["source", source],
+        ["destination", destination],
+      ],
+    ),
+  };
+  safeDelete(destination);
+  safeDelete(source);
+  return result;
+}
+
+function auditTransposeInPlace(reference, rows, cols, values) {
+  const matrix = makeSeedMat(reference, rows, cols, reference.CV_8UC1, values);
+  const result = auditTransposeCall(
+    () => reference.transpose(matrix, matrix),
+    [["matrix", matrix]],
+  );
+  safeDelete(matrix);
+  return result;
+}
+
+function auditTransposeRoi(reference, name, sourceRect, destinationRect, sameParent = false) {
+  const sourceParent = makeSeedMat(
+    reference,
+    4,
+    5,
+    reference.CV_8UC1,
+    Array.from({ length: 20 }, (_, index) => index + 1),
+  );
+  const destinationParent = sameParent
+    ? sourceParent
+    : makeSeedMat(reference, 5, 5, reference.CV_8UC1, new Uint8Array(25).fill(99));
+  const source = sourceParent.roi(new reference.Rect(...sourceRect));
+  const destination = destinationParent.roi(new reference.Rect(...destinationRect));
+  const result = {
+    name,
+    sameParent,
+    audit: auditTransposeCall(
+      () => reference.transpose(source, destination),
+      [
+        ["source", source],
+        ["destination", destination],
+        ["sourceParent", sourceParent],
+        ["destinationParent", destinationParent],
+      ],
+    ),
+  };
+  safeDelete(destination);
+  safeDelete(source);
+  if (!sameParent) safeDelete(destinationParent);
+  safeDelete(sourceParent);
+  return result;
+}
+
+function auditTransposeType(reference, name, type, values) {
+  if (typeof type !== "number") return { name, available: false };
+  let source;
+  let destination;
+  try {
+    source = makeSeedMat(reference, 2, 3, type, values);
+    destination = new reference.Mat();
+    return {
+      name,
+      available: true,
+      audit: auditTransposeCall(
+        () => reference.transpose(source, destination),
+        [
+          ["source", source],
+          ["destination", destination],
+        ],
+      ),
+    };
+  } catch (error) {
+    return {
+      name,
+      available: true,
+      setup: captureCall(() => {
+        throw error;
+      }),
+    };
+  } finally {
+    safeDelete(destination);
+    safeDelete(source);
+  }
+}
+
+function auditTranspose(reference) {
+  const aritySource = makeSeedMat(reference, 2, 3, reference.CV_8UC1, [1, 2, 3, 4, 5, 6]);
+  const arityDestination = new reference.Mat();
+  const arity = {
+    functionLength: capturePrimitive(() => reference.transpose.length),
+    zero: captureCall(() => reference.transpose()),
+    one: captureCall(() => reference.transpose(aritySource)),
+    two: captureCall(() => reference.transpose(aritySource, arityDestination)),
+    three: captureCall(() => reference.transpose(aritySource, arityDestination, 1)),
+    destinationAfter: capturePrimitive(() => summarizeMat(arityDestination)),
+  };
+  safeDelete(arityDestination);
+  safeDelete(aritySource);
+
+  const emptySource = new reference.Mat();
+  const emptyDestination = new reference.Mat();
+  const empty = auditTransposeCall(
+    () => reference.transpose(emptySource, emptyDestination),
+    [
+      ["source", emptySource],
+      ["destination", emptyDestination],
+    ],
+  );
+  safeDelete(emptyDestination);
+  safeDelete(emptySource);
+
+  const deletedSource = makeSeedMat(reference, 1, 1, reference.CV_8UC1, [7]);
+  const liveDestination = new reference.Mat();
+  deletedSource.delete();
+  const deletedSourceAudit = auditTransposeCall(
+    () => reference.transpose(deletedSource, liveDestination),
+    [
+      ["source", deletedSource],
+      ["destination", liveDestination],
+    ],
+  );
+  safeDelete(liveDestination);
+
+  const liveSource = makeSeedMat(reference, 1, 1, reference.CV_8UC1, [8]);
+  const deletedDestination = new reference.Mat();
+  deletedDestination.delete();
+  const deletedDestinationAudit = auditTransposeCall(
+    () => reference.transpose(liveSource, deletedDestination),
+    [
+      ["source", liveSource],
+      ["destination", deletedDestination],
+    ],
+  );
+  safeDelete(liveSource);
+
+  const types = [
+    ["CV_8UC1", reference.CV_8UC1, [1, 2, 3, 4, 5, 6]],
+    ["CV_8UC3", reference.CV_8UC3, Array.from({ length: 18 }, (_, index) => index + 1)],
+    ["CV_8SC2", reference.CV_8SC2, [-1, 2, -3, 4, -5, 6, -7, 8, -9, 10, -11, 12]],
+    ["CV_16UC1", reference.CV_16UC1, [1, 256, 513, 1024, 4096, 65_535]],
+    [
+      "CV_16SC2",
+      reference.CV_16SC2,
+      [-1, 2, -300, 400, -500, 600, -700, 800, -900, 1000, -1100, 1200],
+    ],
+    ["CV_32SC1", reference.CV_32SC1, [-1, 2, -300_000, 400_000, -500_000, 600_000]],
+    [
+      "CV_32FC2",
+      reference.CV_32FC2,
+      [-1.5, 2.25, -3.5, 4.75, -5.5, 6.25, -7.5, 8.75, -9.5, 10.25, -11.5, 12.75],
+    ],
+    ["CV_64FC1", reference.CV_64FC1, [-1.5, 2.25, -3.5, 4.75, -5.5, 6.25]],
+    ["CV_16FC1", reference.CV_16FC1, [1, 2, 3, 4, 5, 6]],
+  ].map(([name, type, values]) => auditTransposeType(reference, name, type, values));
+
+  return {
+    arity,
+    destinationReplacement: [
+      auditTransposeDestination(reference, "empty", () => new reference.Mat()),
+      auditTransposeDestination(reference, "correct-metadata", () =>
+        makeSeedMat(reference, 3, 2, reference.CV_8UC1, new Uint8Array(6).fill(99)),
+      ),
+      auditTransposeDestination(reference, "wrong-shape", () =>
+        makeSeedMat(reference, 1, 5, reference.CV_8UC1, new Uint8Array(5).fill(99)),
+      ),
+      auditTransposeDestination(reference, "wrong-type-and-channels", () =>
+        makeSeedMat(reference, 3, 2, reference.CV_32FC2, new Float32Array(12).fill(99)),
+      ),
+    ],
+    inPlace: {
+      square: auditTransposeInPlace(reference, 3, 3, [1, 2, 3, 4, 5, 6, 7, 8, 9]),
+      rectangular: auditTransposeInPlace(reference, 2, 3, [1, 2, 3, 4, 5, 6]),
+    },
+    roi: [
+      auditTransposeRoi(reference, "compatible-separate", [1, 1, 3, 2], [1, 1, 2, 3]),
+      auditTransposeRoi(reference, "incompatible-shape-separate", [1, 1, 3, 2], [0, 0, 3, 2]),
+      auditTransposeRoi(
+        reference,
+        "compatible-same-parent-non-overlap",
+        [0, 0, 2, 2],
+        [3, 2, 2, 2],
+        true,
+      ),
+      auditTransposeRoi(
+        reference,
+        "compatible-same-parent-overlap",
+        [0, 0, 3, 2],
+        [1, 0, 2, 3],
+        true,
+      ),
+    ],
+    empty,
+    deleted: { source: deletedSourceAudit, destination: deletedDestinationAudit },
+    types,
+    halfFloatConstants: {
+      CV_16F: encodeValue(reference.CV_16F),
+      CV_16FC1: encodeValue(reference.CV_16FC1),
+    },
+  };
+}
+
 function encodeValue(value) {
   if (value === undefined) {
     return { type: "undefined" };
@@ -1163,7 +1405,13 @@ self.addEventListener("message", async ({ data: input }) => {
   try {
     const reference = await loadOpenCv();
     self.postMessage({ progress: "OpenCV.js WASM initialized; comparing outputs..." });
-    const source = reference.matFromArray(2, 3, reference.CV_8UC1, input);
+    const request = input?.referenceRequest;
+    const sourceInput = request === undefined ? input : input.input;
+    if (request === "transpose") {
+      self.postMessage({ outputs: { transposeAudit: auditTranspose(reference) } });
+      return;
+    }
+    const source = reference.matFromArray(2, 3, reference.CV_8UC1, sourceInput);
     const outputs = {};
     const operations = [
       ["flip", (target) => reference.flip(source, target, 1)],
