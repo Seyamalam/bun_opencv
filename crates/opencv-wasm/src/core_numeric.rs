@@ -78,9 +78,7 @@ pub fn mat_add_weighted_into(
     dst: &Mat,
     dtype: i32,
 ) -> Result<(), JsError> {
-    let depth = output_depth(a.depth(), dtype).map_err(JsError::from)?;
-    let out = weighted_with_depth(a, alpha, b, beta, gamma, depth).map_err(JsError::from)?;
-    write_result(dst, &out).map_err(Into::into)
+    weighted_into(a, alpha, b, beta, gamma, dst, dtype).map_err(Into::into)
 }
 #[wasm_bindgen(js_name = matConvertScaleAbs)]
 pub fn mat_convert_scale_abs(src: &Mat, alpha: f64, beta: f64) -> Result<Mat, JsError> {
@@ -93,8 +91,7 @@ pub fn mat_convert_scale_abs_into(
     alpha: f64,
     beta: f64,
 ) -> Result<(), JsError> {
-    let out = scale_abs(src, alpha, beta).map_err(JsError::from)?;
-    write_result(dst, &out).map_err(Into::into)
+    scale_abs_into(src, dst, alpha, beta).map_err(Into::into)
 }
 
 fn matches(a: &Mat, b: &Mat) -> bool {
@@ -130,6 +127,9 @@ fn binary_with_depth(
 ) -> Result<Mat, NumericError> {
     if !matches(a, b) {
         return Err(NumericError::InputMetadata);
+    }
+    if (a.rows() == 0 || a.columns() == 0) && matches!(op, Binary::Divide) {
+        return Ok(Mat::empty_output());
     }
     let values = decode(&a.compact_bytes(), a.depth())
         .into_iter()
@@ -193,17 +193,80 @@ fn weighted_with_depth(
     if !matches(a, b) {
         return Err(NumericError::InputMetadata);
     }
+    if a.rows() == 0 || a.columns() == 0 {
+        return Ok(Mat::empty_output());
+    }
     let values = decode(&a.compact_bytes(), a.depth())
         .into_iter()
         .zip(decode(&b.compact_bytes(), b.depth()))
         .map(|(x, y)| x * alpha + y * beta + gamma);
     from_values(a, depth, values)
 }
+fn weighted_into(
+    a: &Mat,
+    alpha: f64,
+    b: &Mat,
+    beta: f64,
+    gamma: f64,
+    destination: &Mat,
+    dtype: i32,
+) -> Result<(), NumericError> {
+    if !matches(a, b) {
+        return Err(NumericError::InputMetadata);
+    }
+    let depth = output_depth(a.depth(), dtype)?;
+    if depth == a.depth()
+        && destination.try_write_shared_binary_scalars(
+            a,
+            b,
+            depth.byte_width(),
+            |left, right, output| {
+                let value = weighted_value(
+                    decode_scalar(left, depth),
+                    alpha,
+                    decode_scalar(right, depth),
+                    beta,
+                    gamma,
+                );
+                encode_scalar(value, depth, output);
+            },
+        )?
+    {
+        return Ok(());
+    }
+    let output = weighted_with_depth(a, alpha, b, beta, gamma, depth)?;
+    write_result(destination, &output)
+}
+
+fn weighted_value(x: f64, alpha: f64, y: f64, beta: f64, gamma: f64) -> f64 {
+    x * alpha + y * beta + gamma
+}
 fn scale_abs(src: &Mat, alpha: f64, beta: f64) -> Result<Mat, NumericError> {
     let values = decode(&src.compact_bytes(), src.depth())
         .into_iter()
         .map(|x| (x * alpha + beta).abs());
     from_values(src, MatDepth::U8, values)
+}
+fn scale_abs_into(
+    source: &Mat,
+    destination: &Mat,
+    alpha: f64,
+    beta: f64,
+) -> Result<(), NumericError> {
+    if source.depth() == MatDepth::U8
+        && destination.try_write_shared_unary_scalars(
+            source,
+            MatDepth::U8.byte_width(),
+            |input, output| {
+                let value = (decode_scalar(input, MatDepth::U8) * alpha + beta).abs();
+                encode_scalar(value, MatDepth::U8, output);
+            },
+        )?
+    {
+        return Ok(());
+    }
+    let output = scale_abs(source, alpha, beta)?;
+    write_result(destination, &output)
 }
 fn from_values(
     src: &Mat,
@@ -408,6 +471,58 @@ mod tests {
         assert_eq!(
             decode(&parent.compact_bytes(), MatDepth::F32),
             vec![1., 3., 9., 27., 5.]
+        );
+    }
+    #[test]
+    fn weighted_and_scale_abs_read_overlapping_inputs_live() {
+        let weighted_parent = mat(&[1., 2., 3., 4., 5.], MatDepth::F32, 1, 5);
+        let weighted_source = weighted_parent.roi(0, 0, 1, 3).unwrap();
+        let weighted_destination = weighted_parent.roi(0, 1, 1, 3).unwrap();
+        let other = mat(&[3., 3., 3.], MatDepth::F32, 1, 3);
+        weighted_into(
+            &weighted_source,
+            3.,
+            &other,
+            0.,
+            0.,
+            &weighted_destination,
+            -1,
+        )
+        .unwrap();
+        assert_eq!(
+            decode(&weighted_parent.compact_bytes(), MatDepth::F32),
+            vec![1., 3., 9., 27., 5.]
+        );
+
+        let abs_parent = mat(&[1., 2., 3., 4., 5.], MatDepth::U8, 1, 5);
+        let abs_source = abs_parent.roi(0, 0, 1, 3).unwrap();
+        let abs_destination = abs_parent.roi(0, 1, 1, 3).unwrap();
+        scale_abs_into(&abs_source, &abs_destination, 3., 0.).unwrap();
+        assert_eq!(abs_parent.compact_bytes(), vec![1, 3, 9, 27, 5]);
+    }
+    #[test]
+    fn empty_outputs_match_operation_specific_layouts() {
+        let a = Mat::empty_with_layout(0, 3, 1, MatDepth::F32, true).unwrap();
+        let b = Mat::empty_with_layout(0, 3, 1, MatDepth::F32, true).unwrap();
+        let multiplied = binary(&a, &b, 1., Binary::Multiply).unwrap();
+        assert_eq!(
+            (multiplied.rows(), multiplied.columns(), multiplied.depth()),
+            (0, 3, MatDepth::F32)
+        );
+        let divided = binary(&a, &b, 1., Binary::Divide).unwrap();
+        assert_eq!(
+            (divided.rows(), divided.columns(), divided.depth()),
+            (0, 0, MatDepth::U8)
+        );
+        let blended = weighted(&a, 0.5, &b, 0.5, 1.).unwrap();
+        assert_eq!(
+            (blended.rows(), blended.columns(), blended.depth()),
+            (0, 0, MatDepth::U8)
+        );
+        let absolute = scale_abs(&a, 1., 0.).unwrap();
+        assert_eq!(
+            (absolute.rows(), absolute.columns(), absolute.depth()),
+            (0, 3, MatDepth::U8)
         );
     }
 }
