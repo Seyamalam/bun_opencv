@@ -285,6 +285,58 @@ The pinned OpenCV.js 4.13.0 browser fixture passes the documented defaults and o
 
 Call `dispose()` when the handle is no longer needed. Repeated disposal does nothing. Any getter or setter after disposal throws `OpenCvInputError`.
 
+### AGAST and FAST configuration
+
+`cv.createAgastFeatureDetector(options)` and `cv.createFastFeatureDetector(options)` allocate Rust-owned detector configuration handles. They do not accept images or detect keypoints yet.
+
+```ts
+import { AgastFeatureDetectorType, FastFeatureDetectorType } from "bun-opencv";
+
+const agast = cv.createAgastFeatureDetector({
+  nonmaxSuppression: true,
+  threshold: 10,
+  type: AgastFeatureDetectorType.OAST_9_16,
+});
+const fast = cv.createFastFeatureDetector({
+  nonmaxSuppression: true,
+  threshold: 10,
+  type: FastFeatureDetectorType.TYPE_9_16,
+});
+
+try {
+  agast.setThreshold(-1);
+  fast.setThreshold(256);
+} finally {
+  agast.dispose();
+  fast.dispose();
+}
+```
+
+AGAST uses these numeric neighborhood types:
+
+| Enum member                            | Value |
+| -------------------------------------- | ----: |
+| `AgastFeatureDetectorType.AGAST_5_8`   |     0 |
+| `AgastFeatureDetectorType.AGAST_7_12d` |     1 |
+| `AgastFeatureDetectorType.AGAST_7_12s` |     2 |
+| `AgastFeatureDetectorType.OAST_9_16`   |     3 |
+
+FAST uses these numeric neighborhood types:
+
+| Enum member                         | Value |
+| ----------------------------------- | ----: |
+| `FastFeatureDetectorType.TYPE_5_8`  |     0 |
+| `FastFeatureDetectorType.TYPE_7_12` |     1 |
+| `FastFeatureDetectorType.TYPE_9_16` |     2 |
+
+Both factories default to threshold `10` with non-maximum suppression enabled. AGAST defaults to `OAST_9_16`, and FAST defaults to `TYPE_9_16`. `getDefaultName()` returns `"Feature2D.AgastFeatureDetector"` or `"Feature2D.FastFeatureDetector"`.
+
+Thresholds accept the complete signed 32-bit range, including negative values and values above 255. TypeScript rejects fractional, unsafe, or out-of-range numbers before calling WebAssembly. The browser differential fixture confirms that OpenCV.js preserves AGAST threshold `-1` and FAST threshold `256`. Type setters accept only the enum values listed above. A rejected type update leaves the old value unchanged.
+
+Each handle also exposes `getNonmaxSuppression()`, `getThreshold()`, `getType()`, and their matching setters. Call `dispose()` after use. Disposal is idempotent, and every getter or setter throws `OpenCvInputError` after disposal.
+
+The pinned OpenCV.js 4.13.0 artifact exposes direct `AgastFeatureDetector` and `FastFeatureDetector` constructors and all seven instance methods on both. It omits the config-listed static `create` method on each class, so the package factories have no direct static-factory comparator for that artifact.
+
 ## Errors
 
 The TypeScript boundary throws `OpenCvInputError` for invalid dimensions, byte lengths, and thresholds. Rust rejects the same invalid dimensions and byte lengths if a caller bypasses the TypeScript client.

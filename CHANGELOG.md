@@ -20,6 +20,7 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - Affine, inverse-affine, rotation, and perspective transform matrix constructors with F64 output.
 - Alias-safe single-source `mixChannels` routing across all scalar depths.
 - Sixteen partial AKAZE configuration families with typed defaults, validated Rust-owned state, and deterministic disposal, bringing the supported partial total to 85.
+- Sixteen partial AGAST and FAST configuration families with signed 32-bit thresholds, typed detector modes, deterministic disposal, and browser-checked state mutation, bringing the supported partial total to 101.
 - Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
 
 ### Planned
