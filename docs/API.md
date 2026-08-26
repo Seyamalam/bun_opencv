@@ -391,15 +391,19 @@ try {
 }
 ```
 
-Omitting options uses the exact OpenCV 4.13 defaults shown above. `maxFeatures` and `blockSize` accept the signed 32-bit range. TypeScript rejects fractional, unsafe, and out-of-range integer values. `qualityLevel`, `minDistance`, and `k` preserve every JavaScript number, including negative values, `NaN`, positive infinity, and negative infinity. `useHarrisDetector` is boolean.
+Omitting options uses the exact OpenCV 4.13 defaults shown above. Factory options remain strictly typed and validate `maxFeatures` and `blockSize` as signed 32-bit integers.
 
-The handle exposes `getDefaultName()`, getters and setters for all six options, and `dispose()`. The Harris flag uses `getHarrisDetector()` and `setHarrisDetector()`. `getDefaultName()` returns `"Feature2D.GFTTDetector"`. Repeated disposal does nothing. Every getter or setter throws `OpenCvInputError` after disposal.
+The 13 instance methods match the pinned OpenCV.js binding contract. Every getter requires zero arguments, and every setter requires exactly one. Missing or extra arguments throw `BindingError`. `getDefaultName()` returns `"Feature2D.GFTTDetector"`.
 
-The pinned OpenCV.js 4.13.0 fixture exposes the direct `GFTTDetector` constructor and all 13 instance methods. It passes the exact defaults, preserves `-1` through every numeric setter, and preserves `NaN`, positive infinity, and negative infinity through the F64 fields. The artifact omits the config-listed static `GFTTDetector.create` method. The package factory supports one six-argument shape; the overload with `gradientSize` remains.
+The integer setters follow Embind's JavaScript coercion behavior. Numeric fractions truncate to signed i32, `NaN` becomes `0`, and booleans become `1` or `0`. Numbers outside the signed 32-bit range, infinity, strings, `null`, and `undefined` throw `TypeError`. The F64 setters preserve every number, including `NaN` and both infinities, and convert booleans to `1` or `0`. Other F64 inputs throw `TypeError`. `setHarrisDetector()` applies JavaScript truthiness through `Boolean(value)`.
+
+Each setter returns `undefined`. Call `delete()` for OpenCV.js-compatible ownership. The first call returns `undefined`; a repeated call throws `BindingError`. Getters and setters also throw `BindingError` after deletion, with the pinned mutable or const pointer message. The package also keeps `dispose()` as an idempotent convenience.
+
+The pinned OpenCV.js 4.13.0 fixture exposes the direct `GFTTDetector` constructor and all 13 instance methods. The browser matrix verifies method arity, defaults, return values, scalar coercion, missing and extra arguments, deletion, repeat deletion, and calls after deletion. All 13 instance methods count as implemented. The artifact omits the config-listed static `GFTTDetector.create` method. The package factory remains partial because it supports one six-argument shape and omits the `gradientSize` overload.
 
 ## Errors
 
-The TypeScript boundary throws `OpenCvInputError` for invalid dimensions, byte lengths, and thresholds. Rust rejects the same invalid dimensions and byte lengths if a caller bypasses the TypeScript client.
+The TypeScript boundary throws `OpenCvInputError` for invalid dimensions, byte lengths, thresholds, and strictly validated factory options. GFTT instance methods throw `BindingError` for argument-count and deleted-object failures, matching the pinned browser binding. Their scalar conversion failures throw `TypeError`. Rust rejects invalid dimensions and byte lengths if a caller bypasses the TypeScript client.
 
 ## Matrices
 

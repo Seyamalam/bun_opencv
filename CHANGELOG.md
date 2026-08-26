@@ -22,7 +22,9 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - Sixteen partial AKAZE configuration families with typed defaults, validated Rust-owned state, and deterministic disposal, bringing the supported partial total to 85.
 - Sixteen partial AGAST and FAST configuration families with signed 32-bit thresholds, typed detector modes, deterministic disposal, and browser-checked state mutation, bringing the supported partial total to 101.
 - Fourteen partial KAZE configuration families with typed diffusivity, finite signed thresholds, deterministic disposal, and browser-checked state mutation, bringing the supported partial total to 115.
-- Fourteen partial GFTT detector configuration families with exact browser defaults, signed numeric state, deterministic disposal, and browser-checked mutation, bringing the supported partial total to 129.
+- One partial GFTT factory family and 13 fully implemented GFTT detector instance methods, bringing the totals to 116 partial, 13 implemented, and 129 supported families.
+- A comprehensive pinned-browser GFTT matrix for exact arity, return values, scalar coercion, argument errors, deletion, repeat deletion, and calls after deletion.
+- OpenCV.js-compatible `BindingError` identity and GFTT `delete()` lifecycle behavior, while retaining idempotent `dispose()` as a package convenience.
 - OpenCV.js-compatible negative-input and upper-sentinel behavior for `getOptimalDFTSize`, plus a fail-closed numeric browser comparator for enum-backed values.
 - Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
 
