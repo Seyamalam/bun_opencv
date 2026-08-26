@@ -646,6 +646,384 @@ function auditFlip(reference) {
   };
 }
 
+function auditRepeatCounts(reference, axis, label, value, avoidLargeOutput = false) {
+  const source = makeSeedMat(reference, 1, 2, reference.CV_8UC1, [1, 2]);
+  const destination = makeSeedMat(reference, 2, 2, reference.CV_8UC1, [7, 8, 9, 10]);
+  const rowRepeats = axis === "rows" ? value : avoidLargeOutput ? -1 : 1;
+  const columnRepeats = axis === "columns" ? value : avoidLargeOutput ? -1 : 1;
+  const result = {
+    axis,
+    label,
+    input: encodeValue(value),
+    audit: auditTransposeCall(
+      () => reference.repeat(source, rowRepeats, columnRepeats, destination),
+      [
+        ["source", source],
+        ["destination", destination],
+      ],
+    ),
+  };
+  safeDelete(destination);
+  safeDelete(source);
+  return result;
+}
+
+function auditRepeatDestination(reference, name, createDestination) {
+  const source = makeSeedMat(reference, 2, 3, reference.CV_8UC1, [1, 2, 3, 4, 5, 6]);
+  const destination = createDestination();
+  const result = {
+    name,
+    audit: auditTransposeCall(
+      () => reference.repeat(source, 2, 2, destination),
+      [
+        ["source", source],
+        ["destination", destination],
+      ],
+    ),
+  };
+  safeDelete(destination);
+  safeDelete(source);
+  return result;
+}
+
+function auditRepeatRoi(
+  reference,
+  name,
+  sourceRect,
+  destinationRect,
+  rowRepeats,
+  columnRepeats,
+  sameParent,
+) {
+  const sourceParent = makeSeedMat(
+    reference,
+    6,
+    7,
+    reference.CV_8UC1,
+    Array.from({ length: 42 }, (_, index) => index + 1),
+  );
+  const destinationParent = sameParent
+    ? sourceParent
+    : makeSeedMat(reference, 6, 7, reference.CV_8UC1, new Uint8Array(42).fill(99));
+  const source = sourceParent.roi(new reference.Rect(...sourceRect));
+  const destination = destinationParent.roi(new reference.Rect(...destinationRect));
+  const result = {
+    name,
+    sameParent,
+    rowRepeats,
+    columnRepeats,
+    audit: auditTransposeCall(
+      () => reference.repeat(source, rowRepeats, columnRepeats, destination),
+      [
+        ["source", source],
+        ["destination", destination],
+        ["sourceParent", sourceParent],
+        ["destinationParent", destinationParent],
+      ],
+    ),
+  };
+  safeDelete(destination);
+  safeDelete(source);
+  if (!sameParent) safeDelete(destinationParent);
+  safeDelete(sourceParent);
+  return result;
+}
+
+function auditRepeatTypeRoi(reference) {
+  const sourceParent = makeSeedMat(
+    reference,
+    4,
+    5,
+    reference.CV_8UC1,
+    Array.from({ length: 20 }, (_, index) => index + 1),
+  );
+  const destinationParent = makeSeedMat(
+    reference,
+    5,
+    5,
+    reference.CV_32FC2,
+    new Float32Array(50).fill(99),
+  );
+  const source = sourceParent.roi(new reference.Rect(1, 1, 2, 2));
+  const destination = destinationParent.roi(new reference.Rect(1, 1, 2, 4));
+  const result = {
+    name: "incompatible-type-separate",
+    sameParent: false,
+    rowRepeats: 2,
+    columnRepeats: 1,
+    audit: auditTransposeCall(
+      () => reference.repeat(source, 2, 1, destination),
+      [
+        ["source", source],
+        ["destination", destination],
+        ["sourceParent", sourceParent],
+        ["destinationParent", destinationParent],
+      ],
+    ),
+  };
+  safeDelete(destination);
+  safeDelete(source);
+  safeDelete(destinationParent);
+  safeDelete(sourceParent);
+  return result;
+}
+
+function auditRepeatType(reference, name, type, values) {
+  if (typeof type !== "number") return { name, available: false };
+  let source;
+  let destination;
+  try {
+    source = makeSeedMat(reference, 2, 3, type, values);
+    destination = new reference.Mat();
+    return {
+      name,
+      available: true,
+      audit: auditTypedMatCall(
+        () => reference.repeat(source, 2, 2, destination),
+        [
+          ["source", source],
+          ["destination", destination],
+        ],
+      ),
+    };
+  } catch (error) {
+    return {
+      name,
+      available: true,
+      setup: captureCall(() => {
+        throw error;
+      }),
+    };
+  } finally {
+    safeDelete(destination);
+    safeDelete(source);
+  }
+}
+
+function auditRepeat(reference) {
+  const aritySource = makeSeedMat(reference, 1, 2, reference.CV_8UC1, [1, 2]);
+  const arityDestination = new reference.Mat();
+  const arity = {
+    functionLength: capturePrimitive(() => reference.repeat.length),
+    zero: captureCall(() => reference.repeat()),
+    one: captureCall(() => reference.repeat(aritySource)),
+    two: captureCall(() => reference.repeat(aritySource, 1)),
+    three: captureCall(() => reference.repeat(aritySource, 1, 2)),
+    four: captureCall(() => reference.repeat(aritySource, 1, 2, arityDestination)),
+    five: captureCall(() => reference.repeat(aritySource, 1, 2, arityDestination, 5)),
+    destinationAfter: capturePrimitive(() => summarizeMat(arityDestination)),
+  };
+  safeDelete(arityDestination);
+  safeDelete(aritySource);
+
+  const countInputs = [
+    ["negative two", -2],
+    ["negative fraction", -1.9],
+    ["negative subunit fraction", -0.9],
+    ["negative zero", -0],
+    ["zero", 0],
+    ["positive subunit fraction", 0.9],
+    ["positive fraction", 1.9],
+    ["one", 1],
+    ["two", 2],
+    ["i32 maximum", 2_147_483_647, true],
+    ["i32 maximum plus one", 2_147_483_648],
+    ["i32 minimum", -2_147_483_648],
+    ["i32 minimum minus one", -2_147_483_649],
+    ["NaN", Number.NaN],
+    ["positive infinity", Number.POSITIVE_INFINITY],
+    ["negative infinity", Number.NEGATIVE_INFINITY],
+    ["true", true],
+    ["false", false],
+    ["null", null],
+    ["numeric string", "1"],
+    ["explicit undefined", undefined],
+  ];
+  const counts = ["rows", "columns"].flatMap((axis) =>
+    countInputs.map(([label, value, avoidLargeOutput = false]) =>
+      auditRepeatCounts(reference, axis, label, value, avoidLargeOutput),
+    ),
+  );
+
+  const argumentSource = makeSeedMat(reference, 1, 1, reference.CV_8UC1, [1]);
+  const argumentDestination = new reference.Mat();
+  const argumentTypes = {
+    nullSource: captureCall(() => reference.repeat(null, 1, 1, argumentDestination)),
+    undefinedSource: captureCall(() => reference.repeat(undefined, 1, 1, argumentDestination)),
+    objectSource: captureCall(() => reference.repeat({}, 1, 1, argumentDestination)),
+    nullDestination: captureCall(() => reference.repeat(argumentSource, 1, 1, null)),
+    undefinedDestination: captureCall(() => reference.repeat(argumentSource, 1, 1, undefined)),
+    objectDestination: captureCall(() => reference.repeat(argumentSource, 1, 1, {})),
+  };
+  safeDelete(argumentDestination);
+  safeDelete(argumentSource);
+
+  const emptySource = new reference.Mat();
+  const emptyDestination = new reference.Mat();
+  const empty = auditTransposeCall(
+    () => reference.repeat(emptySource, 2, 3, emptyDestination),
+    [
+      ["source", emptySource],
+      ["destination", emptyDestination],
+    ],
+  );
+  safeDelete(emptyDestination);
+  safeDelete(emptySource);
+
+  const secondEmptySource = new reference.Mat();
+  const fullEmptyDestination = makeSeedMat(reference, 2, 3, reference.CV_8UC1, [1, 2, 3, 4, 5, 6]);
+  const emptyIntoFull = auditTransposeCall(
+    () => reference.repeat(secondEmptySource, 2, 3, fullEmptyDestination),
+    [
+      ["source", secondEmptySource],
+      ["destination", fullEmptyDestination],
+    ],
+  );
+  safeDelete(fullEmptyDestination);
+  safeDelete(secondEmptySource);
+
+  const deletedSource = makeSeedMat(reference, 1, 1, reference.CV_8UC1, [7]);
+  const liveDestination = new reference.Mat();
+  deletedSource.delete();
+  const deletedSourceAudit = auditTransposeCall(
+    () => reference.repeat(deletedSource, 1, 1, liveDestination),
+    [
+      ["source", deletedSource],
+      ["destination", liveDestination],
+    ],
+  );
+  safeDelete(liveDestination);
+
+  const liveSource = makeSeedMat(reference, 1, 1, reference.CV_8UC1, [8]);
+  const deletedDestination = new reference.Mat();
+  deletedDestination.delete();
+  const deletedDestinationAudit = auditTransposeCall(
+    () => reference.repeat(liveSource, 1, 1, deletedDestination),
+    [
+      ["source", liveSource],
+      ["destination", deletedDestination],
+    ],
+  );
+  safeDelete(liveSource);
+
+  const sameHandle = makeSeedMat(reference, 2, 2, reference.CV_8UC1, [1, 2, 3, 4]);
+  const inPlace = auditTransposeCall(
+    () => reference.repeat(sameHandle, 1, 1, sameHandle),
+    [["matrix", sameHandle]],
+  );
+  safeDelete(sameHandle);
+
+  const stridedParent = makeSeedMat(
+    reference,
+    4,
+    5,
+    reference.CV_8UC1,
+    Array.from({ length: 20 }, (_, index) => index + 1),
+  );
+  const stridedSource = stridedParent.roi(new reference.Rect(1, 1, 3, 2));
+  const stridedDestination = new reference.Mat();
+  const strided = auditTransposeCall(
+    () => reference.repeat(stridedSource, 2, 2, stridedDestination),
+    [
+      ["source", stridedSource],
+      ["destination", stridedDestination],
+      ["sourceParent", stridedParent],
+    ],
+  );
+  safeDelete(stridedDestination);
+  safeDelete(stridedSource);
+  safeDelete(stridedParent);
+
+  const types = [
+    ["CV_8UC1", reference.CV_8UC1, [1, 2, 3, 4, 5, 6]],
+    ["CV_8UC3", reference.CV_8UC3, Array.from({ length: 18 }, (_, index) => index + 1)],
+    ["CV_8SC2", reference.CV_8SC2, [-1, 2, -3, 4, -5, 6, -7, 8, -9, 10, -11, 12]],
+    ["CV_16UC1", reference.CV_16UC1, [1, 256, 513, 1024, 4096, 65_535]],
+    [
+      "CV_16SC2",
+      reference.CV_16SC2,
+      [-1, 2, -300, 400, -500, 600, -700, 800, -900, 1000, -1100, 1200],
+    ],
+    ["CV_32SC1", reference.CV_32SC1, [-1, 2, -300_000, 400_000, -500_000, 600_000]],
+    [
+      "CV_32FC2",
+      reference.CV_32FC2,
+      [-1.5, 2.25, -3.5, 4.75, -5.5, 6.25, -7.5, 8.75, -9.5, 10.25, -11.5, 12.75],
+    ],
+    ["CV_64FC1", reference.CV_64FC1, [-1.5, 2.25, -3.5, 4.75, -5.5, 6.25]],
+    ["CV_16FC1", reference.CV_16FC1, [1, 2, 3, 4, 5, 6]],
+  ].map(([name, type, values]) => auditRepeatType(reference, name, type, values));
+
+  return {
+    arity,
+    argumentTypes,
+    counts,
+    destinationReplacement: [
+      auditRepeatDestination(reference, "empty", () => new reference.Mat()),
+      auditRepeatDestination(reference, "correct-metadata", () =>
+        makeSeedMat(reference, 4, 6, reference.CV_8UC1, new Uint8Array(24).fill(99)),
+      ),
+      auditRepeatDestination(reference, "wrong-shape", () =>
+        makeSeedMat(reference, 2, 6, reference.CV_8UC1, new Uint8Array(12).fill(99)),
+      ),
+      auditRepeatDestination(reference, "wrong-type-and-channels", () =>
+        makeSeedMat(reference, 4, 6, reference.CV_32FC2, new Float32Array(48).fill(99)),
+      ),
+    ],
+    inPlace,
+    roi: [
+      auditRepeatRoi(reference, "compatible-separate", [1, 1, 2, 2], [1, 1, 4, 2], 1, 2, false),
+      auditRepeatRoi(
+        reference,
+        "incompatible-shape-separate",
+        [1, 1, 2, 2],
+        [1, 1, 2, 2],
+        1,
+        2,
+        false,
+      ),
+      auditRepeatTypeRoi(reference),
+      auditRepeatRoi(reference, "same-parent-non-overlap", [0, 0, 2, 2], [3, 3, 4, 2], 1, 2, true),
+      auditRepeatRoi(
+        reference,
+        "same-parent-overlap-horizontal",
+        [0, 0, 2, 2],
+        [1, 0, 4, 2],
+        1,
+        2,
+        true,
+      ),
+      auditRepeatRoi(
+        reference,
+        "same-parent-overlap-vertical",
+        [0, 0, 2, 2],
+        [0, 1, 2, 4],
+        2,
+        1,
+        true,
+      ),
+      auditRepeatRoi(
+        reference,
+        "same-parent-overlap-combined",
+        [0, 0, 2, 2],
+        [1, 1, 4, 4],
+        2,
+        2,
+        true,
+      ),
+    ],
+    empty,
+    emptyIntoFull,
+    deleted: { source: deletedSourceAudit, destination: deletedDestinationAudit },
+    strided,
+    types,
+    halfFloatConstants: {
+      CV_16F: encodeValue(reference.CV_16F),
+      CV_16FC1: encodeValue(reference.CV_16FC1),
+    },
+  };
+}
+
 function auditCountNonZeroType(reference, name, type, values) {
   if (typeof type !== "number") return { name, available: false };
   let source;
@@ -1915,6 +2293,10 @@ self.addEventListener("message", async ({ data: input }) => {
       self.postMessage({ outputs: { flipAudit: auditFlip(reference) } });
       return;
     }
+    if (request === "repeat") {
+      self.postMessage({ outputs: { repeatAudit: auditRepeat(reference) } });
+      return;
+    }
     if (request === "count-non-zero") {
       self.postMessage({ outputs: { countNonZeroAudit: auditCountNonZero(reference) } });
       return;
@@ -2090,6 +2472,7 @@ self.addEventListener("message", async ({ data: input }) => {
     );
     outputs.fastPrimitiveAudit = auditThresholdDetector(() => new reference.FastFeatureDetector());
     outputs.flipAudit = auditFlip(reference);
+    outputs.repeatAudit = auditRepeat(reference);
     outputs.transposeAudit = auditTranspose(reference);
     outputs.countNonZeroAudit = auditCountNonZero(reference);
     self.postMessage({ outputs });

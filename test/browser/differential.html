@@ -808,6 +808,388 @@
         };
       }
 
+      function auditPackageRepeatCounts(packageCv, axis, label, value, avoidLargeOutput = false) {
+        const source = makePackageSeedMat(packageCv, 1, 2, "u8", 1, [1, 2]);
+        const destination = makePackageSeedMat(packageCv, 2, 2, "u8", 1, [7, 8, 9, 10]);
+        const rowRepeats = axis === "rows" ? value : avoidLargeOutput ? -1 : 1;
+        const columnRepeats = axis === "columns" ? value : avoidLargeOutput ? -1 : 1;
+        const audit = auditPackageTransposeCall(
+          () => packageCv.repeat(source, rowRepeats, columnRepeats, destination),
+          [
+            ["source", source],
+            ["destination", destination],
+          ],
+        );
+        disposePackageMat(destination);
+        disposePackageMat(source);
+        return { axis, label, input: encodeValue(value), audit };
+      }
+
+      function auditPackageRepeatDestination(packageCv, name, createDestination) {
+        const source = makePackageSeedMat(packageCv, 2, 3, "u8", 1, [1, 2, 3, 4, 5, 6]);
+        const destination = createDestination();
+        const audit = auditPackageTransposeCall(
+          () => packageCv.repeat(source, 2, 2, destination),
+          [
+            ["source", source],
+            ["destination", destination],
+          ],
+        );
+        disposePackageMat(destination);
+        disposePackageMat(source);
+        return { name, audit };
+      }
+
+      function auditPackageRepeatRoi(
+        packageCv,
+        name,
+        sourceRect,
+        destinationRect,
+        rowRepeats,
+        columnRepeats,
+        sameParent,
+      ) {
+        const sourceParent = makePackageSeedMat(
+          packageCv,
+          6,
+          7,
+          "u8",
+          1,
+          Array.from({ length: 42 }, (_, index) => index + 1),
+        );
+        const destinationParent = sameParent
+          ? sourceParent
+          : makePackageSeedMat(packageCv, 6, 7, "u8", 1, new Uint8Array(42).fill(99));
+        const source = sourceParent.roi(sourceRect[1], sourceRect[0], sourceRect[3], sourceRect[2]);
+        const destination = destinationParent.roi(
+          destinationRect[1],
+          destinationRect[0],
+          destinationRect[3],
+          destinationRect[2],
+        );
+        const audit = auditPackageTransposeCall(
+          () => packageCv.repeat(source, rowRepeats, columnRepeats, destination),
+          [
+            ["source", source],
+            ["destination", destination],
+            ["sourceParent", sourceParent],
+            ["destinationParent", destinationParent],
+          ],
+        );
+        disposePackageMat(destination);
+        disposePackageMat(source);
+        if (!sameParent) disposePackageMat(destinationParent);
+        disposePackageMat(sourceParent);
+        return { name, sameParent, rowRepeats, columnRepeats, audit };
+      }
+
+      function auditPackageRepeatTypeRoi(packageCv) {
+        const sourceParent = makePackageSeedMat(
+          packageCv,
+          4,
+          5,
+          "u8",
+          1,
+          Array.from({ length: 20 }, (_, index) => index + 1),
+        );
+        const destinationParent = makePackageSeedMat(
+          packageCv,
+          5,
+          5,
+          "f32",
+          2,
+          new Float32Array(50).fill(99),
+        );
+        const source = sourceParent.roi(1, 1, 2, 2);
+        const destination = destinationParent.roi(1, 1, 4, 2);
+        const audit = auditPackageTransposeCall(
+          () => packageCv.repeat(source, 2, 1, destination),
+          [
+            ["source", source],
+            ["destination", destination],
+            ["sourceParent", sourceParent],
+            ["destinationParent", destinationParent],
+          ],
+        );
+        disposePackageMat(destination);
+        disposePackageMat(source);
+        disposePackageMat(destinationParent);
+        disposePackageMat(sourceParent);
+        return {
+          name: "incompatible-type-separate",
+          sameParent: false,
+          rowRepeats: 2,
+          columnRepeats: 1,
+          audit,
+        };
+      }
+
+      function auditPackageRepeatType(packageCv, name, depth, channels, values) {
+        const source = makePackageSeedMat(packageCv, 2, 3, depth, channels, values);
+        const destination = packageCv.emptyMat();
+        const audit = auditPackageTypedMatCall(
+          () => packageCv.repeat(source, 2, 2, destination),
+          [
+            ["source", source],
+            ["destination", destination],
+          ],
+        );
+        disposePackageMat(destination);
+        disposePackageMat(source);
+        return { name, available: true, audit };
+      }
+
+      function auditPackageRepeat(packageCv) {
+        const aritySource = makePackageSeedMat(packageCv, 1, 2, "u8", 1, [1, 2]);
+        const arityDestination = packageCv.emptyMat();
+        const arity = {
+          functionLength: capturePrimitive(() => packageCv.repeat.length),
+          zero: captureCall(() => packageCv.repeat()),
+          one: captureCall(() => packageCv.repeat(aritySource)),
+          two: captureCall(() => packageCv.repeat(aritySource, 1)),
+          three: captureCall(() => packageCv.repeat(aritySource, 1, 2)),
+          four: captureCall(() => packageCv.repeat(aritySource, 1, 2, arityDestination)),
+          five: captureCall(() => packageCv.repeat(aritySource, 1, 2, arityDestination, 5)),
+          destinationAfter: capturePrimitive(() => summarizePackageMat(arityDestination)),
+        };
+        disposePackageMat(arityDestination);
+        disposePackageMat(aritySource);
+
+        const countInputs = [
+          ["negative two", -2],
+          ["negative fraction", -1.9],
+          ["negative subunit fraction", -0.9],
+          ["negative zero", -0],
+          ["zero", 0],
+          ["positive subunit fraction", 0.9],
+          ["positive fraction", 1.9],
+          ["one", 1],
+          ["two", 2],
+          ["i32 maximum", 2_147_483_647, true],
+          ["i32 maximum plus one", 2_147_483_648],
+          ["i32 minimum", -2_147_483_648],
+          ["i32 minimum minus one", -2_147_483_649],
+          ["NaN", Number.NaN],
+          ["positive infinity", Number.POSITIVE_INFINITY],
+          ["negative infinity", Number.NEGATIVE_INFINITY],
+          ["true", true],
+          ["false", false],
+          ["null", null],
+          ["numeric string", "1"],
+          ["explicit undefined", undefined],
+        ];
+        const counts = ["rows", "columns"].flatMap((axis) =>
+          countInputs.map(([label, value, avoidLargeOutput = false]) =>
+            auditPackageRepeatCounts(packageCv, axis, label, value, avoidLargeOutput),
+          ),
+        );
+
+        const argumentSource = makePackageSeedMat(packageCv, 1, 1, "u8", 1, [1]);
+        const argumentDestination = packageCv.emptyMat();
+        const argumentTypes = {
+          nullSource: captureCall(() => packageCv.repeat(null, 1, 1, argumentDestination)),
+          undefinedSource: captureCall(() =>
+            packageCv.repeat(undefined, 1, 1, argumentDestination),
+          ),
+          objectSource: captureCall(() => packageCv.repeat({}, 1, 1, argumentDestination)),
+          nullDestination: captureCall(() => packageCv.repeat(argumentSource, 1, 1, null)),
+          undefinedDestination: captureCall(() =>
+            packageCv.repeat(argumentSource, 1, 1, undefined),
+          ),
+          objectDestination: captureCall(() => packageCv.repeat(argumentSource, 1, 1, {})),
+        };
+        disposePackageMat(argumentDestination);
+        disposePackageMat(argumentSource);
+
+        const emptySource = packageCv.emptyMat();
+        const emptyDestination = packageCv.emptyMat();
+        const empty = auditPackageTransposeCall(
+          () => packageCv.repeat(emptySource, 2, 3, emptyDestination),
+          [
+            ["source", emptySource],
+            ["destination", emptyDestination],
+          ],
+        );
+        disposePackageMat(emptyDestination);
+        disposePackageMat(emptySource);
+
+        const secondEmptySource = packageCv.emptyMat();
+        const fullEmptyDestination = makePackageSeedMat(
+          packageCv,
+          2,
+          3,
+          "u8",
+          1,
+          [1, 2, 3, 4, 5, 6],
+        );
+        const emptyIntoFull = auditPackageTransposeCall(
+          () => packageCv.repeat(secondEmptySource, 2, 3, fullEmptyDestination),
+          [
+            ["source", secondEmptySource],
+            ["destination", fullEmptyDestination],
+          ],
+        );
+        disposePackageMat(fullEmptyDestination);
+        disposePackageMat(secondEmptySource);
+
+        const deletedSource = makePackageSeedMat(packageCv, 1, 1, "u8", 1, [7]);
+        const liveDestination = packageCv.emptyMat();
+        deletedSource.dispose();
+        const deletedSourceAudit = auditPackageTransposeCall(
+          () => packageCv.repeat(deletedSource, 1, 1, liveDestination),
+          [
+            ["source", deletedSource],
+            ["destination", liveDestination],
+          ],
+        );
+        disposePackageMat(liveDestination);
+
+        const liveSource = makePackageSeedMat(packageCv, 1, 1, "u8", 1, [8]);
+        const deletedDestination = packageCv.emptyMat();
+        deletedDestination.dispose();
+        const deletedDestinationAudit = auditPackageTransposeCall(
+          () => packageCv.repeat(liveSource, 1, 1, deletedDestination),
+          [
+            ["source", liveSource],
+            ["destination", deletedDestination],
+          ],
+        );
+        disposePackageMat(liveSource);
+
+        const sameHandle = makePackageSeedMat(packageCv, 2, 2, "u8", 1, [1, 2, 3, 4]);
+        const inPlace = auditPackageTransposeCall(
+          () => packageCv.repeat(sameHandle, 1, 1, sameHandle),
+          [["matrix", sameHandle]],
+        );
+        disposePackageMat(sameHandle);
+
+        const stridedParent = makePackageSeedMat(
+          packageCv,
+          4,
+          5,
+          "u8",
+          1,
+          Array.from({ length: 20 }, (_, index) => index + 1),
+        );
+        const stridedSource = stridedParent.roi(1, 1, 2, 3);
+        const stridedDestination = packageCv.emptyMat();
+        const strided = auditPackageTransposeCall(
+          () => packageCv.repeat(stridedSource, 2, 2, stridedDestination),
+          [
+            ["source", stridedSource],
+            ["destination", stridedDestination],
+            ["sourceParent", stridedParent],
+          ],
+        );
+        disposePackageMat(stridedDestination);
+        disposePackageMat(stridedSource);
+        disposePackageMat(stridedParent);
+
+        const types = [
+          ["CV_8UC1", "u8", 1, [1, 2, 3, 4, 5, 6]],
+          ["CV_8UC3", "u8", 3, Array.from({ length: 18 }, (_, index) => index + 1)],
+          ["CV_8SC2", "i8", 2, [-1, 2, -3, 4, -5, 6, -7, 8, -9, 10, -11, 12]],
+          ["CV_16UC1", "u16", 1, [1, 256, 513, 1024, 4096, 65_535]],
+          ["CV_16SC2", "i16", 2, [-1, 2, -300, 400, -500, 600, -700, 800, -900, 1000, -1100, 1200]],
+          ["CV_32SC1", "i32", 1, [-1, 2, -300_000, 400_000, -500_000, 600_000]],
+          [
+            "CV_32FC2",
+            "f32",
+            2,
+            [-1.5, 2.25, -3.5, 4.75, -5.5, 6.25, -7.5, 8.75, -9.5, 10.25, -11.5, 12.75],
+          ],
+          ["CV_64FC1", "f64", 1, [-1.5, 2.25, -3.5, 4.75, -5.5, 6.25]],
+        ].map(([name, depth, channels, values]) =>
+          auditPackageRepeatType(packageCv, name, depth, channels, values),
+        );
+        types.push({ name: "CV_16FC1", available: false });
+
+        return {
+          arity,
+          argumentTypes,
+          counts,
+          destinationReplacement: [
+            auditPackageRepeatDestination(packageCv, "empty", () => packageCv.emptyMat()),
+            auditPackageRepeatDestination(packageCv, "correct-metadata", () =>
+              makePackageSeedMat(packageCv, 4, 6, "u8", 1, new Uint8Array(24).fill(99)),
+            ),
+            auditPackageRepeatDestination(packageCv, "wrong-shape", () =>
+              makePackageSeedMat(packageCv, 2, 6, "u8", 1, new Uint8Array(12).fill(99)),
+            ),
+            auditPackageRepeatDestination(packageCv, "wrong-type-and-channels", () =>
+              makePackageSeedMat(packageCv, 4, 6, "f32", 2, new Float32Array(48).fill(99)),
+            ),
+          ],
+          inPlace,
+          roi: [
+            auditPackageRepeatRoi(
+              packageCv,
+              "compatible-separate",
+              [1, 1, 2, 2],
+              [1, 1, 4, 2],
+              1,
+              2,
+              false,
+            ),
+            auditPackageRepeatRoi(
+              packageCv,
+              "incompatible-shape-separate",
+              [1, 1, 2, 2],
+              [1, 1, 2, 2],
+              1,
+              2,
+              false,
+            ),
+            auditPackageRepeatTypeRoi(packageCv),
+            auditPackageRepeatRoi(
+              packageCv,
+              "same-parent-non-overlap",
+              [0, 0, 2, 2],
+              [3, 3, 4, 2],
+              1,
+              2,
+              true,
+            ),
+            auditPackageRepeatRoi(
+              packageCv,
+              "same-parent-overlap-horizontal",
+              [0, 0, 2, 2],
+              [1, 0, 4, 2],
+              1,
+              2,
+              true,
+            ),
+            auditPackageRepeatRoi(
+              packageCv,
+              "same-parent-overlap-vertical",
+              [0, 0, 2, 2],
+              [0, 1, 2, 4],
+              2,
+              1,
+              true,
+            ),
+            auditPackageRepeatRoi(
+              packageCv,
+              "same-parent-overlap-combined",
+              [0, 0, 2, 2],
+              [1, 1, 4, 4],
+              2,
+              2,
+              true,
+            ),
+          ],
+          empty,
+          emptyIntoFull,
+          deleted: { source: deletedSourceAudit, destination: deletedDestinationAudit },
+          strided,
+          types,
+          halfFloatConstants: {
+            CV_16F: encodeValue(undefined),
+            CV_16FC1: encodeValue(undefined),
+          },
+        };
+      }
+
       function auditPackageCountNonZeroType(packageCv, name, depth, channels, values) {
         let source;
         try {
@@ -2036,6 +2418,39 @@
         };
       }
 
+      function normalizeRepeatAudit(audit) {
+        const unstableInvalidCountLabels = new Set([
+          "negative two",
+          "negative fraction",
+          "negative subunit fraction",
+          "negative zero",
+          "zero",
+          "positive subunit fraction",
+          "i32 maximum",
+          "i32 minimum",
+          "NaN",
+          "false",
+        ]);
+        return {
+          ...audit,
+          counts: audit.counts.map((entry) =>
+            unstableInvalidCountLabels.has(entry.label)
+              ? {
+                  ...entry,
+                  audit: {
+                    ...entry.audit,
+                    call: { threw: entry.audit.call.threw },
+                  },
+                }
+              : entry,
+          ),
+          inPlace: {
+            ...audit.inPlace,
+            call: { threw: audit.inPlace.call.threw },
+          },
+        };
+      }
+
       function runReference(input, referenceRequest) {
         return new Promise((resolve, reject) => {
           const worker = new Worker("/test/browser/opencv-reference-worker.js");
@@ -2074,9 +2489,11 @@
           ? "transpose"
           : searchParameters.has("reference-flip")
             ? "flip"
-            : searchParameters.has("reference-count-non-zero")
-              ? "count-non-zero"
-              : undefined;
+            : searchParameters.has("reference-repeat")
+              ? "repeat"
+              : searchParameters.has("reference-count-non-zero")
+                ? "count-non-zero"
+                : undefined;
         const referenceOutputs = await runReference(input, referenceRequest);
         if (searchParameters.has("reference-transpose")) {
           packageSource.dispose();
@@ -2090,6 +2507,13 @@
           globalThis.flipReferenceAudit = referenceOutputs.flipAudit;
           result.style.whiteSpace = "pre-wrap";
           result.textContent = JSON.stringify(referenceOutputs.flipAudit, null, 2);
+          break differential;
+        }
+        if (searchParameters.has("reference-repeat")) {
+          packageSource.dispose();
+          globalThis.repeatReferenceAudit = referenceOutputs.repeatAudit;
+          result.style.whiteSpace = "pre-wrap";
+          result.textContent = JSON.stringify(referenceOutputs.repeatAudit, null, 2);
           break differential;
         }
         if (searchParameters.has("reference-count-non-zero")) {
@@ -2107,6 +2531,15 @@
         );
         if (flipDifference !== undefined) {
           throw new Error(flipDifference);
+        }
+        const packageRepeatAudit = auditPackageRepeat(packageCv);
+        const repeatDifference = findDifference(
+          normalizeRepeatAudit(packageRepeatAudit),
+          normalizeRepeatAudit(referenceOutputs.repeatAudit),
+          "repeat audit",
+        );
+        if (repeatDifference !== undefined) {
+          throw new Error(repeatDifference);
         }
         const packageTransposeAudit = auditPackageTranspose(packageCv);
         const transposeDifference = findDifference(
