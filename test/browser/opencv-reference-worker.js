@@ -3729,7 +3729,108 @@ function auditNumericContracts(reference) {
     }),
   );
 
-  return { contracts, dtype, scale, replacement, overlap, empty };
+  const auditMixedDepthCase = (configuration, operation, explicitDtype) => {
+    const left = makeSeedMat(reference, 2, 2, configuration.leftType, configuration.leftValues);
+    const right = makeSeedMat(reference, 2, 2, configuration.rightType, configuration.rightValues);
+    const destination = new reference.Mat();
+    const operationArguments = {
+      multiply: explicitDtype
+        ? [left, right, destination, 1, configuration.dtype]
+        : [left, right, destination],
+      divide: explicitDtype
+        ? [left, right, destination, 1, configuration.dtype]
+        : [left, right, destination],
+      addWeighted: explicitDtype
+        ? [left, 0.5, right, 2, 1, destination, configuration.dtype]
+        : [left, 0.5, right, 2, 1, destination],
+    }[operation];
+    const audit = auditTypedMatCall(
+      () => reference[operation](...operationArguments),
+      [
+        ["left", left],
+        ["right", right],
+        ["destination", destination],
+      ],
+    );
+    safeDelete(destination);
+    safeDelete(right);
+    safeDelete(left);
+    return { name: configuration.name, operation, explicitDtype, audit };
+  };
+  const mixedDepth = [
+    {
+      name: "U8-F32",
+      leftType: reference.CV_8UC1,
+      leftValues: [2, 10, 250, 5],
+      rightType: reference.CV_32FC1,
+      rightValues: [0.5, 4, -2, 0.25],
+      dtype: reference.CV_32F,
+    },
+    {
+      name: "I16-F64",
+      leftType: reference.CV_16SC1,
+      leftValues: [-300, 1000, 32_767, -32_768],
+      rightType: reference.CV_64FC1,
+      rightValues: [0.5, -2, 1.5, 2],
+      dtype: reference.CV_64F,
+    },
+  ].flatMap((configuration) =>
+    ["multiply", "divide", "addWeighted"].flatMap((operation) => [
+      auditMixedDepthCase(configuration, operation, false),
+      auditMixedDepthCase(configuration, operation, true),
+    ]),
+  );
+
+  const auditI32OverflowCase = (configuration, explicitDtype) => {
+    const left = makeSeedMat(reference, 2, 2, reference.CV_32SC1, configuration.leftValues);
+    const right = makeSeedMat(reference, 2, 2, reference.CV_32SC1, configuration.rightValues);
+    const destination = new reference.Mat();
+    const operationArguments = {
+      multiply: explicitDtype
+        ? [left, right, destination, 1, reference.CV_32S]
+        : [left, right, destination],
+      divide: explicitDtype
+        ? [left, right, destination, 1, reference.CV_32S]
+        : [left, right, destination],
+      addWeighted: explicitDtype
+        ? [left, 2, right, 1, 0, destination, reference.CV_32S]
+        : [left, 2, right, 1, 0, destination],
+    }[configuration.operation];
+    const audit = auditTypedMatCall(
+      () => reference[configuration.operation](...operationArguments),
+      [
+        ["left", left],
+        ["right", right],
+        ["destination", destination],
+      ],
+    );
+    safeDelete(destination);
+    safeDelete(right);
+    safeDelete(left);
+    return { operation: configuration.operation, explicitDtype, audit };
+  };
+  const i32Overflow = [
+    {
+      operation: "multiply",
+      leftValues: [2_147_483_647, 50_000, -2_147_483_648, -50_000],
+      rightValues: [2, 50_000, -1, 50_000],
+    },
+    {
+      operation: "divide",
+      leftValues: [2_147_483_647, -2_147_483_648, 7, -7],
+      rightValues: [1, -1, 2, 2],
+    },
+    {
+      operation: "addWeighted",
+      leftValues: [2_147_483_647, -2_147_483_648, 2_000_000_000, -2_000_000_000],
+      rightValues: [1, -1, 2_000_000_000, -2_000_000_000],
+    },
+  ].flatMap((configuration) => [
+    auditI32OverflowCase(configuration, false),
+    auditI32OverflowCase(configuration, true),
+  ]);
+
+  return { contracts, dtype, scale, replacement, overlap, empty, mixedDepth, i32Overflow };
 }
 
 function auditSetterCases(createDetector, setter, getter, cases) {
