@@ -158,34 +158,24 @@ impl AkazeConfig {
         Ok(())
     }
 
-    pub(crate) fn set_descriptor_size(&mut self, value: i32) -> Result<(), AkazeConfigError> {
-        validate_descriptor_size(value)?;
+    pub(crate) fn set_descriptor_size(&mut self, value: i32) {
         self.descriptor_size = value;
-        Ok(())
     }
 
-    pub(crate) fn set_descriptor_channels(&mut self, value: i32) -> Result<(), AkazeConfigError> {
-        validate_descriptor_channels(value)?;
+    pub(crate) fn set_descriptor_channels(&mut self, value: i32) {
         self.descriptor_channels = value;
-        Ok(())
     }
 
-    pub(crate) fn set_threshold(&mut self, value: f64) -> Result<(), AkazeConfigError> {
-        validate_threshold(value)?;
+    pub(crate) fn set_threshold(&mut self, value: f64) {
         self.threshold = value;
-        Ok(())
     }
 
-    pub(crate) fn set_octaves(&mut self, value: i32) -> Result<(), AkazeConfigError> {
-        validate_octaves(value)?;
+    pub(crate) fn set_octaves(&mut self, value: i32) {
         self.octaves = value;
-        Ok(())
     }
 
-    pub(crate) fn set_octave_layers(&mut self, value: i32) -> Result<(), AkazeConfigError> {
-        validate_octave_layers(value)?;
+    pub(crate) fn set_octave_layers(&mut self, value: i32) {
         self.octave_layers = value;
-        Ok(())
     }
 
     pub(crate) fn set_diffusivity(&mut self, value: i32) -> Result<(), AkazeConfigError> {
@@ -368,15 +358,11 @@ mod tests {
         let mut configuration = AkazeConfig::default();
 
         configuration.set_descriptor_type(2).expect("valid type");
-        configuration.set_descriptor_size(64).expect("valid size");
-        configuration
-            .set_descriptor_channels(1)
-            .expect("valid channels");
-        configuration.set_threshold(0.125).expect("valid threshold");
-        configuration.set_octaves(6).expect("valid octaves");
-        configuration
-            .set_octave_layers(8)
-            .expect("valid octave layers");
+        configuration.set_descriptor_size(64);
+        configuration.set_descriptor_channels(1);
+        configuration.set_threshold(0.125);
+        configuration.set_octaves(6);
+        configuration.set_octave_layers(8);
         configuration.set_diffusivity(3).expect("valid diffusivity");
 
         assert_eq!(configuration.descriptor_type(), 2);
@@ -389,7 +375,7 @@ mod tests {
     }
 
     #[test]
-    fn invalid_setters_leave_the_configuration_unchanged() {
+    fn enum_setters_reject_invalid_values_without_mutation() {
         let mut configuration = AkazeConfig::default();
 
         let before = configuration.clone();
@@ -400,39 +386,33 @@ mod tests {
         assert_eq!(configuration, before);
 
         assert_eq!(
-            configuration.set_descriptor_size(-8),
-            Err(AkazeConfigError::DescriptorSize(-8))
-        );
-        assert_eq!(configuration, before);
-
-        assert_eq!(
-            configuration.set_descriptor_channels(0),
-            Err(AkazeConfigError::DescriptorChannels(0))
-        );
-        assert_eq!(configuration, before);
-
-        assert_eq!(
-            configuration.set_threshold(f64::INFINITY),
-            Err(AkazeConfigError::Threshold)
-        );
-        assert_eq!(configuration, before);
-
-        assert_eq!(
-            configuration.set_octaves(-1),
-            Err(AkazeConfigError::Octaves(-1))
-        );
-        assert_eq!(configuration, before);
-
-        assert_eq!(
-            configuration.set_octave_layers(0),
-            Err(AkazeConfigError::OctaveLayers(0))
-        );
-        assert_eq!(configuration, before);
-
-        assert_eq!(
             configuration.set_diffusivity(-1),
             Err(AkazeConfigError::Diffusivity(-1))
         );
         assert_eq!(configuration, before);
+    }
+
+    #[test]
+    fn primitive_setters_preserve_the_complete_wasm_scalar_domain() {
+        let mut configuration = AkazeConfig::default();
+
+        for value in [i32::MIN, -1, 0, i32::MAX] {
+            configuration.set_descriptor_channels(value);
+            assert_eq!(configuration.descriptor_channels(), value);
+
+            configuration.set_descriptor_size(value);
+            assert_eq!(configuration.descriptor_size(), value);
+
+            configuration.set_octave_layers(value);
+            assert_eq!(configuration.octave_layers(), value);
+
+            configuration.set_octaves(value);
+            assert_eq!(configuration.octaves(), value);
+        }
+
+        for threshold in [-0.0, f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            configuration.set_threshold(threshold);
+            assert_eq!(configuration.threshold().to_bits(), threshold.to_bits());
+        }
     }
 }

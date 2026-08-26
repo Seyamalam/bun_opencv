@@ -105,47 +105,34 @@ impl Akaze {
             .map_err(JsError::from)
     }
 
-    /// # Errors
-    /// Returns an error without changing the handle when the size is negative.
+    /// Stores the signed 32-bit value produced by the JavaScript binding.
     #[wasm_bindgen(js_name = setDescriptorSize)]
-    pub fn set_descriptor_size(&mut self, value: i32) -> Result<(), JsError> {
-        self.configuration
-            .set_descriptor_size(value)
-            .map_err(JsError::from)
+    pub fn set_descriptor_size(&mut self, value: i32) {
+        self.configuration.set_descriptor_size(value);
     }
 
-    /// # Errors
-    /// Returns an error without changing the handle when the channel count is outside 1 through 3.
+    /// Stores the signed 32-bit value produced by the JavaScript binding.
     #[wasm_bindgen(js_name = setDescriptorChannels)]
-    pub fn set_descriptor_channels(&mut self, value: i32) -> Result<(), JsError> {
-        self.configuration
-            .set_descriptor_channels(value)
-            .map_err(JsError::from)
+    pub fn set_descriptor_channels(&mut self, value: i32) {
+        self.configuration.set_descriptor_channels(value);
     }
 
-    /// # Errors
-    /// Returns an error without changing the handle when the threshold is negative or non-finite.
+    /// Stores the double value produced by the JavaScript binding, including non-finite values.
     #[wasm_bindgen(js_name = setThreshold)]
-    pub fn set_threshold(&mut self, value: f64) -> Result<(), JsError> {
-        self.configuration
-            .set_threshold(value)
-            .map_err(JsError::from)
+    pub fn set_threshold(&mut self, value: f64) {
+        self.configuration.set_threshold(value);
     }
 
-    /// # Errors
-    /// Returns an error without changing the handle when the octave count is not positive.
+    /// Stores the signed 32-bit value produced by the JavaScript binding.
     #[wasm_bindgen(js_name = setNOctaves)]
-    pub fn set_octaves(&mut self, value: i32) -> Result<(), JsError> {
-        self.configuration.set_octaves(value).map_err(JsError::from)
+    pub fn set_octaves(&mut self, value: i32) {
+        self.configuration.set_octaves(value);
     }
 
-    /// # Errors
-    /// Returns an error without changing the handle when the layer count is not positive.
+    /// Stores the signed 32-bit value produced by the JavaScript binding.
     #[wasm_bindgen(js_name = setNOctaveLayers)]
-    pub fn set_octave_layers(&mut self, value: i32) -> Result<(), JsError> {
-        self.configuration
-            .set_octave_layers(value)
-            .map_err(JsError::from)
+    pub fn set_octave_layers(&mut self, value: i32) {
+        self.configuration.set_octave_layers(value);
     }
 
     /// # Errors
@@ -204,11 +191,11 @@ mod tests {
         assert_eq!(akaze.get_diffusivity(), 2);
 
         akaze.set_descriptor_type(3).expect("valid type");
-        akaze.set_descriptor_size(128).expect("valid size");
-        akaze.set_descriptor_channels(3).expect("valid channels");
-        akaze.set_threshold(0.1).expect("valid threshold");
-        akaze.set_octaves(7).expect("valid octaves");
-        akaze.set_octave_layers(8).expect("valid layers");
+        akaze.set_descriptor_size(128);
+        akaze.set_descriptor_channels(3);
+        akaze.set_threshold(0.1);
+        akaze.set_octaves(7);
+        akaze.set_octave_layers(8);
         akaze.set_diffusivity(3).expect("valid diffusivity");
 
         assert_eq!(akaze.get_descriptor_type(), 3);
@@ -218,5 +205,25 @@ mod tests {
         assert_eq!(akaze.get_octaves(), 7);
         assert_eq!(akaze.get_octave_layers(), 8);
         assert_eq!(akaze.get_diffusivity(), 3);
+    }
+
+    #[test]
+    fn primitive_setters_preserve_wasm_boundary_values() {
+        let mut akaze = Akaze::create(None, None, None, None, None, None, None, None)
+            .expect("documented defaults are valid");
+
+        akaze.set_descriptor_channels(i32::MIN);
+        akaze.set_descriptor_size(i32::MAX);
+        akaze.set_octave_layers(0);
+        akaze.set_octaves(-1);
+        assert_eq!(akaze.get_descriptor_channels(), i32::MIN);
+        assert_eq!(akaze.get_descriptor_size(), i32::MAX);
+        assert_eq!(akaze.get_octave_layers(), 0);
+        assert_eq!(akaze.get_octaves(), -1);
+
+        for threshold in [-0.0, f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            akaze.set_threshold(threshold);
+            assert_eq!(akaze.get_threshold().to_bits(), threshold.to_bits());
+        }
     }
 }
