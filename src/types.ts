@@ -36,8 +36,16 @@ export interface OpenCvBackend {
   matFromU16(data: Uint16Array, rows: number, columns: number, channels: number): WasmMatHandle;
   matFromU8(data: Uint8Array, rows: number, columns: number, channels: number): WasmMatHandle;
   matFlip(source: WasmMatHandle, flipCode: number): WasmMatHandle;
+  matFlipInto(source: WasmMatHandle, destination: WasmMatHandle, flipCode: number): void;
   matRotate(source: WasmMatHandle, rotateCode: number): WasmMatHandle;
+  matRotateInto(source: WasmMatHandle, destination: WasmMatHandle, rotateCode: number): void;
   matRepeat(source: WasmMatHandle, rowRepeats: number, columnRepeats: number): WasmMatHandle;
+  matRepeatInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    rowRepeats: number,
+    columnRepeats: number,
+  ): void;
   matAbsdiffU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matAddU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matBitwiseAndU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
@@ -58,6 +66,7 @@ export interface OpenCvBackend {
   matSubtractU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matSum(source: WasmMatHandle): Float64Array;
   matTranspose(source: WasmMatHandle): WasmMatHandle;
+  matTransposeInto(source: WasmMatHandle, destination: WasmMatHandle): void;
   matTrace(source: WasmMatHandle): number;
   matZerosF32(rows: number, columns: number, channels: number): WasmMatHandle;
   matZerosF64(rows: number, columns: number, channels: number): WasmMatHandle;
@@ -87,6 +96,7 @@ export interface OpenCv {
   compareEqual(left: Mat, right: Mat): Mat;
   countNonZero(source: Mat): number;
   flip(source: Mat, flipCode: -1 | 0 | 1): Mat;
+  flip(source: Mat, destination: Mat, flipCode: -1 | 0 | 1): void;
   grayscale(image: RgbaImage): RgbaImage;
   invert(image: RgbaImage): RgbaImage;
   matFromF32(rows: number, columns: number, channels: number, data: Float32Array): Mat;
@@ -103,11 +113,14 @@ export interface OpenCv {
   min(left: Mat, right: Mat): Mat;
   resizeNearest(image: RgbaImage, targetWidth: number, targetHeight: number): RgbaImage;
   repeat(source: Mat, rowRepeats: number, columnRepeats: number): Mat;
+  repeat(source: Mat, rowRepeats: number, columnRepeats: number, destination: Mat): void;
   rotate(source: Mat, rotateCode: 0 | 1 | 2): Mat;
+  rotate(source: Mat, destination: Mat, rotateCode: 0 | 1 | 2): void;
   threshold(image: RgbaImage, threshold: number): RgbaImage;
   subtract(left: Mat, right: Mat): Mat;
   sum(source: Mat): Scalar;
   transpose(source: Mat): Mat;
+  transpose(source: Mat, destination: Mat): void;
   trace(source: Mat): number;
   zerosF32(rows: number, columns: number, channels: number): Mat;
   zerosF64(rows: number, columns: number, channels: number): Mat;

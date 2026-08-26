@@ -141,6 +141,10 @@ class CopyingBackend implements OpenCvBackend {
     return new CopyingMatHandle(source.rows, source.columns, source.channels, output, source.depth);
   }
 
+  matFlipInto(source: WasmMatHandle, destination: WasmMatHandle, flipCode: number): void {
+    destination.copyFromBytes(this.matFlip(source, flipCode).toUint8Array());
+  }
+
   matAbsdiffU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle {
     return binaryU8(left, right, (leftValue, rightValue) => Math.abs(leftValue - rightValue));
   }
@@ -267,6 +271,10 @@ class CopyingBackend implements OpenCvBackend {
     return new CopyingMatHandle(source.columns, source.rows, source.channels, output, source.depth);
   }
 
+  matTransposeInto(source: WasmMatHandle, destination: WasmMatHandle): void {
+    destination.copyFromBytes(this.matTranspose(source).toUint8Array());
+  }
+
   matZerosU8(rows: number, columns: number, channels: number): WasmMatHandle {
     return new CopyingMatHandle(rows, columns, channels, new Uint8Array(rows * columns * channels));
   }
@@ -300,6 +308,10 @@ class CopyingBackend implements OpenCvBackend {
     return this.matFlip(transposed, rotateCode === 0 ? 1 : 0);
   }
 
+  matRotateInto(source: WasmMatHandle, destination: WasmMatHandle, rotateCode: number): void {
+    destination.copyFromBytes(this.matRotate(source, rotateCode).toUint8Array());
+  }
+
   matRepeat(source: WasmMatHandle, rowRepeats: number, columnRepeats: number): WasmMatHandle {
     const input = source.toUint8Array();
     const rows = source.rows * rowRepeats;
@@ -315,6 +327,15 @@ class CopyingBackend implements OpenCvBackend {
       }
     }
     return new CopyingMatHandle(rows, columns, source.channels, output, source.depth);
+  }
+
+  matRepeatInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    rowRepeats: number,
+    columnRepeats: number,
+  ): void {
+    destination.copyFromBytes(this.matRepeat(source, rowRepeats, columnRepeats).toUint8Array());
   }
 
   matZerosF64(rows: number, columns: number, channels: number): WasmMatHandle {
@@ -539,6 +560,14 @@ describe("OpenCv client", () => {
     const transposed = client.transpose(source);
     const clockwise = client.rotate(source, 0);
     const repeated = client.repeat(source, 2, 1);
+    const flippedDestination = client.zerosU8(2, 3, 1);
+    const transposedDestination = client.zerosU8(3, 2, 1);
+    const rotatedDestination = client.zerosU8(3, 2, 1);
+    const repeatedDestination = client.zerosU8(4, 3, 1);
+    client.flip(source, flippedDestination, 1);
+    client.transpose(source, transposedDestination);
+    client.rotate(source, rotatedDestination, 0);
+    client.repeat(source, 2, 1, repeatedDestination);
     expect(horizontal.toUint8Array()).toEqual(new Uint8Array([3, 2, 1, 6, 5, 4]));
     expect(transposed.rows).toBe(3);
     expect(transposed.columns).toBe(2);
@@ -548,6 +577,16 @@ describe("OpenCv client", () => {
     expect(clockwise.toUint8Array()).toEqual(new Uint8Array([4, 1, 5, 2, 6, 3]));
     expect(repeated.rows).toBe(4);
     expect(repeated.toUint8Array()).toEqual(new Uint8Array([1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6]));
+    expect(flippedDestination.toUint8Array()).toEqual(new Uint8Array([3, 2, 1, 6, 5, 4]));
+    expect(transposedDestination.toUint8Array()).toEqual(new Uint8Array([1, 4, 2, 5, 3, 6]));
+    expect(rotatedDestination.toUint8Array()).toEqual(new Uint8Array([4, 1, 5, 2, 6, 3]));
+    expect(repeatedDestination.toUint8Array()).toEqual(
+      new Uint8Array([1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6]),
+    );
+    repeatedDestination.dispose();
+    rotatedDestination.dispose();
+    transposedDestination.dispose();
+    flippedDestination.dispose();
     repeated.dispose();
     clockwise.dispose();
     transposed.dispose();

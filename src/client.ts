@@ -51,12 +51,32 @@ class WasmOpenCv implements OpenCv {
     return this.#backend.matCountNonZero(source.handleForBackend());
   }
 
-  flip(source: Mat, flipCode: -1 | 0 | 1): Mat {
-    return new Mat(this.#backend.matFlip(source.handleForBackend(), flipCode));
+  flip(source: Mat, flipCode: -1 | 0 | 1): Mat;
+  flip(source: Mat, destination: Mat, flipCode: -1 | 0 | 1): void;
+  flip(source: Mat, destinationOrCode: Mat | -1 | 0 | 1, flipCode?: -1 | 0 | 1): Mat | void {
+    if (destinationOrCode instanceof Mat) {
+      this.#backend.matFlipInto(
+        source.handleForBackend(),
+        destinationOrCode.handleForBackend(),
+        requiredCode(flipCode),
+      );
+      return;
+    }
+    return new Mat(this.#backend.matFlip(source.handleForBackend(), destinationOrCode));
   }
 
-  rotate(source: Mat, rotateCode: 0 | 1 | 2): Mat {
-    return new Mat(this.#backend.matRotate(source.handleForBackend(), rotateCode));
+  rotate(source: Mat, rotateCode: 0 | 1 | 2): Mat;
+  rotate(source: Mat, destination: Mat, rotateCode: 0 | 1 | 2): void;
+  rotate(source: Mat, destinationOrCode: Mat | 0 | 1 | 2, rotateCode?: 0 | 1 | 2): Mat | void {
+    if (destinationOrCode instanceof Mat) {
+      this.#backend.matRotateInto(
+        source.handleForBackend(),
+        destinationOrCode.handleForBackend(),
+        requiredCode(rotateCode),
+      );
+      return;
+    }
+    return new Mat(this.#backend.matRotate(source.handleForBackend(), destinationOrCode));
   }
 
   grayscale(image: RgbaImage): RgbaImage {
@@ -146,9 +166,20 @@ class WasmOpenCv implements OpenCv {
     return createRgbaImage(targetWidth, targetHeight, data);
   }
 
-  repeat(source: Mat, rowRepeats: number, columnRepeats: number): Mat {
+  repeat(source: Mat, rowRepeats: number, columnRepeats: number): Mat;
+  repeat(source: Mat, rowRepeats: number, columnRepeats: number, destination: Mat): void;
+  repeat(source: Mat, rowRepeats: number, columnRepeats: number, destination?: Mat): Mat | void {
     validateDimension(rowRepeats, "rowRepeats");
     validateDimension(columnRepeats, "columnRepeats");
+    if (destination !== undefined) {
+      this.#backend.matRepeatInto(
+        source.handleForBackend(),
+        destination.handleForBackend(),
+        rowRepeats,
+        columnRepeats,
+      );
+      return;
+    }
     return new Mat(this.#backend.matRepeat(source.handleForBackend(), rowRepeats, columnRepeats));
   }
 
@@ -167,7 +198,13 @@ class WasmOpenCv implements OpenCv {
     return scalarFromArray(this.#backend.matSum(source.handleForBackend()));
   }
 
-  transpose(source: Mat): Mat {
+  transpose(source: Mat): Mat;
+  transpose(source: Mat, destination: Mat): void;
+  transpose(source: Mat, destination?: Mat): Mat | void {
+    if (destination !== undefined) {
+      this.#backend.matTransposeInto(source.handleForBackend(), destination.handleForBackend());
+      return;
+    }
     return new Mat(this.#backend.matTranspose(source.handleForBackend()));
   }
 
@@ -258,6 +295,13 @@ function requiredFloat(values: Float64Array, index: number): number {
   const value = values[index];
   if (value === undefined) {
     throw new OpenCvInputError(`WASM result is missing lane ${index}`);
+  }
+  return value;
+}
+
+function requiredCode<T extends number>(value: T | undefined): T {
+  if (value === undefined) {
+    throw new OpenCvInputError("operation code is required when a destination is supplied");
   }
   return value;
 }
