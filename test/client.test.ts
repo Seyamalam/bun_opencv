@@ -2323,6 +2323,11 @@ describe("OpenCv client", () => {
     expect(() => javascriptClient.pointPolygonTest(contour, missingY, false)).toThrow(BindingError);
     expect(missingFieldReads).toEqual([]);
 
+    const arrayWithFields = Object.assign([], { x: 2, y: 1.5 });
+    const functionWithFields = Object.assign(() => undefined, { x: 2, y: 1.5 });
+    expect(javascriptClient.pointPolygonTest(contour, arrayWithFields, false)).toBe(1);
+    expect(javascriptClient.pointPolygonTest(contour, functionWithFields, false)).toBe(1);
+
     expect(
       javascriptClient.pointPolygonTest(
         contour,
@@ -2336,14 +2341,13 @@ describe("OpenCv client", () => {
     expect(nonFiniteInput?.measureDistance).toBeFalse();
 
     const boxedNumber: object = Object(1);
-    const arrayPoint = Object.assign([], { x: 1, y: 1 });
     const rejectedPoints: JavascriptBindingValue[] = [
       "point",
       null,
       undefined,
       boxedNumber,
       1n,
-      arrayPoint,
+      [1, 2],
       {},
       { x: 1 },
       { y: 1 },

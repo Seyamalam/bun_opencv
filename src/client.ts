@@ -1206,7 +1206,7 @@ function point2fForBinding(value: EmbindPointInput): Point {
 
 function isEmbindPointObject(value: EmbindPointInput): value is EmbindPointObject {
   // oxlint-disable-next-line anti-slop/no-runtime-typeof -- This is the JS-to-Embind Point2f parser boundary.
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return value !== null && (typeof value === "object" || typeof value === "function");
 }
 
 function toWasmF32(value: EmbindPointInput): number {
