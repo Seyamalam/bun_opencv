@@ -15,6 +15,8 @@ mod core_norm;
 mod core_norm_wasm;
 mod core_numeric;
 mod core_ops;
+mod core_random;
+mod core_random_wasm;
 mod core_reductions;
 mod core_reductions_wasm;
 mod core_stats;
