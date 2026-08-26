@@ -418,6 +418,67 @@ impl Mat {
         Ok(true)
     }
 
+    pub(crate) fn try_write_shared_rotate(
+        &self,
+        source: &Self,
+        rotate_code: i32,
+    ) -> Result<bool, MatError> {
+        let source_header = source.header.borrow();
+        let destination_header = self.header.borrow();
+        let compatible_shape = match rotate_code {
+            0 | 2 => {
+                destination_header.rows == source_header.columns
+                    && destination_header.columns == source_header.rows
+            }
+            1 => {
+                destination_header.rows == source_header.rows
+                    && destination_header.columns == source_header.columns
+            }
+            _ => return Ok(false),
+        };
+        let compatible = compatible_shape
+            && destination_header.channels == source_header.channels
+            && destination_header.depth == source_header.depth;
+        if !compatible {
+            return Ok(false);
+        }
+
+        let Some(source_storage) = source_header.storage.as_ref() else {
+            return Ok(false);
+        };
+        let Some(destination_storage) = destination_header.storage.as_ref() else {
+            return Ok(false);
+        };
+        if !source_storage.shares_allocation_with(destination_storage)
+            || source_storage.describes_same_view_as(destination_storage)
+        {
+            return Ok(false);
+        }
+
+        let pixel_bytes = usize::from(source_header.channels)
+            .checked_mul(source_header.depth.byte_width())
+            .ok_or(MatError::BufferSizeOverflow)?;
+        match rotate_code {
+            0 => {
+                destination_storage.write_transpose_from_shared(source_storage, pixel_bytes)?;
+                destination_storage
+                    .write_horizontal_flip_from_shared(destination_storage, pixel_bytes)?;
+            }
+            1 => {
+                destination_storage.write_vertical_flip_from_shared(source_storage, pixel_bytes)?;
+                destination_storage
+                    .write_horizontal_flip_from_shared(destination_storage, pixel_bytes)?;
+            }
+            2 => {
+                destination_storage.write_transpose_from_shared(source_storage, pixel_bytes)?;
+                destination_storage
+                    .write_vertical_flip_from_shared(destination_storage, pixel_bytes)?;
+            }
+            _ => unreachable!("invalid rotate code returned before storage traversal"),
+        }
+        Ok(true)
+    }
+
     pub(crate) fn try_write_shared_repeat(
         &self,
         source: &Self,

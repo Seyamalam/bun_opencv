@@ -177,6 +177,12 @@ pub fn mat_rotate_into(source: &Mat, destination: &Mat, rotate_code: i32) -> Res
         }
         return Ok(());
     }
+    if destination
+        .try_write_shared_rotate(source, rotate_code)
+        .map_err(JsError::from)?
+    {
+        return Ok(());
+    }
     apply_layout_into(source, destination, |matrix| {
         rotate_bytes(matrix, rotate_code)
     })
@@ -745,6 +751,45 @@ mod tests {
         mat_flip_into(&source, &destination, -1).expect("flip overlapping regions");
 
         assert_eq!(destination.to_u8_array(), [7, 7, 2, 1]);
+    }
+
+    #[test]
+    fn rotate_matches_opencv_live_composition_for_overlapping_regions() {
+        for rotate_code in [0, 2] {
+            let parent = u8_matrix((1..=36).collect(), 6, 6, 1);
+            let source = parent.roi(0, 0, 2, 3).expect("valid source region");
+            let destination = parent
+                .roi(0, 1, 3, 2)
+                .expect("valid overlapping destination region");
+
+            mat_rotate_into(&source, &destination, rotate_code).expect("rotate overlapping region");
+
+            assert_eq!(destination.to_u8_array(), [7, 1, 1, 1, 1, 7]);
+            assert_eq!(
+                parent.to_u8_array(),
+                [
+                    1, 7, 1, 4, 5, 6, 7, 1, 1, 10, 11, 12, 13, 1, 7, 16, 17, 18, 19, 20, 21, 22,
+                    23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36
+                ]
+            );
+        }
+
+        let parent = u8_matrix((1..=36).collect(), 6, 6, 1);
+        let source = parent.roi(0, 0, 2, 3).expect("valid source region");
+        let destination = parent
+            .roi(0, 1, 2, 3)
+            .expect("valid overlapping destination region");
+
+        mat_rotate_into(&source, &destination, 1).expect("rotate overlapping region");
+
+        assert_eq!(destination.to_u8_array(), [7, 1, 7, 1, 7, 1]);
+        assert_eq!(
+            parent.to_u8_array(),
+            [
+                1, 7, 1, 7, 5, 6, 7, 1, 7, 1, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36
+            ]
+        );
     }
 
     #[test]
