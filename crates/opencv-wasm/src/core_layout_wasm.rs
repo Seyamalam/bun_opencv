@@ -156,6 +156,10 @@ pub fn mat_transpose_into(source: &Mat, destination: &Mat) -> Result<(), JsError
 /// allocated.
 #[wasm_bindgen(js_name = matRotate)]
 pub fn mat_rotate(source: &Mat, rotate_code: i32) -> Result<Mat, JsError> {
+    if source.rows() == 0 && source.columns() == 0 {
+        validate_rotate_code(rotate_code).map_err(JsError::from)?;
+        return Ok(Mat::empty_output());
+    }
     apply_layout(source, |matrix| rotate_bytes(matrix, rotate_code)).map_err(JsError::from)
 }
 
@@ -166,10 +170,24 @@ pub fn mat_rotate(source: &Mat, rotate_code: i32) -> Result<Mat, JsError> {
 /// Returns an error for an invalid rotation code or output allocation failure.
 #[wasm_bindgen(js_name = matRotateInto)]
 pub fn mat_rotate_into(source: &Mat, destination: &Mat, rotate_code: i32) -> Result<(), JsError> {
+    if source.rows() == 0 && source.columns() == 0 {
+        validate_rotate_code(rotate_code).map_err(JsError::from)?;
+        if destination.rows() != 0 || destination.columns() != 0 {
+            destination.write_empty_output();
+        }
+        return Ok(());
+    }
     apply_layout_into(source, destination, |matrix| {
         rotate_bytes(matrix, rotate_code)
     })
     .map_err(JsError::from)
+}
+
+fn validate_rotate_code(rotate_code: i32) -> Result<(), LayoutWasmError> {
+    match rotate_code {
+        0..=2 => Ok(()),
+        code => Err(LayoutError::InvalidRotateCode(code).into()),
+    }
 }
 
 /// Tiles a matrix by positive row and column repeat counts.
@@ -465,6 +483,30 @@ mod tests {
         mat_flip_into(&source, &destination, 1).expect("flip empty into destination");
 
         for output in [&allocated, &destination] {
+            assert_eq!(
+                (output.rows(), output.columns(), output.channels()),
+                (0, 0, 1)
+            );
+            assert_eq!(output.depth(), MatDepth::U8);
+            assert!(output.is_continuous());
+            assert!(output.to_u8_array().is_empty());
+        }
+    }
+
+    #[test]
+    fn rotate_preserves_a_fresh_empty_destination_but_releases_a_populated_one() {
+        let source = crate::mat::mat_empty();
+        let allocated = mat_rotate(&source, 0).expect("rotate empty matrix");
+        let fresh_destination = crate::mat::mat_empty();
+        let populated_destination = u8_matrix(vec![1, 2, 3, 4], 2, 2, 1);
+
+        mat_rotate_into(&source, &fresh_destination, 0)
+            .expect("rotate empty into fresh empty destination");
+        mat_rotate_into(&source, &populated_destination, 0)
+            .expect("rotate empty into populated destination");
+
+        assert!(!fresh_destination.is_continuous());
+        for output in [&allocated, &populated_destination] {
             assert_eq!(
                 (output.rows(), output.columns(), output.channels()),
                 (0, 0, 1)
