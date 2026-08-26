@@ -122,22 +122,16 @@ impl KazeConfig {
         self.upright = value;
     }
 
-    pub(crate) fn set_threshold(&mut self, value: f64) -> Result<(), KazeConfigError> {
-        validate_threshold(value)?;
+    pub(crate) fn set_threshold(&mut self, value: f64) {
         self.threshold = value;
-        Ok(())
     }
 
-    pub(crate) fn set_octaves(&mut self, value: i32) -> Result<(), KazeConfigError> {
-        validate_octaves(value)?;
+    pub(crate) fn set_octaves(&mut self, value: i32) {
         self.octaves = value;
-        Ok(())
     }
 
-    pub(crate) fn set_octave_layers(&mut self, value: i32) -> Result<(), KazeConfigError> {
-        validate_octave_layers(value)?;
+    pub(crate) fn set_octave_layers(&mut self, value: i32) {
         self.octave_layers = value;
-        Ok(())
     }
 
     pub(crate) fn set_diffusivity(&mut self, value: i32) -> Result<(), KazeConfigError> {
@@ -231,6 +225,20 @@ mod tests {
             ),
             (
                 KazeParameters {
+                    threshold: f64::INFINITY,
+                    ..defaults
+                },
+                KazeConfigError::Threshold,
+            ),
+            (
+                KazeParameters {
+                    threshold: f64::NEG_INFINITY,
+                    ..defaults
+                },
+                KazeConfigError::Threshold,
+            ),
+            (
+                KazeParameters {
                     octaves: 0,
                     ..defaults
                 },
@@ -238,10 +246,24 @@ mod tests {
             ),
             (
                 KazeParameters {
+                    octaves: -1,
+                    ..defaults
+                },
+                KazeConfigError::Octaves(-1),
+            ),
+            (
+                KazeParameters {
                     octave_layers: 0,
                     ..defaults
                 },
                 KazeConfigError::OctaveLayers(0),
+            ),
+            (
+                KazeParameters {
+                    octave_layers: -1,
+                    ..defaults
+                },
+                KazeConfigError::OctaveLayers(-1),
             ),
             (
                 KazeParameters {
@@ -263,13 +285,9 @@ mod tests {
 
         configuration.set_extended(true);
         configuration.set_upright(true);
-        configuration
-            .set_threshold(-0.125)
-            .expect("finite thresholds are preserved");
-        configuration.set_octaves(6).expect("valid octaves");
-        configuration
-            .set_octave_layers(8)
-            .expect("valid octave layers");
+        configuration.set_threshold(-0.125);
+        configuration.set_octaves(6);
+        configuration.set_octave_layers(8);
         configuration.set_diffusivity(3).expect("valid diffusivity");
 
         assert!(configuration.extended());
@@ -281,27 +299,34 @@ mod tests {
     }
 
     #[test]
-    fn invalid_setters_leave_the_configuration_unchanged() {
+    fn primitive_setters_preserve_the_complete_wasm_scalar_domain() {
         let mut configuration = KazeConfig::default();
 
+        for value in [
+            -0.0,
+            f64::NAN,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+            f64::MIN,
+            f64::MAX,
+        ] {
+            configuration.set_threshold(value);
+            assert_eq!(configuration.threshold().to_bits(), value.to_bits());
+        }
+
+        for value in [i32::MIN, -1, 0, i32::MAX] {
+            configuration.set_octaves(value);
+            assert_eq!(configuration.octaves(), value);
+
+            configuration.set_octave_layers(value);
+            assert_eq!(configuration.octave_layers(), value);
+        }
+    }
+
+    #[test]
+    fn invalid_diffusivity_setter_leaves_the_configuration_unchanged() {
+        let mut configuration = KazeConfig::default();
         let before = configuration.clone();
-        assert_eq!(
-            configuration.set_threshold(f64::INFINITY),
-            Err(KazeConfigError::Threshold)
-        );
-        assert_eq!(configuration, before);
-
-        assert_eq!(
-            configuration.set_octaves(-1),
-            Err(KazeConfigError::Octaves(-1))
-        );
-        assert_eq!(configuration, before);
-
-        assert_eq!(
-            configuration.set_octave_layers(0),
-            Err(KazeConfigError::OctaveLayers(0))
-        );
-        assert_eq!(configuration, before);
 
         assert_eq!(
             configuration.set_diffusivity(-1),

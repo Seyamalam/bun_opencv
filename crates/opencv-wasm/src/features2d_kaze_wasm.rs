@@ -97,24 +97,18 @@ impl Kaze {
     }
 
     #[wasm_bindgen(js_name = setNOctaveLayers)]
-    pub fn set_octave_layers(&mut self, value: i32) -> Result<(), JsError> {
-        self.configuration
-            .set_octave_layers(value)
-            .map_err(JsError::from)
+    pub fn set_octave_layers(&mut self, value: i32) {
+        self.configuration.set_octave_layers(value);
     }
 
     #[wasm_bindgen(js_name = setNOctaves)]
-    pub fn set_octaves(&mut self, value: i32) -> Result<(), JsError> {
-        self.configuration.set_octaves(value).map_err(JsError::from)
+    pub fn set_octaves(&mut self, value: i32) {
+        self.configuration.set_octaves(value);
     }
 
     #[wasm_bindgen(js_name = setThreshold)]
-    /// # Errors
-    /// Returns an error without changing the handle when the threshold is non-finite.
-    pub fn set_threshold(&mut self, value: f64) -> Result<(), JsError> {
-        self.configuration
-            .set_threshold(value)
-            .map_err(JsError::from)
+    pub fn set_threshold(&mut self, value: f64) {
+        self.configuration.set_threshold(value);
     }
 
     #[wasm_bindgen(js_name = setUpright)]
@@ -166,9 +160,9 @@ mod tests {
 
         kaze.set_extended(false);
         kaze.set_upright(false);
-        kaze.set_threshold(0.1).expect("valid threshold");
-        kaze.set_octaves(7).expect("valid octaves");
-        kaze.set_octave_layers(8).expect("valid layers");
+        kaze.set_threshold(0.1);
+        kaze.set_octaves(7);
+        kaze.set_octave_layers(8);
         kaze.set_diffusivity(3).expect("valid diffusivity");
 
         assert!(!kaze.get_extended());
@@ -177,5 +171,24 @@ mod tests {
         assert_eq!(kaze.get_octaves(), 7);
         assert_eq!(kaze.get_octave_layers(), 8);
         assert_eq!(kaze.get_diffusivity(), 3);
+    }
+
+    #[test]
+    fn exported_instance_setters_preserve_the_complete_wasm_scalar_domain() {
+        let mut kaze = Kaze::create(None, None, None, None, None, None)
+            .expect("documented defaults are valid");
+
+        for value in [-0.0, f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            kaze.set_threshold(value);
+            assert_eq!(kaze.get_threshold().to_bits(), value.to_bits());
+        }
+
+        for value in [i32::MIN, -1, 0, i32::MAX] {
+            kaze.set_octaves(value);
+            assert_eq!(kaze.get_octaves(), value);
+
+            kaze.set_octave_layers(value);
+            assert_eq!(kaze.get_octave_layers(), value);
+        }
     }
 }
