@@ -30,6 +30,8 @@ mod core_transform_wasm;
 mod core_wasm;
 mod features2d_akaze;
 mod features2d_akaze_wasm;
+mod features2d_kaze;
+mod features2d_kaze_wasm;
 mod features2d_threshold_detectors;
 mod features2d_threshold_detectors_wasm;
 mod imgproc_border;
