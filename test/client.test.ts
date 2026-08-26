@@ -2405,6 +2405,22 @@ describe("OpenCv client", () => {
         'Passing a number "2147483648" from JS side to C/C++ side to an argument of type "int", which is outside the valid range [-2147483648, 2147483647]!',
       ),
     );
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a null Mat from plain JavaScript.
+      client.flip(null, destination, 1);
+    }).toThrow(new BindingError("null is not a valid Mat"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing an undefined Mat from plain JavaScript.
+      client.flip(undefined, destination, 1);
+    }).toThrow(new TypeError("Cannot read properties of undefined (reading '$$')"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a structural object from plain JavaScript.
+      client.flip({}, destination, 1);
+    }).toThrow(new BindingError('Cannot pass "[object Object]" as a Mat'));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a null destination from plain JavaScript.
+      client.flip(source, null, 1);
+    }).toThrow(new BindingError("null is not a valid Mat"));
 
     destination.dispose();
     source.dispose();

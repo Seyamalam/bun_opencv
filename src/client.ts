@@ -356,8 +356,8 @@ class WasmOpenCv implements OpenCv {
   flip(source: Mat, destination: Mat, flipCode: number): void {
     requireExactArity(arguments.length, 3, "flip");
     this.#backend.matFlipInto(
-      source.handleForBackend(),
-      destination.handleForBackend(),
+      matHandleForBinding(source),
+      matHandleForBinding(destination),
       toWasmI32(flipCode),
     );
   }
@@ -1099,6 +1099,19 @@ function toWasmI32(value: EmbindScalarInput): number {
     );
   }
   return value | 0;
+}
+
+function matHandleForBinding(value: Mat): ReturnType<Mat["handleForBackend"]> {
+  if (value === null) {
+    throw new BindingError("null is not a valid Mat");
+  }
+  if (value === undefined) {
+    throw new TypeError("Cannot read properties of undefined (reading '$$')");
+  }
+  if (!(value instanceof Mat)) {
+    throw new BindingError(`Cannot pass "${String(value)}" as a Mat`);
+  }
+  return value.handleForBackend();
 }
 
 function requireExactArity(actual: number, expected: number, method: string): void {
