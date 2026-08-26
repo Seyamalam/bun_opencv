@@ -1026,37 +1026,37 @@
       "implementationOrigin": "original",
       "method": "exp",
       "module": "core",
-      "notes": "F32/F64 matrices returning a new matrix; destination mutation remains.",
+      "notes": "Exact two-argument F32/F64 browser contract with typed empty matrices, destination replacement, detached or shared regions, live overlapping traversal, deleted handles, and IEEE edge values.",
       "patentReview": "required",
       "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
-      "status": "partial",
+      "status": "implemented",
       "upstream": "cv.exp",
       "upstreamId": "core.function.exp",
-      "wasmExport": "matExp"
+      "wasmExport": "matExpInto"
     },
     {
       "implementationOrigin": "original",
       "method": "log",
       "module": "core",
-      "notes": "F32/F64 natural logarithm returning a new matrix; destination mutation remains.",
+      "notes": "Exact two-argument F32/F64 browser contract with typed empty matrices, destination replacement, detached or shared regions, live overlapping traversal, deleted handles, and IEEE edge values.",
       "patentReview": "required",
       "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
-      "status": "partial",
+      "status": "implemented",
       "upstream": "cv.log",
       "upstreamId": "core.function.log",
-      "wasmExport": "matLog"
+      "wasmExport": "matLogInto"
     },
     {
       "implementationOrigin": "original",
       "method": "magnitude",
       "module": "core",
-      "notes": "Matching F32/F64 matrix inputs returning a new matrix; destination mutation remains.",
+      "notes": "Exact three-argument F32/F64 browser contract with matching inputs, destination replacement, exact or overlapping aliases to either input, deleted handles, and direct-square overflow, underflow, NaN, infinity, and signed-zero behavior.",
       "patentReview": "required",
       "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
-      "status": "partial",
+      "status": "implemented",
       "upstream": "cv.magnitude",
       "upstreamId": "core.function.magnitude",
-      "wasmExport": "matMagnitude"
+      "wasmExport": "matMagnitudeInto"
     },
     {
       "implementationOrigin": "original",
@@ -1074,25 +1074,25 @@
       "implementationOrigin": "original",
       "method": "pow",
       "module": "core",
-      "notes": "F32/F64 matrices with a finite scalar exponent; destination mutation remains.",
+      "notes": "Exact three-argument browser contract with Embind F64 exponent conversion, all seven scalar depths for valid powers, typed empty matrices, destination replacement, live aliases, integer saturation or wrapping, and pinned floating-point edge behavior. Unsafe native integer outputs for fractional and non-finite powers are excluded and rejected safely.",
       "patentReview": "required",
       "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
-      "status": "partial",
+      "status": "implemented",
       "upstream": "cv.pow",
       "upstreamId": "core.function.pow",
-      "wasmExport": "matPow"
+      "wasmExport": "matPowInto"
     },
     {
       "implementationOrigin": "original",
       "method": "sqrt",
       "module": "core",
-      "notes": "F32/F64 square root returning a new matrix; destination mutation remains.",
+      "notes": "Exact two-argument F32/F64 browser contract with typed and canonical empty matrices, destination replacement, detached or shared regions, live overlapping traversal, deleted handles, and IEEE edge values. Unsafe native integer output is excluded and rejected safely.",
       "patentReview": "required",
       "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
-      "status": "partial",
+      "status": "implemented",
       "upstream": "cv.sqrt",
       "upstreamId": "core.function.sqrt",
-      "wasmExport": "matSqrt"
+      "wasmExport": "matSqrtInto"
     },
     {
       "implementationOrigin": "original",

@@ -57,10 +57,15 @@ interface AuditedBindingForm {
 
 const AUDITED_BINDING_FORMS: Readonly<Record<string, AuditedBindingForm>> = Object.freeze({
   "core.function.count-non-zero": { overloadCount: 1, runtimeArity: 1 },
+  "core.function.exp": { overloadCount: 1, runtimeArity: 2 },
   "core.function.flip": { overloadCount: 1, runtimeArity: 3 },
   "core.function.get-optimal-dftsize": { overloadCount: 1, runtimeArity: 1 },
+  "core.function.log": { overloadCount: 1, runtimeArity: 2 },
+  "core.function.magnitude": { overloadCount: 1, runtimeArity: 3 },
+  "core.function.pow": { overloadCount: 1, runtimeArity: 3 },
   "core.function.repeat": { overloadCount: 1, runtimeArity: 4 },
   "core.function.rotate": { overloadCount: 1, runtimeArity: 3 },
+  "core.function.sqrt": { overloadCount: 1, runtimeArity: 2 },
   "core.function.transpose": { overloadCount: 1, runtimeArity: 2 },
   "features2d.akaze.get-default-name": { overloadCount: 1, runtimeArity: 0 },
   "features2d.akaze.get-descriptor-channels": { overloadCount: 1, runtimeArity: 0 },

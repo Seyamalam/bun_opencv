@@ -25,7 +25,7 @@ Desktop modules that the official OpenCV.js build disables are outside this pari
 
 ## Fully implemented families
 
-Sixty-one families meet the full-family definition. Current full parity is 61 of 488, or 12.50%.
+Sixty-six families meet the full-family definition. Current full parity is 66 of 488, or 13.52%.
 
 | Package methods                                                                                                   | OpenCV.js families                              | Verified contract                                                          |
 | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------- |
@@ -56,6 +56,7 @@ Sixty-one families meet the full-family definition. Current full parity is 61 of
 | `AgastFeatureDetector.getType`, `AgastFeatureDetector.setType`                                                    | Matching enum-backed `cv.AgastFeatureDetector`  | Canonical identity, structural conversion, raw i32 state, and lifecycle    |
 | `FastFeatureDetector.getType`, `FastFeatureDetector.setType`                                                      | Matching enum-backed `cv.FastFeatureDetector`   | Canonical identity, structural conversion, raw i32 state, and lifecycle    |
 | `getOptimalDFTSize`                                                                                               | `cv.getOptimalDFTSize`                          | Exact arity, i32 coercion, smooth results, errors, and sentinel            |
+| `exp`, `log`, `sqrt`, `pow`, `magnitude`                                                                          | Matching `cv` float-math families               | Exact destinations, depths, aliases, empties, errors, and numeric edges    |
 | `transpose`                                                                                                       | `cv.transpose`                                  | Exact all-depth OutputArray, aliasing, empty, arity, and lifetime behavior |
 | `flip`                                                                                                            | `cv.flip`                                       | Exact all-depth OutputArray, signed codes, aliasing, errors, and lifetime  |
 | `countNonZero`                                                                                                    | `cv.countNonZero`                               | Exact all-depth scalar reduction, empty, ROI, errors, and lifetime         |
@@ -64,7 +65,7 @@ Sixty-one families meet the full-family definition. Current full parity is 61 of
 
 ## Working partial families
 
-Sixty-eight families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 129 families in total.
+Sixty-three families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 129 families in total.
 
 | Package methods                                        | OpenCV.js families                                                    | Current limit                                            |
 | ------------------------------------------------------ | --------------------------------------------------------------------- | -------------------------------------------------------- |
@@ -73,7 +74,6 @@ Sixty-eight families have useful original Rust/WASM slices but do not meet the f
 | `compareEqual`, `inRange`                              | `cv.compare`, `cv.inRange`                                            | Selected U8 forms                                        |
 | `split`, `merge`                                       | `cv.split`, `cv.merge`                                                | All depths; selected array call forms                    |
 | `hconcat`, `vconcat`                                   | `cv.hconcat`, `cv.vconcat`                                            | All depths; two through four inputs                      |
-| `exp`, `log`, `sqrt`, `pow`, `magnitude`               | Matching `cv` floating-point families                                 | F32/F64; selected return forms                           |
 | `cartToPolar`, `polarToCart`                           | `cv.cartToPolar`, `cv.polarToCart`                                    | F32/F64 with mutable paired outputs                      |
 | `multiply`, `divide`, `addWeighted`, `convertScaleAbs` | Matching `cv` numeric families                                        | All depths; selected matrix forms                        |
 | `copyMakeBorder`                                       | `cv.copyMakeBorder`                                                   | All depths and five border modes                         |

@@ -94,12 +94,15 @@ Channel operations preserve raw scalar bytes for all seven depths and compact st
 
 ### Floating-point math
 
-- `exp(source)`, `log(source)`, `sqrt(source)`, and `pow(source, exponent)` apply element-wise math and return a new matrix.
-- `magnitude(x, y)` computes vector length element by element.
+- `exp(source, destination)`, `log(source, destination)`, and `sqrt(source, destination)` write element-wise results into exact mutable destinations. `expAlloc`, `logAlloc`, and `sqrtAlloc` allocate package-convenience outputs.
+- `pow(source, exponent, destination)` writes element-wise powers into an exact mutable destination. `powAlloc` is the allocating convenience form.
+- `magnitude(x, y, destination)` writes vector lengths into an exact mutable destination. `magnitudeAlloc` is the allocating convenience form.
 - `cartToPolar(x, y, magnitude, angle, degrees)` writes lengths and angles into exact mutable destinations.
 - `polarToCart(magnitude, angle, x, y, degrees)` writes cartesian components into exact mutable destinations.
 
-These methods accept F32 and F64 matrices, including strided regions. The optional `degrees` argument defaults to `false`. Results follow Rust and WebAssembly IEEE 754 behavior; parity fixtures use declared tolerances because optimized OpenCV kernels may use different approximations.
+`exp`, `log`, `sqrt`, and `magnitude` accept F32 and F64 matrices. `pow` accepts every scalar depth for valid integer powers and F32/F64 for the complete F64 exponent domain. The exact forms replace incompatible destinations, write through compatible regions, and traverse overlapping shared storage in pinned row-major order. Typed empty headers retain their rows, columns, channels, and depth. The package safely rejects integer `sqrt` and non-integral or non-finite integer `pow` calls because the pinned artifact exposes unsafe or uninitialized output for those inputs.
+
+`cartToPolar` and `polarToCart` accept F32 and F64 matrices, including strided regions. Their optional `degrees` argument defaults to `false`.
 
 ### Typed numeric operations
 
