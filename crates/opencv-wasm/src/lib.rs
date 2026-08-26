@@ -4,10 +4,10 @@ use std::{error::Error, fmt};
 
 use wasm_bindgen::prelude::*;
 
-mod core_channels;
-mod core_channels_wasm;
 mod core_algebra;
 mod core_algebra_wasm;
+mod core_channels;
+mod core_channels_wasm;
 mod core_float_math;
 mod core_float_math_wasm;
 mod core_layout;
@@ -30,6 +30,8 @@ mod core_transform_wasm;
 mod core_wasm;
 mod features2d_akaze;
 mod features2d_akaze_wasm;
+mod features2d_threshold_detectors;
+mod features2d_threshold_detectors_wasm;
 mod imgproc_border;
 mod imgproc_border_wasm;
 mod imgproc_geometry;
