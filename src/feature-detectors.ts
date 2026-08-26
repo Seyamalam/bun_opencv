@@ -266,7 +266,7 @@ function fastTypeFromNumber(value: number): FastFeatureDetectorType {
 }
 
 function validateDetectorThreshold(value: number, name: string): void {
-  if (!Number.isSafeInteger(value) || value < 0 || value > 255) {
-    throw new OpenCvInputError(`${name} must be an integer between 0 and 255`);
+  if (!Number.isSafeInteger(value) || value < -2_147_483_648 || value > 2_147_483_647) {
+    throw new OpenCvInputError(`${name} must be a signed 32-bit integer`);
   }
 }

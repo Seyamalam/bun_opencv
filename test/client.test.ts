@@ -2280,10 +2280,10 @@ describe("OpenCv client", () => {
     expect(detector.getNonmaxSuppression()).toBe(AGAST_FEATURE_DETECTOR_DEFAULTS.nonmaxSuppression);
     expect(detector.getType()).toBe(AGAST_FEATURE_DETECTOR_DEFAULTS.type);
 
-    detector.setThreshold(23);
+    detector.setThreshold(-1);
     detector.setNonmaxSuppression(false);
     detector.setType(AgastFeatureDetectorType.AGAST_7_12s);
-    expect(detector.getThreshold()).toBe(23);
+    expect(detector.getThreshold()).toBe(-1);
     expect(detector.getNonmaxSuppression()).toBe(false);
     expect(detector.getType()).toBe(AgastFeatureDetectorType.AGAST_7_12s);
 
@@ -2296,12 +2296,18 @@ describe("OpenCv client", () => {
   test("rejects invalid AgastFeatureDetector configuration before calling WASM", () => {
     const localClient = createOpenCv(new CopyingBackend());
 
-    expect(() => localClient.createAgastFeatureDetector({ threshold: -1 })).toThrow(
+    expect(() => localClient.createAgastFeatureDetector({ threshold: -2_147_483_649 })).toThrow(
       OpenCvInputError,
     );
-    const detector = localClient.createAgastFeatureDetector();
+    expect(() => localClient.createAgastFeatureDetector({ threshold: 2_147_483_648 })).toThrow(
+      OpenCvInputError,
+    );
+    const detector = localClient.createAgastFeatureDetector({ threshold: -2_147_483_648 });
+    expect(detector.getThreshold()).toBe(-2_147_483_648);
+    detector.setThreshold(2_147_483_647);
+    expect(detector.getThreshold()).toBe(2_147_483_647);
     expect(() => detector.setThreshold(1.5)).toThrow(OpenCvInputError);
-    expect(detector.getThreshold()).toBe(AGAST_FEATURE_DETECTOR_DEFAULTS.threshold);
+    expect(detector.getThreshold()).toBe(2_147_483_647);
     detector.dispose();
   });
 
@@ -2315,10 +2321,10 @@ describe("OpenCv client", () => {
     expect(detector.getNonmaxSuppression()).toBe(FAST_FEATURE_DETECTOR_DEFAULTS.nonmaxSuppression);
     expect(detector.getType()).toBe(FAST_FEATURE_DETECTOR_DEFAULTS.type);
 
-    detector.setThreshold(31);
+    detector.setThreshold(256);
     detector.setNonmaxSuppression(false);
     detector.setType(FastFeatureDetectorType.TYPE_7_12);
-    expect(detector.getThreshold()).toBe(31);
+    expect(detector.getThreshold()).toBe(256);
     expect(detector.getNonmaxSuppression()).toBe(false);
     expect(detector.getType()).toBe(FastFeatureDetectorType.TYPE_7_12);
 
@@ -2331,12 +2337,18 @@ describe("OpenCv client", () => {
   test("rejects invalid FastFeatureDetector configuration before calling WASM", () => {
     const localClient = createOpenCv(new CopyingBackend());
 
-    expect(() => localClient.createFastFeatureDetector({ threshold: 256 })).toThrow(
+    expect(() => localClient.createFastFeatureDetector({ threshold: -2_147_483_649 })).toThrow(
       OpenCvInputError,
     );
-    const detector = localClient.createFastFeatureDetector();
+    expect(() => localClient.createFastFeatureDetector({ threshold: 2_147_483_648 })).toThrow(
+      OpenCvInputError,
+    );
+    const detector = localClient.createFastFeatureDetector({ threshold: -2_147_483_648 });
+    expect(detector.getThreshold()).toBe(-2_147_483_648);
+    detector.setThreshold(2_147_483_647);
+    expect(detector.getThreshold()).toBe(2_147_483_647);
     expect(() => detector.setThreshold(Number.NaN)).toThrow(OpenCvInputError);
-    expect(detector.getThreshold()).toBe(FAST_FEATURE_DETECTOR_DEFAULTS.threshold);
+    expect(detector.getThreshold()).toBe(2_147_483_647);
     detector.dispose();
   });
 
