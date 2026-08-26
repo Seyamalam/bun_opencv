@@ -3934,6 +3934,240 @@ function auditContourContracts(reference) {
   };
 }
 
+function auditPolygonContracts(reference) {
+  const i32Rectangle = [0, 0, 4, 0, 4, 3, 0, 3];
+  const f32Rectangle = [0.25, -1.5, 4.75, -1.5, 4.75, 2.25, 0.25, 2.25];
+  const createMat = (rows, columns, type, values) =>
+    reference.matFromArray(rows, columns, type, values);
+  const auditOperations = (contour, point = { x: 2, y: 1 }) => ({
+    convex: captureCall(() => reference.isContourConvex(contour)),
+    classify: captureCall(() => reference.pointPolygonTest(contour, point, false)),
+    distance: captureCall(() => reference.pointPolygonTest(contour, point, true)),
+  });
+  const auditMat = (name, rows, columns, type, values, point) => {
+    const contour = createMat(rows, columns, type, values);
+    const operations = auditOperations(contour, point);
+    safeDelete(contour);
+    return { name, operations };
+  };
+  const auditConvexCase = (name, values) => {
+    const contour = createMat(values.length / 2, 1, reference.CV_32SC2, values);
+    const call = captureCall(() => reference.isContourConvex(contour));
+    safeDelete(contour);
+    return { name, call };
+  };
+  const auditQuery = (contour, label, x, y) => ({
+    label,
+    point: [encodeValue(x), encodeValue(y)],
+    classify: captureCall(() => reference.pointPolygonTest(contour, { x, y }, false)),
+    distance: captureCall(() => reference.pointPolygonTest(contour, { x, y }, true)),
+  });
+
+  const arityContour = createMat(4, 1, reference.CV_32SC2, i32Rectangle);
+  const arityPoint = new reference.Point(2, 1);
+  const arity = {
+    lengths: {
+      isContourConvex: reference.isContourConvex.length,
+      pointPolygonTest: reference.pointPolygonTest.length,
+    },
+    isContourConvex: {
+      zero: captureCall(() => reference.isContourConvex()),
+      one: captureCall(() => reference.isContourConvex(arityContour)),
+      two: captureCall(() => reference.isContourConvex(arityContour, 1)),
+    },
+    pointPolygonTest: {
+      zero: captureCall(() => reference.pointPolygonTest()),
+      one: captureCall(() => reference.pointPolygonTest(arityContour)),
+      two: captureCall(() => reference.pointPolygonTest(arityContour, arityPoint)),
+      three: captureCall(() => reference.pointPolygonTest(arityContour, arityPoint, false)),
+      four: captureCall(() => reference.pointPolygonTest(arityContour, arityPoint, false, 1)),
+    },
+  };
+  safeDelete(arityContour);
+
+  const truthinessContour = createMat(4, 1, reference.CV_32SC2, i32Rectangle);
+  const truthinessPoint = new reference.Point(2, 1.5);
+  const truthiness = [
+    ["false", false],
+    ["true", true],
+    ["zero", 0],
+    ["one", 1],
+    ["NaN", Number.NaN],
+    ["empty string", ""],
+    ["zero string", "0"],
+    ["null", null],
+    ["explicit undefined", undefined],
+    ["object", {}],
+  ].map(([label, value]) => ({
+    label,
+    input: encodeValue(value),
+    call: captureCall(() => reference.pointPolygonTest(truthinessContour, truthinessPoint, value)),
+  }));
+  safeDelete(truthinessContour);
+
+  const pointContour = createMat(4, 1, reference.CV_32SC2, i32Rectangle);
+  const pointConversion = [
+    ["Point2f", new reference.Point(2, 1.5)],
+    ["plain", { x: 2, y: 1.5 }],
+    ["array with fields", Object.assign([2, 1], { x: 2, y: 1.5 })],
+    ["function with fields", Object.assign(() => undefined, { x: 2, y: 1.5 })],
+    ["boolean x", { x: true, y: 1 }],
+    ["numeric string", { x: "2", y: 1 }],
+    ["missing y", { x: 2 }],
+    ["array", [2, 1]],
+    ["extra field", { x: 2, y: 1.5, z: 9 }],
+  ].map(([name, point]) => ({
+    name,
+    call: captureCall(() => reference.pointPolygonTest(pointContour, point, true)),
+  }));
+  const nonFiniteQuery = {
+    classify: captureCall(() =>
+      reference.pointPolygonTest(pointContour, { x: Number.NaN, y: 1 }, false),
+    ),
+    distance: captureCall(() =>
+      reference.pointPolygonTest(pointContour, { x: Number.NaN, y: 1 }, true),
+    ),
+  };
+  safeDelete(pointContour);
+
+  const largeContour = createMat(
+    4,
+    1,
+    reference.CV_32SC2,
+    [16_777_216, 0, 16_777_220, 0, 16_777_220, 4, 16_777_216, 4],
+  );
+  const float32PointBoundary = [
+    16_777_216, 16_777_217, 16_777_218, 16_777_219, 16_777_220, 16_777_221,
+  ].map((x) => auditQuery(largeContour, String(x), x, 2));
+  safeDelete(largeContour);
+
+  const acceptedLayouts = [
+    auditMat("I32 Nx1C2", 4, 1, reference.CV_32SC2, i32Rectangle),
+    auditMat("I32 1xNC2", 1, 4, reference.CV_32SC2, i32Rectangle),
+    auditMat("I32 Nx2C1", 4, 2, reference.CV_32SC1, i32Rectangle),
+    auditMat("F32 Nx1C2", 4, 1, reference.CV_32FC2, f32Rectangle),
+    auditMat("F32 1xNC2", 1, 4, reference.CV_32FC2, f32Rectangle),
+    auditMat("F32 Nx2C1", 4, 2, reference.CV_32FC1, f32Rectangle),
+  ];
+  const rejectedInputs = [
+    auditMat("F64 Nx1C2", 4, 1, reference.CV_64FC2, f32Rectangle),
+    auditMat("U8 Nx1C2", 4, 1, reference.CV_8UC2, i32Rectangle),
+    auditMat("I32 2x2C2", 2, 2, reference.CV_32SC2, i32Rectangle),
+  ];
+  const stridedParent = createMat(
+    4,
+    2,
+    reference.CV_32SC2,
+    [99, 99, 0, 0, 99, 99, 4, 0, 99, 99, 4, 3, 99, 99, 0, 3],
+  );
+  const stridedContour = stridedParent.roi(new reference.Rect(1, 0, 1, 4));
+  const strided = auditOperations(stridedContour);
+  safeDelete(stridedContour);
+  safeDelete(stridedParent);
+
+  const canonicalEmpty = new reference.Mat();
+  const empty = { canonical: auditOperations(canonicalEmpty) };
+  safeDelete(canonicalEmpty);
+  const typedEmpty = new reference.Mat(0, 0, reference.CV_32SC2);
+  empty.typed = auditOperations(typedEmpty);
+  safeDelete(typedEmpty);
+
+  const deletedContour = createMat(4, 1, reference.CV_32SC2, i32Rectangle);
+  deletedContour.delete();
+  const deleted = auditOperations(deletedContour);
+
+  const convexCases = [
+    auditConvexCase("counter-clockwise rectangle", i32Rectangle),
+    auditConvexCase("clockwise rectangle", [0, 0, 0, 3, 4, 3, 4, 0]),
+    auditConvexCase("concave", [0, 0, 4, 0, 4, 4, 2, 2, 0, 4]),
+    auditConvexCase("all collinear", [0, 0, 2, 0, 4, 0]),
+    auditConvexCase("edge collinear", [0, 0, 2, 0, 4, 0, 4, 3, 0, 3]),
+    auditConvexCase("adjacent duplicate", [0, 0, 4, 0, 4, 0, 4, 3, 0, 3]),
+    auditConvexCase("repeated closing point", [0, 0, 4, 0, 4, 3, 0, 3, 0, 0]),
+    auditConvexCase("self crossing", [0, 0, 4, 3, 0, 3, 4, 0]),
+    auditConvexCase("one point", [0, 0]),
+    auditConvexCase("two points", [0, 0, 4, 0]),
+  ];
+
+  const onePoint = createMat(1, 1, reference.CV_32SC2, [0, 0]);
+  const twoPoints = createMat(2, 1, reference.CV_32SC2, [0, 0, 4, 0]);
+  const smallContours = {
+    one: [auditQuery(onePoint, "outside", 2, 1)],
+    two: [auditQuery(twoPoints, "on segment", 2, 0), auditQuery(twoPoints, "off segment", 2, 1)],
+  };
+  safeDelete(twoPoints);
+  safeDelete(onePoint);
+
+  const rectangle = createMat(4, 1, reference.CV_32SC2, i32Rectangle);
+  const clockwiseRectangle = createMat(4, 1, reference.CV_32SC2, [0, 0, 0, 3, 4, 3, 4, 0]);
+  const concave = createMat(5, 1, reference.CV_32SC2, [0, 0, 4, 0, 4, 4, 2, 2, 0, 4]);
+  const reverseConcave = createMat(5, 1, reference.CV_32SC2, [0, 4, 2, 2, 4, 4, 4, 0, 0, 0]);
+  const classificationDistance = {
+    rectangle: [
+      auditQuery(rectangle, "inside", 2, 1.5),
+      auditQuery(rectangle, "edge", 2, 0),
+      auditQuery(rectangle, "vertex", 0, 0),
+      auditQuery(rectangle, "outside", 5, 1),
+      auditQuery(rectangle, "diagonal outside", -3, -4),
+    ],
+    clockwiseInside: auditQuery(clockwiseRectangle, "inside", 2, 1.5),
+    concave: [
+      auditQuery(concave, "inside", 2, 1),
+      auditQuery(concave, "notch outside", 2, 3),
+      auditQuery(concave, "notch boundary", 3, 3),
+    ],
+  };
+  const rectangleBoundaryPoints = [
+    ["bottom edge", 2, 0],
+    ["right edge", 4, 1.5],
+    ["top edge", 2, 3],
+    ["left edge", 0, 1.5],
+    ["bottom-left vertex", 0, 0],
+    ["bottom-right vertex", 4, 0],
+    ["top-right vertex", 4, 3],
+    ["top-left vertex", 0, 3],
+  ];
+  const boundaryZeroSigns = {
+    counterClockwiseRectangle: rectangleBoundaryPoints.map(([label, x, y]) =>
+      auditQuery(rectangle, label, x, y),
+    ),
+    clockwiseRectangle: rectangleBoundaryPoints.map(([label, x, y]) =>
+      auditQuery(clockwiseRectangle, label, x, y),
+    ),
+    concaveForward: [
+      auditQuery(concave, "right notch diagonal", 3, 3),
+      auditQuery(concave, "left notch diagonal", 1, 3),
+      auditQuery(concave, "notch vertex", 2, 2),
+    ],
+    concaveReverse: [
+      auditQuery(reverseConcave, "right notch diagonal", 3, 3),
+      auditQuery(reverseConcave, "left notch diagonal", 1, 3),
+      auditQuery(reverseConcave, "notch vertex", 2, 2),
+    ],
+  };
+  safeDelete(reverseConcave);
+  safeDelete(concave);
+  safeDelete(clockwiseRectangle);
+  safeDelete(rectangle);
+
+  return {
+    arity,
+    truthiness,
+    pointConversion,
+    nonFiniteQuery,
+    float32PointBoundary,
+    acceptedLayouts,
+    rejectedInputs,
+    strided,
+    empty,
+    deleted,
+    convexCases,
+    smallContours,
+    classificationDistance,
+    boundaryZeroSigns,
+  };
+}
+
 function auditSetterCases(createDetector, setter, getter, cases) {
   return cases.map(([label, value]) => {
     const detector = createDetector();
@@ -4653,6 +4887,10 @@ self.addEventListener("message", async ({ data: input }) => {
       self.postMessage({ outputs: { contourAudit: auditContourContracts(reference) } });
       return;
     }
+    if (request === "polygon-contracts") {
+      self.postMessage({ outputs: { polygonAudit: auditPolygonContracts(reference) } });
+      return;
+    }
     const source = reference.matFromArray(2, 3, reference.CV_8UC1, sourceInput);
     const outputs = {};
     const operations = [
@@ -4832,6 +5070,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.coordinateAudit = auditCoordinateConversions(reference);
     outputs.numericAudit = auditNumericContracts(reference);
     outputs.contourAudit = auditContourContracts(reference);
+    outputs.polygonAudit = auditPolygonContracts(reference);
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });
