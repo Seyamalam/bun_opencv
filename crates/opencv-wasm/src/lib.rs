@@ -21,6 +21,8 @@ mod core_random;
 mod core_random_wasm;
 mod core_reductions;
 mod core_reductions_wasm;
+mod core_runtime;
+mod core_runtime_wasm;
 mod core_stats;
 mod core_stats_wasm;
 mod core_transform;
