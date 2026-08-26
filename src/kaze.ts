@@ -1,5 +1,11 @@
 import { KAZEDiffusivity } from "./akaze.js";
-import { OpenCvInputError } from "./error.js";
+import { BindingError, OpenCvInputError } from "./error.js";
+
+interface EmbindObjectInput {
+  toString(): string;
+}
+
+type EmbindScalarInput = boolean | number | EmbindObjectInput | string | null | undefined;
 
 /** Optional configuration accepted by `OpenCv.createKAZE`. */
 export interface KAZEOptions {
@@ -61,6 +67,7 @@ export class KAZE {
   }
 
   getDefaultName(): string {
+    requireExactArity(arguments.length, 0, "KAZE.getDefaultName");
     return this.#owned().getDefaultName();
   }
 
@@ -69,23 +76,28 @@ export class KAZE {
   }
 
   getExtended(): boolean {
-    return this.#owned().getExtended();
+    requireExactArity(arguments.length, 0, "KAZE.getExtended");
+    return this.#ownedConst().getExtended();
   }
 
   getNOctaveLayers(): number {
-    return this.#owned().getNOctaveLayers();
+    requireExactArity(arguments.length, 0, "KAZE.getNOctaveLayers");
+    return this.#ownedConst().getNOctaveLayers();
   }
 
   getNOctaves(): number {
-    return this.#owned().getNOctaves();
+    requireExactArity(arguments.length, 0, "KAZE.getNOctaves");
+    return this.#ownedConst().getNOctaves();
   }
 
   getThreshold(): number {
-    return this.#owned().getThreshold();
+    requireExactArity(arguments.length, 0, "KAZE.getThreshold");
+    return this.#ownedConst().getThreshold();
   }
 
   getUpright(): boolean {
-    return this.#owned().getUpright();
+    requireExactArity(arguments.length, 0, "KAZE.getUpright");
+    return this.#ownedConst().getUpright();
   }
 
   setDiffusivity(value: KAZEDiffusivity): void {
@@ -94,26 +106,36 @@ export class KAZE {
   }
 
   setExtended(value: boolean): void {
-    this.#owned().setExtended(value);
+    requireExactArity(arguments.length, 1, "KAZE.setExtended");
+    this.#owned().setExtended(toWasmBoolean(value));
   }
 
   setNOctaveLayers(value: number): void {
-    validatePositiveI32(value, "KAZE octave layer count");
-    this.#owned().setNOctaveLayers(value);
+    requireExactArity(arguments.length, 1, "KAZE.setNOctaveLayers");
+    this.#owned().setNOctaveLayers(toWasmI32(value));
   }
 
   setNOctaves(value: number): void {
-    validatePositiveI32(value, "KAZE octave count");
-    this.#owned().setNOctaves(value);
+    requireExactArity(arguments.length, 1, "KAZE.setNOctaves");
+    this.#owned().setNOctaves(toWasmI32(value));
   }
 
   setThreshold(value: number): void {
-    validateThreshold(value);
-    this.#owned().setThreshold(value);
+    requireExactArity(arguments.length, 1, "KAZE.setThreshold");
+    this.#owned().setThreshold(toWasmF64(value));
   }
 
   setUpright(value: boolean): void {
-    this.#owned().setUpright(value);
+    requireExactArity(arguments.length, 1, "KAZE.setUpright");
+    this.#owned().setUpright(toWasmBoolean(value));
+  }
+
+  /** Releases the WASM handle with OpenCV.js-compatible repeated-delete behavior. */
+  delete(): void {
+    if (this.#handle === undefined) {
+      throw new BindingError("KAZE instance already deleted");
+    }
+    this.dispose();
   }
 
   /** Releases the WASM handle. Repeated calls do nothing. */
@@ -129,7 +151,15 @@ export class KAZE {
   #owned(): WasmKAZEHandle {
     const handle = this.#handle;
     if (handle === undefined) {
-      throw new OpenCvInputError("KAZE has been disposed");
+      throw new BindingError("Cannot pass deleted object as a pointer of type KAZE");
+    }
+    return handle;
+  }
+
+  #ownedConst(): WasmKAZEHandle {
+    const handle = this.#handle;
+    if (handle === undefined) {
+      throw new BindingError("Cannot pass deleted object as a pointer of type KAZE const*");
     }
     return handle;
   }
@@ -182,5 +212,42 @@ function validateThreshold(value: number): void {
 function validatePositiveI32(value: number, name: string): void {
   if (!Number.isSafeInteger(value) || value <= 0 || value > 2_147_483_647) {
     throw new OpenCvInputError(`${name} must be a positive signed 32-bit integer`);
+  }
+}
+
+function toWasmI32(value: EmbindScalarInput): number {
+  if (value === true) return 1;
+  if (value === false) return 0;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- This is the JS-to-Embind scalar parser boundary.
+  if (typeof value !== "number") {
+    throw new TypeError(`Cannot convert "${String(value)}" to int`);
+  }
+  if (value < -2_147_483_648 || value > 2_147_483_647) {
+    throw new TypeError(
+      `Passing a number "${String(value)}" from JS side to C/C++ side to an argument of type "int", which is outside the valid range [-2147483648, 2147483647]!`,
+    );
+  }
+  return value | 0;
+}
+
+function toWasmF64(value: EmbindScalarInput): number {
+  if (value === true) return 1;
+  if (value === false) return 0;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- This is the JS-to-Embind scalar parser boundary.
+  if (typeof value !== "number") {
+    throw new TypeError(`Cannot convert "${String(value)}" to double`);
+  }
+  return value;
+}
+
+function toWasmBoolean(value: EmbindScalarInput): boolean {
+  return Boolean(value);
+}
+
+function requireExactArity(actual: number, expected: number, method: string): void {
+  if (actual !== expected) {
+    throw new BindingError(
+      `function ${method} called with ${actual} arguments, expected ${expected} args!`,
+    );
   }
 }

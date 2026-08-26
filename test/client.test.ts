@@ -371,23 +371,14 @@ class CopyingKAZEHandle implements WasmKAZEHandle {
   }
 
   setNOctaveLayers(value: number): void {
-    if (!Number.isInteger(value) || value <= 0) {
-      throw new OpenCvInputError("invalid KAZE octave layer count");
-    }
     this.#octaveLayers = value;
   }
 
   setNOctaves(value: number): void {
-    if (!Number.isInteger(value) || value <= 0) {
-      throw new OpenCvInputError("invalid KAZE octave count");
-    }
     this.#octaves = value;
   }
 
   setThreshold(value: number): void {
-    if (!Number.isFinite(value)) {
-      throw new OpenCvInputError("invalid KAZE threshold");
-    }
     this.#threshold = value;
   }
 
@@ -2727,7 +2718,7 @@ describe("OpenCv client", () => {
     expect(backend.kazeFreeCount).toBe(1);
     kaze.dispose();
     expect(backend.kazeFreeCount).toBe(1);
-    expect(() => kaze.getThreshold()).toThrow(OpenCvInputError);
+    expect(() => kaze.getThreshold()).toThrow(BindingError);
   });
 
   test("creates and mutates an explicit KAZE configuration", () => {
@@ -2762,7 +2753,7 @@ describe("OpenCv client", () => {
     expect(kaze.getDiffusivity()).toBe(KAZEDiffusivity.CHARBONNIER);
 
     kaze.dispose();
-    expect(() => kaze.setExtended(true)).toThrow(OpenCvInputError);
+    expect(() => kaze.setExtended(true)).toThrow(BindingError);
   });
 
   test("rejects invalid KAZE configuration before calling WASM", () => {
@@ -2772,11 +2763,11 @@ describe("OpenCv client", () => {
     expect(() => localClient.createKAZE({ octaves: 0 })).toThrow(OpenCvInputError);
     expect(() => localClient.createKAZE({ octaveLayers: 2_147_483_648 })).toThrow(OpenCvInputError);
     const kaze = localClient.createKAZE();
-    expect(() => kaze.setNOctaves(1.5)).toThrow(OpenCvInputError);
-    expect(() => kaze.setThreshold(Number.POSITIVE_INFINITY)).toThrow(OpenCvInputError);
+    kaze.setNOctaves(1.5);
+    kaze.setThreshold(Number.POSITIVE_INFINITY);
     expect(kaze.getDiffusivity()).toBe(KAZE_DEFAULTS.diffusivity);
-    expect(kaze.getNOctaves()).toBe(KAZE_DEFAULTS.octaves);
-    expect(kaze.getThreshold()).toBe(KAZE_DEFAULTS.threshold);
+    expect(kaze.getNOctaves()).toBe(1);
+    expect(kaze.getThreshold()).toBe(Number.POSITIVE_INFINITY);
     kaze.dispose();
   });
 });
