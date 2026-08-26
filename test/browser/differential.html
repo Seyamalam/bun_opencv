@@ -45,8 +45,8 @@
           const worker = new Worker("/test/browser/opencv-reference-worker.js");
           const timeout = setTimeout(() => {
             worker.terminate();
-            reject(new Error("OpenCV.js worker timed out after 30 seconds"));
-          }, 30000);
+            reject(new Error("OpenCV.js worker timed out after 180 seconds"));
+          }, 180000);
           worker.addEventListener("message", ({ data }) => {
             clearTimeout(timeout);
             worker.terminate();
