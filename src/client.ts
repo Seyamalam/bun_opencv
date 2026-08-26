@@ -10,6 +10,7 @@ import type {
   BorderType,
   DecompositionMethod,
   HanningWindowDepth,
+  LogLevel,
   MinMaxLocation,
   NormalizeType,
   NormType,
@@ -302,6 +303,15 @@ class WasmOpenCv implements OpenCv {
         destination.handleForBackend(),
       ),
     );
+  }
+
+  getLogLevel(): LogLevel {
+    return logLevelFromNumber(this.#backend.getLogLevel());
+  }
+
+  getOptimalDFTSize(size: number): number {
+    validateSignedInteger(size, "size");
+    return this.#backend.getOptimalDFTSize(size);
   }
 
   getPerspectiveTransform(source: Mat, destination: Mat): Mat {
@@ -694,6 +704,10 @@ class WasmOpenCv implements OpenCv {
     this.#backend.matSetIdentity(destination.handleForBackend(), validatedScalar(value, "value"));
   }
 
+  setLogLevel(level: LogLevel): LogLevel {
+    return logLevelFromNumber(this.#backend.setLogLevel(level));
+  }
+
   setRNGSeed(seed: number): void {
     if (!Number.isSafeInteger(seed) || seed < -2_147_483_648 || seed > 2_147_483_647) {
       throw new OpenCvInputError("seed must be a signed 32-bit integer");
@@ -927,6 +941,21 @@ function requiredCode<T extends number>(value: T | undefined): T {
     throw new OpenCvInputError("operation code is required when a destination is supplied");
   }
   return value;
+}
+
+function logLevelFromNumber(value: number): LogLevel {
+  switch (value) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+      return value;
+    default:
+      throw new OpenCvInputError(`WASM log level ${value} is outside 0 through 6`);
+  }
 }
 
 function validateChannelIndex(channel: number): void {

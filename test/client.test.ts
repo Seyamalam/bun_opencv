@@ -246,6 +246,7 @@ function writeMeanStdDev(
 }
 
 class CopyingBackend implements OpenCvBackend {
+  #logLevel = 3;
   #randomState = 0;
 
   clipLine(
@@ -332,6 +333,21 @@ class CopyingBackend implements OpenCvBackend {
           );
     });
     return new CopyingMatHandle(rows, columns, 1, output);
+  }
+
+  getLogLevel(): number {
+    return this.#logLevel;
+  }
+
+  getOptimalDFTSize(size: number): number {
+    for (let candidate = Math.max(size, 1); candidate <= 2_125_764_000; candidate += 1) {
+      let remainder = candidate;
+      for (const factor of [2, 3, 5]) {
+        while (remainder % factor === 0) remainder /= factor;
+      }
+      if (remainder === 1) return candidate;
+    }
+    return -1;
   }
 
   grayscaleRgba(data: Uint8Array): Uint8Array {
@@ -1311,6 +1327,12 @@ class CopyingBackend implements OpenCvBackend {
     this.#randomState = seed;
   }
 
+  setLogLevel(level: number): number {
+    const previous = this.#logLevel;
+    this.#logLevel = level;
+    return previous;
+  }
+
   resizeNearestRgba(
     _data: Uint8Array,
     _width: number,
@@ -1506,6 +1528,16 @@ describe("OpenCv client", () => {
 
     expect(() => client.setRNGSeed(2 ** 31)).toThrow(OpenCvInputError);
     for (const matrix of [normal, second, first, identity]) matrix.dispose();
+  });
+
+  test("controls logging and computes optimal DFT sizes", () => {
+    const initial = client.getLogLevel();
+    expect(client.setLogLevel(5)).toBe(initial);
+    expect(client.getLogLevel()).toBe(5);
+    expect(client.setLogLevel(initial)).toBe(5);
+    expect(client.getOptimalDFTSize(7)).toBe(8);
+    expect(client.getOptimalDFTSize(25)).toBe(25);
+    expect(() => client.getOptimalDFTSize(2 ** 31)).toThrow(OpenCvInputError);
   });
 
   test("applies linear and perspective transforms", () => {

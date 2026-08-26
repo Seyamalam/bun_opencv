@@ -46,6 +46,9 @@ export type StructuringElementKind = 0 | 1 | 2;
 /** Floating-point depths supported by Hanning windows. */
 export type HanningWindowDepth = "f32" | "f64";
 
+/** OpenCV-compatible log severity from silent through verbose. */
+export type LogLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
 /** Extrema and first row-major locations returned by `minMaxLoc`. */
 export interface MinMaxLocation {
   readonly maxLoc: Point;
@@ -84,6 +87,8 @@ export interface OpenCvBackend {
     anchorX: number,
     anchorY: number,
   ): WasmMatHandle;
+  getLogLevel(): number;
+  getOptimalDFTSize(size: number): number;
   grayscaleRgba(data: Uint8Array, width: number, height: number): Uint8Array;
   invertRgba(data: Uint8Array, width: number, height: number): Uint8Array;
   matFromF32(data: Float32Array, rows: number, columns: number, channels: number): WasmMatHandle;
@@ -321,6 +326,7 @@ export interface OpenCvBackend {
   matZerosU16(rows: number, columns: number, channels: number): WasmMatHandle;
   matZerosU8(rows: number, columns: number, channels: number): WasmMatHandle;
   setRNGSeed(seed: number): void;
+  setLogLevel(level: number): number;
   resizeNearestRgba(
     data: Uint8Array,
     width: number,
@@ -380,6 +386,8 @@ export interface OpenCv {
     sources: readonly [Mat, Mat] | readonly [Mat, Mat, Mat] | readonly [Mat, Mat, Mat, Mat],
   ): Mat;
   getAffineTransform(source: Mat, destination: Mat): Mat;
+  getLogLevel(): LogLevel;
+  getOptimalDFTSize(size: number): number;
   getPerspectiveTransform(source: Mat, destination: Mat): Mat;
   getRotationMatrix2D(center: Point, angleDegrees: number, scale: number): Mat;
   getStructuringElement(kind: StructuringElementKind, size: Size, anchor?: Point): Mat;
@@ -434,6 +442,7 @@ export interface OpenCv {
   rotate(source: Mat, rotateCode: 0 | 1 | 2): Mat;
   rotate(source: Mat, destination: Mat, rotateCode: 0 | 1 | 2): void;
   setIdentity(destination: Mat, value?: Scalar): void;
+  setLogLevel(level: LogLevel): LogLevel;
   setRNGSeed(seed: number): void;
   solve(
     coefficients: Mat,
