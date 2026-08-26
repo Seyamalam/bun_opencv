@@ -1,5 +1,11 @@
 import { BindingError, OpenCvInputError } from "./error.js";
 
+interface EmbindObjectInput {
+  toString(): string;
+}
+
+type EmbindScalarInput = boolean | number | EmbindObjectInput | string | null | undefined;
+
 /** Optional configuration accepted by `OpenCv.createGFTTDetector`. */
 export interface GFTTDetectorOptions {
   readonly blockSize?: number;
@@ -101,12 +107,12 @@ export class GFTTDetector {
 
   setHarrisDetector(value: boolean): void {
     requireExactArity(arguments.length, 1, "GFTTDetector.setHarrisDetector");
-    this.#owned().setHarrisDetector(toWasmI32(value) !== 0);
+    this.#owned().setHarrisDetector(toWasmBoolean(value));
   }
 
   setK(value: number): void {
     requireExactArity(arguments.length, 1, "GFTTDetector.setK");
-    this.#owned().setK(value);
+    this.#owned().setK(toWasmF64(value));
   }
 
   setMaxFeatures(value: number): void {
@@ -116,12 +122,12 @@ export class GFTTDetector {
 
   setMinDistance(value: number): void {
     requireExactArity(arguments.length, 1, "GFTTDetector.setMinDistance");
-    this.#owned().setMinDistance(value);
+    this.#owned().setMinDistance(toWasmF64(value));
   }
 
   setQualityLevel(value: number): void {
     requireExactArity(arguments.length, 1, "GFTTDetector.setQualityLevel");
-    this.#owned().setQualityLevel(value);
+    this.#owned().setQualityLevel(toWasmF64(value));
   }
 
   /** Releases the WASM handle with OpenCV.js-compatible repeated-delete behavior. */
@@ -174,14 +180,41 @@ function validateSignedI32(value: number, name: string): void {
   }
 }
 
-function toWasmI32(value: number | boolean): number {
+function toWasmI32(value: EmbindScalarInput): number {
   if (value === true) {
     return 1;
   }
   if (value === false) {
     return 0;
   }
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- This is the JS-to-Embind scalar parser boundary.
+  if (typeof value !== "number") {
+    throw new TypeError(`Cannot convert "${String(value)}" to int`);
+  }
+  if (value < -2_147_483_648 || value > 2_147_483_647) {
+    throw new TypeError(
+      `Passing a number "${String(value)}" from JS side to C/C++ side to an argument of type "int", which is outside the valid range [-2147483648, 2147483647]!`,
+    );
+  }
   return value | 0;
+}
+
+function toWasmF64(value: EmbindScalarInput): number {
+  if (value === true) {
+    return 1;
+  }
+  if (value === false) {
+    return 0;
+  }
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- This is the JS-to-Embind scalar parser boundary.
+  if (typeof value !== "number") {
+    throw new TypeError(`Cannot convert "${String(value)}" to double`);
+  }
+  return value;
+}
+
+function toWasmBoolean(value: EmbindScalarInput): boolean {
+  return Boolean(value);
 }
 
 function requireExactArity(actual: number, expected: number, method: string): void {

@@ -2700,9 +2700,13 @@ describe("OpenCv client", () => {
     expect(() => localClient.createGFTTDetector({ blockSize: 1.5 })).toThrow(OpenCvInputError);
     const detector = localClient.createGFTTDetector();
     expect(detector.setMaxFeatures(Number.NaN)).toBeUndefined();
-    expect(detector.setBlockSize(Number.POSITIVE_INFINITY)).toBeUndefined();
+    expect(() => detector.setBlockSize(Number.POSITIVE_INFINITY)).toThrow(
+      new TypeError(
+        'Passing a number "Infinity" from JS side to C/C++ side to an argument of type "int", which is outside the valid range [-2147483648, 2147483647]!',
+      ),
+    );
     expect(detector.getMaxFeatures()).toBe(0);
-    expect(detector.getBlockSize()).toBe(0);
+    expect(detector.getBlockSize()).toBe(GFTT_DETECTOR_DEFAULTS.blockSize);
     detector.dispose();
   });
 

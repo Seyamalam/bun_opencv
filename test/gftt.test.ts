@@ -20,6 +20,12 @@ interface JavaScriptGFTTDetectorCalls {
   setQualityLevel(value?: number, extra?: string): void;
 }
 
+interface JavaScriptObjectScalar {
+  toString(): string;
+}
+
+type JavaScriptScalar = boolean | number | JavaScriptObjectScalar | string | null | undefined;
+
 class MemoryGFTTDetectorHandle implements WasmGFTTDetectorHandle {
   freeCount = 0;
 
@@ -120,31 +126,50 @@ test("GFTTDetector integer setters use WebAssembly i32 coercion", () => {
   expect(detector.getBlockSize()).toBe(-7);
   detector.setBlockSize(Number.NaN);
   expect(detector.getBlockSize()).toBe(0);
-  detector.setBlockSize(Number.POSITIVE_INFINITY);
-  expect(detector.getBlockSize()).toBe(0);
-  detector.setMaxFeatures(4_294_967_301);
-  expect(detector.getMaxFeatures()).toBe(5);
-  detector.setMaxFeatures(2_147_483_648);
-  expect(detector.getMaxFeatures()).toBe(-2_147_483_648);
-
-  // SAFETY: This deliberately models an untyped JavaScript call while the exported method stays strict.
+  // SAFETY: This widens only the test call surface to exercise values accepted from plain JavaScript.
   const javascriptDetector = detector as GFTTDetector & {
-    setBlockSize(value: number | undefined): void;
+    setBlockSize(value: JavaScriptScalar): void;
+    setMaxFeatures(value: JavaScriptScalar): void;
   };
-  javascriptDetector.setBlockSize(undefined);
-  expect(detector.getBlockSize()).toBe(0);
+  javascriptDetector.setBlockSize(true);
+  expect(detector.getBlockSize()).toBe(1);
+  javascriptDetector.setMaxFeatures(false);
+  expect(detector.getMaxFeatures()).toBe(0);
+
+  const rejected: ReadonlyArray<readonly [JavaScriptScalar, string]> = [
+    [
+      Number.POSITIVE_INFINITY,
+      'Passing a number "Infinity" from JS side to C/C++ side to an argument of type "int", which is outside the valid range [-2147483648, 2147483647]!',
+    ],
+    [
+      2_147_483_648,
+      'Passing a number "2147483648" from JS side to C/C++ side to an argument of type "int", which is outside the valid range [-2147483648, 2147483647]!',
+    ],
+    [null, 'Cannot convert "null" to int'],
+    ["7", 'Cannot convert "7" to int'],
+    [undefined, 'Cannot convert "undefined" to int'],
+  ];
+  for (const [value, message] of rejected) {
+    expect(() => javascriptDetector.setBlockSize(value)).toThrow(new TypeError(message));
+    expect(detector.getBlockSize()).toBe(1);
+  }
 });
 
 test("GFTTDetector boolean setter follows the WebAssembly public conversion", () => {
   const detector = new GFTTDetector(new MemoryGFTTDetectorHandle());
 
   // SAFETY: Numeric booleans are accepted by the OpenCV.js runtime but excluded from typed calls.
+  // SAFETY: This widens only the test call surface to exercise Embind boolean coercion.
   const javascriptDetector = detector as GFTTDetector & {
-    setHarrisDetector(value: boolean | 0 | 1): void;
+    setHarrisDetector(value: JavaScriptScalar): void;
   };
   expect(javascriptDetector.setHarrisDetector(0)).toBeUndefined();
   expect(detector.getHarrisDetector()).toBe(false);
   expect(javascriptDetector.setHarrisDetector(1)).toBeUndefined();
+  expect(detector.getHarrisDetector()).toBe(true);
+  javascriptDetector.setHarrisDetector("");
+  expect(detector.getHarrisDetector()).toBe(false);
+  javascriptDetector.setHarrisDetector({});
   expect(detector.getHarrisDetector()).toBe(true);
 });
 
@@ -157,6 +182,28 @@ test("GFTTDetector floating-point setters preserve IEEE-754 values", () => {
   expect(detector.getMinDistance()).toBe(Number.NEGATIVE_INFINITY);
   expect(detector.setQualityLevel(Number.POSITIVE_INFINITY)).toBeUndefined();
   expect(detector.getQualityLevel()).toBe(Number.POSITIVE_INFINITY);
+  expect(detector.setK(-0)).toBeUndefined();
+  expect(Object.is(detector.getK(), -0)).toBe(true);
+
+  // SAFETY: This widens only the test call surface to exercise values accepted from plain JavaScript.
+  const javascriptDetector = detector as GFTTDetector & {
+    setK(value: JavaScriptScalar): void;
+    setMinDistance(value: JavaScriptScalar): void;
+  };
+  javascriptDetector.setK(true);
+  expect(detector.getK()).toBe(1);
+  javascriptDetector.setMinDistance(false);
+  expect(detector.getMinDistance()).toBe(0);
+  const rejected: ReadonlyArray<readonly [JavaScriptScalar, string]> = [
+    [null, 'Cannot convert "null" to double'],
+    ["1", 'Cannot convert "1" to double'],
+    [undefined, 'Cannot convert "undefined" to double'],
+    [{}, 'Cannot convert "[object Object]" to double'],
+  ];
+  for (const [value, message] of rejected) {
+    expect(() => javascriptDetector.setK(value)).toThrow(new TypeError(message));
+    expect(detector.getK()).toBe(1);
+  }
 });
 
 test("GFTTDetector methods enforce OpenCV.js arity", () => {
