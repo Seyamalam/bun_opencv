@@ -56,6 +56,17 @@ interface AuditedBindingForm {
 }
 
 const AUDITED_BINDING_FORMS: Readonly<Record<string, AuditedBindingForm>> = Object.freeze({
+  "features2d.akaze.get-default-name": { overloadCount: 1, runtimeArity: 0 },
+  "features2d.akaze.get-descriptor-channels": { overloadCount: 1, runtimeArity: 0 },
+  "features2d.akaze.get-descriptor-size": { overloadCount: 1, runtimeArity: 0 },
+  "features2d.akaze.get-noctave-layers": { overloadCount: 1, runtimeArity: 0 },
+  "features2d.akaze.get-noctaves": { overloadCount: 1, runtimeArity: 0 },
+  "features2d.akaze.get-threshold": { overloadCount: 1, runtimeArity: 0 },
+  "features2d.akaze.set-descriptor-channels": { overloadCount: 1, runtimeArity: 1 },
+  "features2d.akaze.set-descriptor-size": { overloadCount: 1, runtimeArity: 1 },
+  "features2d.akaze.set-noctave-layers": { overloadCount: 1, runtimeArity: 1 },
+  "features2d.akaze.set-noctaves": { overloadCount: 1, runtimeArity: 1 },
+  "features2d.akaze.set-threshold": { overloadCount: 1, runtimeArity: 1 },
   "features2d.agast-feature-detector.get-default-name": {
     overloadCount: 1,
     runtimeArity: 0,
