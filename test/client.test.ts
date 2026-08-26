@@ -246,6 +246,8 @@ function writeMeanStdDev(
 }
 
 class CopyingBackend implements OpenCvBackend {
+  #randomState = 0;
+
   grayscaleRgba(data: Uint8Array): Uint8Array {
     return new Uint8Array(data);
   }
@@ -490,6 +492,41 @@ class CopyingBackend implements OpenCvBackend {
       }
     }
     destination.copyFromBytes(Uint8Array.from(output));
+  }
+
+  matRandn(destination: WasmMatHandle, mean: Float64Array, standardDeviation: Float64Array): void {
+    const meanValue = mean[0] ?? 0;
+    const deviation = standardDeviation[0] ?? 0;
+    if (destination.depth === 6 && deviation === 0) {
+      destination.copyFromBytes(
+        copyViewBytes(new Float64Array(destination.rows * destination.columns).fill(meanValue)),
+      );
+      return;
+    }
+    throw new OpenCvInputError("fake backend only implements constant F64 normal fills");
+  }
+
+  matRandu(destination: WasmMatHandle, lower: Float64Array, upper: Float64Array): void {
+    const low = lower[0] ?? 0;
+    const high = upper[0] ?? 0;
+    destination.copyFromBytes(
+      Uint8Array.from({ length: destination.byteLength }, () => {
+        this.#randomState = (Math.imul(this.#randomState, 1_664_525) + 1_013_904_223) | 0;
+        const unit = (this.#randomState >>> 0) / 4_294_967_296;
+        return Math.floor(low + (high - low) * unit);
+      }),
+    );
+  }
+
+  matSetIdentity(destination: WasmMatHandle, value: Float64Array): void {
+    const output = new Uint8Array(destination.byteLength);
+    const diagonal = Math.min(destination.rows, destination.columns);
+    for (let position = 0; position < diagonal; position += 1) {
+      output[(position * destination.columns + position) * destination.channels] = Math.round(
+        value[0] ?? 0,
+      );
+    }
+    destination.copyFromBytes(output);
   }
 
   matHconcat2(first: WasmMatHandle, second: WasmMatHandle): WasmMatHandle {
@@ -932,6 +969,10 @@ class CopyingBackend implements OpenCvBackend {
     );
   }
 
+  setRNGSeed(seed: number): void {
+    this.#randomState = seed;
+  }
+
   resizeNearestRgba(
     _data: Uint8Array,
     _width: number,
@@ -1057,6 +1098,28 @@ describe("OpenCv client", () => {
     expect(floating.depth).toBe("f32");
     expect(floating.toFloat32Array()).toEqual(new Float32Array(4));
     floating.dispose();
+  });
+
+  test("initializes matrices and controls deterministic random fills", () => {
+    const identity = client.zerosU8(2, 3, 1);
+    client.setIdentity(identity);
+    expect(identity.toUint8Array()).toEqual(new Uint8Array([1, 0, 0, 0, 1, 0]));
+
+    const first = client.zerosU8(1, 8, 1);
+    const second = client.zerosU8(1, 8, 1);
+    client.setRNGSeed(42);
+    client.randu(first, [10, 0, 0, 0], [20, 0, 0, 0]);
+    client.setRNGSeed(42);
+    client.randu(second, [10, 0, 0, 0], [20, 0, 0, 0]);
+    expect(first.toUint8Array()).toEqual(second.toUint8Array());
+    expect(Array.from(first.toUint8Array()).every((value) => value >= 10 && value < 20)).toBeTrue();
+
+    const normal = client.zerosF64(1, 4, 1);
+    client.randn(normal, [3, 0, 0, 0], [0, 0, 0, 0]);
+    expect(normal.toFloat64Array()).toEqual(new Float64Array([3, 3, 3, 3]));
+
+    expect(() => client.setRNGSeed(2 ** 31)).toThrow(OpenCvInputError);
+    for (const matrix of [normal, second, first, identity]) matrix.dispose();
   });
 
   test("exposes matrix-based core operations", () => {

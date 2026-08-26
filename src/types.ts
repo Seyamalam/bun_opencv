@@ -125,6 +125,9 @@ export interface OpenCvBackend {
     axis: number,
     kind: number,
   ): void;
+  matRandn(destination: WasmMatHandle, mean: Float64Array, standardDeviation: Float64Array): void;
+  matRandu(destination: WasmMatHandle, lower: Float64Array, upper: Float64Array): void;
+  matSetIdentity(destination: WasmMatHandle, value: Float64Array): void;
   matHconcat2(first: WasmMatHandle, second: WasmMatHandle): WasmMatHandle;
   matHconcat3(first: WasmMatHandle, second: WasmMatHandle, third: WasmMatHandle): WasmMatHandle;
   matHconcat4(
@@ -231,6 +234,7 @@ export interface OpenCvBackend {
   matZerosI8(rows: number, columns: number, channels: number): WasmMatHandle;
   matZerosU16(rows: number, columns: number, channels: number): WasmMatHandle;
   matZerosU8(rows: number, columns: number, channels: number): WasmMatHandle;
+  setRNGSeed(seed: number): void;
   resizeNearestRgba(
     data: Uint8Array,
     width: number,
@@ -311,11 +315,15 @@ export interface OpenCv {
   ): void;
   polarToCart(magnitude: Mat, angle: Mat, x: Mat, y: Mat, degrees?: boolean): void;
   pow(source: Mat, exponent: number): Mat;
+  randn(destination: Mat, mean: Scalar, standardDeviation: Scalar): void;
+  randu(destination: Mat, lower: Scalar, upper: Scalar): void;
   resizeNearest(image: RgbaImage, targetWidth: number, targetHeight: number): RgbaImage;
   repeat(source: Mat, rowRepeats: number, columnRepeats: number): Mat;
   repeat(source: Mat, rowRepeats: number, columnRepeats: number, destination: Mat): void;
   rotate(source: Mat, rotateCode: 0 | 1 | 2): Mat;
   rotate(source: Mat, destination: Mat, rotateCode: 0 | 1 | 2): void;
+  setIdentity(destination: Mat, value?: Scalar): void;
+  setRNGSeed(seed: number): void;
   reduce(source: Mat, destination: Mat, axis: 0 | 1, kind: ReduceKind): void;
   threshold(image: RgbaImage, threshold: number): RgbaImage;
   subtract(left: Mat, right: Mat): Mat;

@@ -456,6 +456,22 @@ class WasmOpenCv implements OpenCv {
     return new Mat(this.#backend.matPow(source.handleForBackend(), exponent));
   }
 
+  randn(destination: Mat, mean: Scalar, standardDeviation: Scalar): void {
+    this.#backend.matRandn(
+      destination.handleForBackend(),
+      validatedScalar(mean, "mean"),
+      validatedScalar(standardDeviation, "standardDeviation"),
+    );
+  }
+
+  randu(destination: Mat, lower: Scalar, upper: Scalar): void {
+    this.#backend.matRandu(
+      destination.handleForBackend(),
+      validatedScalar(lower, "lower"),
+      validatedScalar(upper, "upper"),
+    );
+  }
+
   minMaxLoc(source: Mat): MinMaxLocation {
     return minMaxLocationFromArray(this.#backend.matMinMaxLoc(source.handleForBackend()));
   }
@@ -498,6 +514,17 @@ class WasmOpenCv implements OpenCv {
       axis,
       kind,
     );
+  }
+
+  setIdentity(destination: Mat, value: Scalar = [1, 0, 0, 0]): void {
+    this.#backend.matSetIdentity(destination.handleForBackend(), validatedScalar(value, "value"));
+  }
+
+  setRNGSeed(seed: number): void {
+    if (!Number.isSafeInteger(seed) || seed < -2_147_483_648 || seed > 2_147_483_647) {
+      throw new OpenCvInputError("seed must be a signed 32-bit integer");
+    }
+    this.#backend.setRNGSeed(seed);
   }
 
   threshold(image: RgbaImage, threshold: number): RgbaImage {
@@ -666,6 +693,16 @@ function validateFiniteNumbers(values: Readonly<Record<string, number>>): void {
   for (const [name, value] of Object.entries(values)) {
     if (!Number.isFinite(value)) throw new OpenCvInputError(`${name} must be finite`);
   }
+}
+
+function validatedScalar(value: Scalar, name: string): Float64Array {
+  validateFiniteNumbers({
+    [`${name}[0]`]: value[0],
+    [`${name}[1]`]: value[1],
+    [`${name}[2]`]: value[2],
+    [`${name}[3]`]: value[3],
+  });
+  return Float64Array.from(value);
 }
 
 function validateBorderSize(value: number, name: string): void {
