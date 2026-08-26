@@ -155,8 +155,19 @@
         );
         packageRotation.dispose();
 
+        sameNumbers(
+          [
+            packageCv.getOptimalDFTSize(7),
+            packageCv.getOptimalDFTSize(25),
+            packageCv.getOptimalDFTSize(0),
+          ],
+          referenceOutputs.optimalDftSizes,
+          "getOptimalDFTSize",
+          0,
+        );
+
         packageSource.dispose();
-        result.value = "PASS OpenCV.js 4.13.0 layout, geometry, and helper differential";
+        result.value = "PASS OpenCV.js 4.13.0 layout, geometry, helper, and DFT differential";
         document.body.dataset.status = "passed";
       } catch (error) {
         result.value = `FAIL ${String(error)}`;

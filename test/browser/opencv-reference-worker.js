@@ -86,6 +86,12 @@ self.addEventListener("message", async ({ data: input }) => {
     const rotation = reference.getRotationMatrix2D(new reference.Point(1, 2), 90, 1);
     outputs.getRotationMatrix2D = copyF64(rotation);
     rotation.delete();
+
+    outputs.optimalDftSizes = [
+      reference.getOptimalDFTSize(7),
+      reference.getOptimalDFTSize(25),
+      reference.getOptimalDFTSize(0),
+    ];
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });
