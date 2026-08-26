@@ -37,6 +37,7 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - A fully implemented `repeat` family with exact four-argument calls, Embind signed-int conversion, all scalar depths, empty and deleted matrices, OutputArray replacement, exact in-place rejection, and live shared-region alias behavior. The totals are now 69 partial, 60 implemented, and 129 supported families.
 - A fully implemented `rotate` family with exact three-argument calls and constants, Embind signed-int conversion, all scalar depths, empty and deleted matrices, OutputArray replacement, valid in-place operation, and live shared-region alias behavior. The totals are now 68 partial, 61 implemented, and 129 supported families.
 - Fully implemented `exp`, `log`, `sqrt`, `pow`, and `magnitude` families with exact mutable destinations, typed empty headers, live shared-region traversal, all valid scalar depths, Embind F64 power conversion, integer saturation or wrapping, and pinned floating-point edge behavior. The totals are now 63 partial, 66 implemented, and 129 supported families.
+- Fully implemented `cartToPolar` and `polarToCart` with exact overload dispatch, JavaScript boolean coercion, paired destination replacement, typed empty layouts, multichannel F32/F64 data, full-rotation angles, live overlapping regions, and the pinned F32 precision path. The totals are now 61 partial, 68 implemented, and 129 supported families.
 - Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
 
 ### Planned

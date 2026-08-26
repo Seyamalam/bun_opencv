@@ -102,7 +102,7 @@ Channel operations preserve raw scalar bytes for all seven depths and compact st
 
 `exp`, `log`, `sqrt`, and `magnitude` accept F32 and F64 matrices. `pow` accepts every scalar depth for valid integer powers and F32/F64 for the complete F64 exponent domain. The exact forms replace incompatible destinations, write through compatible regions, and traverse overlapping shared storage in pinned row-major order. Typed empty headers retain their rows, columns, channels, and depth. The package safely rejects integer `sqrt` and non-integral or non-finite integer `pow` calls because the pinned artifact exposes unsafe or uninitialized output for those inputs.
 
-`cartToPolar` and `polarToCart` accept F32 and F64 matrices, including strided regions. Their optional `degrees` argument defaults to `false`.
+`cartToPolar` and `polarToCart` match the pinned four- and five-argument overloads. They accept matching F32 or F64 matrices with any channel count and replace both destinations when their metadata differs. Compatible regions write through shared storage, including the reference runtime's live row-major behavior when one output overlaps an input. Typed 0xN, Nx0, and 0x0 layouts retain their shape, channels, and depth. The optional `degrees` value defaults to `false` and follows JavaScript truthiness. Cartesian angles use a nonnegative full rotation. Both accepted depths follow the pinned F32 computation path. The package rejects shared paired outputs and native integer or canonical-empty calls before mutation because the reference artifact exposes assertion or transient numeric failures for those cases.
 
 ### Typed numeric operations
 

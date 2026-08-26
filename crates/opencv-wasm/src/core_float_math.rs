@@ -280,7 +280,7 @@ pub(crate) fn magnitude_f64(x: &[u8], y: &[u8]) -> Result<Vec<u8>, FloatMathErro
 
 /// Converts matching Cartesian F32 coordinates to magnitude and angle.
 ///
-/// Angles use radians unless `angle_in_degrees` is true. `atan2` supplies the signed angle range.
+/// Angles use radians unless `angle_in_degrees` is true and cover one nonnegative rotation.
 pub(crate) fn cart_to_polar_f32(
     x: &[u8],
     y: &[u8],
@@ -297,7 +297,8 @@ pub(crate) fn cart_to_polar_f32(
 
 /// Converts matching Cartesian F64 coordinates to magnitude and angle.
 ///
-/// Angles use radians unless `angle_in_degrees` is true. `atan2` supplies the signed angle range.
+/// Angles use radians unless `angle_in_degrees` is true and cover one nonnegative rotation.
+/// The pinned F64 browser path computes with F32 precision and promotes each output scalar.
 #[allow(clippy::cast_possible_truncation)]
 pub(crate) fn cart_to_polar_f64(
     x: &[u8],
@@ -318,6 +319,7 @@ pub(crate) fn cart_to_polar_f64(
 /// Converts matching F32 magnitude and angle inputs to Cartesian coordinates.
 ///
 /// Angles use radians unless `angle_in_degrees` is true. Negative magnitudes retain their sign.
+/// The pinned F64 browser path computes with F32 precision and promotes each output scalar.
 pub(crate) fn polar_to_cart_f32(
     magnitude: &[u8],
     angle: &[u8],
