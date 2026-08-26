@@ -78,12 +78,50 @@ pub fn mat_log(source: &Mat) -> Result<Mat, JsError> {
     unary(source, core_float_math::log_f32, core_float_math::log_f64).map_err(JsError::from)
 }
 
+/// Computes the natural logarithm into a caller-owned destination.
+/// # Errors
+/// Returns an error unless the source has F32 or F64 depth.
+#[wasm_bindgen(js_name = matLogInto)]
+pub fn mat_log_into(source: &Mat, destination: &Mat) -> Result<(), JsError> {
+    unary_into(
+        source,
+        destination,
+        core_float_math::log_f32,
+        core_float_math::log_f64,
+        log_scalar_f32,
+        log_scalar_f64,
+    )
+    .map_err(JsError::from)
+}
+
 /// Computes the square root element-wise.
 /// # Errors
 /// Returns an error unless the source has F32 or F64 depth.
 #[wasm_bindgen(js_name = matSqrt)]
 pub fn mat_sqrt(source: &Mat) -> Result<Mat, JsError> {
     unary(source, core_float_math::sqrt_f32, core_float_math::sqrt_f64).map_err(JsError::from)
+}
+
+/// Computes the square root into a caller-owned destination.
+/// # Errors
+/// Returns an error unless a nonempty source has F32 or F64 depth.
+#[wasm_bindgen(js_name = matSqrtInto)]
+pub fn mat_sqrt_into(source: &Mat, destination: &Mat) -> Result<(), JsError> {
+    if source.rows() == 0 && source.columns() == 0 && source.depth() == MatDepth::U8 {
+        if destination.rows() != 0 || destination.columns() != 0 {
+            destination.release_output_retaining_type();
+        }
+        return Ok(());
+    }
+    unary_into(
+        source,
+        destination,
+        core_float_math::sqrt_f32,
+        core_float_math::sqrt_f64,
+        sqrt_scalar_f32,
+        sqrt_scalar_f64,
+    )
+    .map_err(JsError::from)
 }
 
 /// Raises every element to a scalar exponent.
@@ -192,6 +230,16 @@ fn unary_into(
     f64_scalar_kernel: UnaryScalarKernel,
 ) -> Result<(), FloatMathWasmError> {
     let depth = float_depth(source)?;
+    if source.rows() == 0 || source.columns() == 0 {
+        destination.write_empty_layout(
+            source.rows(),
+            source.columns(),
+            source.channels(),
+            depth,
+            true,
+        )?;
+        return Ok(());
+    }
     let scalar_kernel = match depth {
         MatDepth::F32 => f32_scalar_kernel,
         MatDepth::F64 => f64_scalar_kernel,
@@ -224,6 +272,22 @@ fn exp_scalar_f64(input: &[u8], output: &mut [u8]) {
     transform_scalar_f64(input, output, f64::exp);
 }
 
+fn log_scalar_f32(input: &[u8], output: &mut [u8]) {
+    transform_scalar_f32(input, output, f32::ln);
+}
+
+fn log_scalar_f64(input: &[u8], output: &mut [u8]) {
+    transform_scalar_f64(input, output, f64::ln);
+}
+
+fn sqrt_scalar_f32(input: &[u8], output: &mut [u8]) {
+    transform_scalar_f32(input, output, f32::sqrt);
+}
+
+fn sqrt_scalar_f64(input: &[u8], output: &mut [u8]) {
+    transform_scalar_f64(input, output, f64::sqrt);
+}
+
 fn transform_scalar_f32(input: &[u8], output: &mut [u8], operation: impl FnOnce(f32) -> f32) {
     let bytes: [u8; 4] = input
         .try_into()
@@ -242,6 +306,16 @@ fn unary_with(
     kernel: impl FnOnce(MatDepth, &[u8]) -> Result<Vec<u8>, FloatMathError>,
 ) -> Result<Mat, FloatMathWasmError> {
     let depth = float_depth(source)?;
+    if source.rows() == 0 || source.columns() == 0 {
+        return Mat::empty_with_layout(
+            source.rows(),
+            source.columns(),
+            source.channels(),
+            depth,
+            true,
+        )
+        .map_err(FloatMathWasmError::from);
+    }
     from_bytes(source, kernel(depth, &source.compact_bytes())?)
 }
 fn binary(
@@ -390,6 +464,71 @@ mod tests {
                 "expected {expected}, got {actual}"
             );
         }
+    }
+    #[test]
+    fn log_into_supports_exact_in_place_output() {
+        let matrix = f64_mat(&[1.0, std::f64::consts::E.powi(2)], 1, 2, 1);
+
+        mat_log_into(&matrix, &matrix).expect("valid in-place logarithm");
+
+        let actual = matrix.to_f64_array().unwrap();
+        assert_eq!(actual[0], 0.0);
+        assert!((actual[1] - 2.0).abs() <= 1e-12);
+    }
+    #[test]
+    fn sqrt_into_leaves_two_fresh_empty_headers_unchanged() {
+        let source = crate::mat::mat_empty();
+        let destination = crate::mat::mat_empty();
+
+        mat_sqrt_into(&source, &destination).expect("fresh empty square root succeeds");
+
+        assert_eq!(
+            (
+                destination.rows(),
+                destination.columns(),
+                destination.channels(),
+                destination.depth(),
+                destination.is_continuous(),
+            ),
+            (0, 0, 1, MatDepth::U8, false)
+        );
+    }
+    #[test]
+    fn sqrt_into_releases_a_populated_destination_but_retains_its_type() {
+        let source = crate::mat::mat_empty();
+        let destination = f32_mat(&[4.0, 9.0], 1, 2, 1);
+
+        mat_sqrt_into(&source, &destination).expect("empty square root releases destination");
+
+        assert_eq!(
+            (
+                destination.rows(),
+                destination.columns(),
+                destination.channels(),
+                destination.depth(),
+                destination.is_continuous(),
+            ),
+            (0, 0, 1, MatDepth::F32, true)
+        );
+        assert!(destination.compact_bytes().is_empty());
+    }
+    #[test]
+    fn exp_into_preserves_a_typed_empty_source_layout() {
+        let source = Mat::empty_with_layout(0, 3, 2, MatDepth::F32, true).unwrap();
+        let destination = crate::mat::mat_empty();
+
+        mat_exp_into(&source, &destination).expect("typed empty exponential succeeds");
+
+        assert_eq!(
+            (
+                destination.rows(),
+                destination.columns(),
+                destination.channels(),
+                destination.depth(),
+                destination.is_continuous(),
+            ),
+            (0, 3, 2, MatDepth::F32, true)
+        );
     }
     #[test]
     fn pair_outputs_mutate_strided_destinations_and_round_trip() {

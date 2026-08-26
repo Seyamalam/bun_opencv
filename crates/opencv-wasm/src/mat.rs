@@ -248,6 +248,31 @@ impl Mat {
         Self::empty_with_continuity(true)
     }
 
+    pub(crate) fn empty_with_layout(
+        rows: u32,
+        columns: u32,
+        channels: u16,
+        depth: MatDepth,
+        continuous: bool,
+    ) -> Result<Self, MatError> {
+        if rows != 0 && columns != 0 {
+            return Err(MatError::EmptyDimensions);
+        }
+        if channels == 0 {
+            return Err(MatError::EmptyChannels);
+        }
+        Ok(Self {
+            header: RefCell::new(MatHeader {
+                storage: None,
+                rows,
+                columns,
+                channels,
+                depth,
+                empty_is_continuous: continuous,
+            }),
+        })
+    }
+
     fn empty_with_continuity(empty_is_continuous: bool) -> Self {
         Self {
             header: RefCell::new(MatHeader {
@@ -264,6 +289,37 @@ impl Mat {
     pub(crate) fn write_empty_output(&self) {
         self.header
             .replace(Self::empty_output().header.into_inner());
+    }
+
+    pub(crate) fn release_output_retaining_type(&self) {
+        let current = self.header.borrow();
+        let channels = current.channels;
+        let depth = current.depth;
+        drop(current);
+        self.header.replace(MatHeader {
+            storage: None,
+            rows: 0,
+            columns: 0,
+            channels,
+            depth,
+            empty_is_continuous: true,
+        });
+    }
+
+    pub(crate) fn write_empty_layout(
+        &self,
+        rows: u32,
+        columns: u32,
+        channels: u16,
+        depth: MatDepth,
+        continuous: bool,
+    ) -> Result<(), MatError> {
+        self.header.replace(
+            Self::empty_with_layout(rows, columns, channels, depth, continuous)?
+                .header
+                .into_inner(),
+        );
+        Ok(())
     }
 
     fn logical_byte_length(&self) -> usize {
