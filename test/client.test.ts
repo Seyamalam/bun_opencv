@@ -2844,6 +2844,18 @@ describe("OpenCv client", () => {
       // @ts-expect-error Runtime parity requires testing an extra argument.
       localClient.polarToCart(first, second, firstOutput, secondOutput, true, 1);
     }).toThrow(BindingError);
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a null Mat.
+      localClient.cartToPolar(null, second, firstOutput, secondOutput);
+    }).toThrow(new BindingError("null is not a valid Mat"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing an undefined Mat.
+      localClient.polarToCart(first, undefined, firstOutput, secondOutput);
+    }).toThrow(new TypeError("Cannot read properties of undefined (reading '$$')"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a structural Mat.
+      localClient.cartToPolar(first, second, {}, secondOutput);
+    }).toThrow(new BindingError('Cannot pass "[object Object]" as a Mat'));
 
     localClient.cartToPolar(first, second, firstOutput, secondOutput);
     // @ts-expect-error Runtime parity requires JavaScript boolean coercion.

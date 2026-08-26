@@ -1061,6 +1061,57 @@ mod tests {
         assert_eq!((output.rows(), output.columns()), (0, 0));
     }
     #[test]
+    fn polar_to_cart_reads_overlapping_magnitudes_live() {
+        let parent = f32_mat(&[2.0, 3.0, 4.0, 99.0], 1, 4, 1);
+        let magnitude = parent.roi(0, 0, 1, 3).unwrap();
+        let angle = f32_mat(&[0.0, 0.0, 0.0], 1, 3, 1);
+        let x = parent.roi(0, 1, 1, 3).unwrap();
+        let y = f32_mat(&[99.0, 99.0, 99.0], 1, 3, 1);
+
+        pair_into(
+            &magnitude,
+            &angle,
+            &x,
+            &y,
+            PairOperation::PolarToCart { degrees: false },
+        )
+        .expect("valid overlapping polar conversion");
+
+        assert_eq!(parent.to_f32_array().unwrap(), [2.0, 2.0, 2.0, 2.0]);
+        assert_eq!(y.to_f32_array().unwrap(), [0.0, 0.0, 0.0]);
+    }
+    #[test]
+    fn coordinate_conversion_preserves_typed_empty_layouts() {
+        for (rows, columns) in [(0, 3), (3, 0), (0, 0)] {
+            let x = Mat::empty_with_layout(rows, columns, 2, MatDepth::F64, true).unwrap();
+            let y = Mat::empty_with_layout(rows, columns, 2, MatDepth::F64, true).unwrap();
+            let magnitude = f32_mat(&[9.0], 1, 1, 1);
+            let angle = f32_mat(&[9.0], 1, 1, 1);
+
+            pair_into(
+                &x,
+                &y,
+                &magnitude,
+                &angle,
+                PairOperation::CartToPolar { degrees: false },
+            )
+            .expect("typed empty coordinate conversion succeeds");
+
+            for output in [&magnitude, &angle] {
+                assert_eq!(
+                    (
+                        output.rows(),
+                        output.columns(),
+                        output.channels(),
+                        output.depth(),
+                        output.is_continuous(),
+                    ),
+                    (rows, columns, 2, MatDepth::F64, true)
+                );
+            }
+        }
+    }
+    #[test]
     fn rejects_integer_depth_and_metadata_mismatch() {
         let integer = Mat::from_owned_bytes(vec![1], 1, 1, 1, MatDepth::U8).unwrap();
         assert!(matches!(

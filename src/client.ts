@@ -153,10 +153,10 @@ class WasmOpenCv implements OpenCv {
     requireOverloadArity(arguments_.length, 4, 5, "cartToPolar");
     const [x, y, magnitude, angle, degrees = false] = arguments_;
     this.#backend.matCartToPolar(
-      x.handleForBackend(),
-      y.handleForBackend(),
-      magnitude.handleForBackend(),
-      angle.handleForBackend(),
+      matHandleForBinding(x),
+      matHandleForBinding(y),
+      matHandleForBinding(magnitude),
+      matHandleForBinding(angle),
       Boolean(degrees),
     );
   }
@@ -722,10 +722,10 @@ class WasmOpenCv implements OpenCv {
     requireOverloadArity(arguments_.length, 4, 5, "polarToCart");
     const [magnitude, angle, x, y, degrees = false] = arguments_;
     this.#backend.matPolarToCart(
-      magnitude.handleForBackend(),
-      angle.handleForBackend(),
-      x.handleForBackend(),
-      y.handleForBackend(),
+      matHandleForBinding(magnitude),
+      matHandleForBinding(angle),
+      matHandleForBinding(x),
+      matHandleForBinding(y),
       Boolean(degrees),
     );
   }
