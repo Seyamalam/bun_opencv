@@ -85,10 +85,8 @@ impl Kaze {
     }
 
     #[wasm_bindgen(js_name = setDiffusivity)]
-    pub fn set_diffusivity(&mut self, value: i32) -> Result<(), JsError> {
-        self.configuration
-            .set_diffusivity(value)
-            .map_err(JsError::from)
+    pub fn set_diffusivity(&mut self, value: i32) {
+        self.configuration.set_diffusivity(value);
     }
 
     #[wasm_bindgen(js_name = setExtended)]
@@ -163,7 +161,7 @@ mod tests {
         kaze.set_threshold(0.1);
         kaze.set_octaves(7);
         kaze.set_octave_layers(8);
-        kaze.set_diffusivity(3).expect("valid diffusivity");
+        kaze.set_diffusivity(3);
 
         assert!(!kaze.get_extended());
         assert!(!kaze.get_upright());
@@ -189,6 +187,17 @@ mod tests {
 
             kaze.set_octave_layers(value);
             assert_eq!(kaze.get_octave_layers(), value);
+        }
+    }
+
+    #[test]
+    fn exported_diffusivity_setter_preserves_unknown_wire_codes() {
+        let mut kaze = Kaze::create(None, None, None, None, None, None)
+            .expect("documented defaults are valid");
+
+        for value in [i32::MIN, -1, 4, i32::MAX] {
+            kaze.set_diffusivity(value);
+            assert_eq!(kaze.get_diffusivity(), value);
         }
     }
 }

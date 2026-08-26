@@ -96,13 +96,10 @@ impl Akaze {
         self.configuration.threshold()
     }
 
-    /// # Errors
-    /// Returns an error without changing the handle when the type is not 2, 3, 4, or 5.
+    /// Stores the signed 32-bit wire value produced by the JavaScript enum binding.
     #[wasm_bindgen(js_name = setDescriptorType)]
-    pub fn set_descriptor_type(&mut self, value: i32) -> Result<(), JsError> {
-        self.configuration
-            .set_descriptor_type(value)
-            .map_err(JsError::from)
+    pub fn set_descriptor_type(&mut self, value: i32) {
+        self.configuration.set_descriptor_type(value);
     }
 
     /// Stores the signed 32-bit value produced by the JavaScript binding.
@@ -135,13 +132,10 @@ impl Akaze {
         self.configuration.set_octave_layers(value);
     }
 
-    /// # Errors
-    /// Returns an error without changing the handle when diffusivity is outside 0 through 3.
+    /// Stores the signed 32-bit wire value produced by the JavaScript enum binding.
     #[wasm_bindgen(js_name = setDiffusivity)]
-    pub fn set_diffusivity(&mut self, value: i32) -> Result<(), JsError> {
-        self.configuration
-            .set_diffusivity(value)
-            .map_err(JsError::from)
+    pub fn set_diffusivity(&mut self, value: i32) {
+        self.configuration.set_diffusivity(value);
     }
 }
 
@@ -190,13 +184,13 @@ mod tests {
         assert_eq!(akaze.get_octave_layers(), 6);
         assert_eq!(akaze.get_diffusivity(), 2);
 
-        akaze.set_descriptor_type(3).expect("valid type");
+        akaze.set_descriptor_type(3);
         akaze.set_descriptor_size(128);
         akaze.set_descriptor_channels(3);
         akaze.set_threshold(0.1);
         akaze.set_octaves(7);
         akaze.set_octave_layers(8);
-        akaze.set_diffusivity(3).expect("valid diffusivity");
+        akaze.set_diffusivity(3);
 
         assert_eq!(akaze.get_descriptor_type(), 3);
         assert_eq!(akaze.get_descriptor_size(), 128);
@@ -225,5 +219,17 @@ mod tests {
             akaze.set_threshold(threshold);
             assert_eq!(akaze.get_threshold().to_bits(), threshold.to_bits());
         }
+    }
+
+    #[test]
+    fn enum_setters_preserve_unknown_wasm_wire_codes() {
+        let mut akaze = Akaze::create(None, None, None, None, None, None, None, None)
+            .expect("documented defaults are valid");
+
+        akaze.set_descriptor_type(i32::MIN);
+        akaze.set_diffusivity(i32::MAX);
+
+        assert_eq!(akaze.get_descriptor_type(), i32::MIN);
+        assert_eq!(akaze.get_diffusivity(), i32::MAX);
     }
 }

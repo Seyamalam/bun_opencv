@@ -79,10 +79,8 @@ impl FastConfig {
         self.nonmax_suppression = value;
     }
 
-    pub(crate) fn set_detector_type(&mut self, value: i32) -> Result<(), DetectorConfigError> {
-        validate_fast_type(value)?;
+    pub(crate) fn set_detector_type(&mut self, value: i32) {
         self.detector_type = value;
-        Ok(())
     }
 }
 
@@ -126,10 +124,8 @@ impl AgastConfig {
         self.nonmax_suppression = value;
     }
 
-    pub(crate) fn set_detector_type(&mut self, value: i32) -> Result<(), DetectorConfigError> {
-        validate_agast_type(value)?;
+    pub(crate) fn set_detector_type(&mut self, value: i32) {
         self.detector_type = value;
-        Ok(())
     }
 }
 
@@ -177,7 +173,7 @@ mod tests {
 
         configuration.set_threshold(63);
         configuration.set_nonmax_suppression(false);
-        configuration.set_detector_type(0).expect("valid type");
+        configuration.set_detector_type(0);
 
         assert_eq!(configuration.threshold(), 63);
         assert!(!configuration.nonmax_suppression());
@@ -185,7 +181,7 @@ mod tests {
     }
 
     #[test]
-    fn agast_preserves_signed_thresholds_and_rejects_invalid_types() {
+    fn agast_preserves_signed_thresholds_and_factory_rejects_invalid_types() {
         for threshold in [i32::MIN, -1, 256, i32::MAX] {
             let configuration =
                 AgastConfig::new(threshold, true, 3).expect("signed threshold is preserved");
@@ -201,12 +197,10 @@ mod tests {
         let mut configuration = AgastConfig::default();
         configuration.set_threshold(i32::MIN);
         assert_eq!(configuration.threshold(), i32::MIN);
-        let before_invalid_type = configuration.clone();
-        assert_eq!(
-            configuration.set_detector_type(5),
-            Err(DetectorConfigError::AgastType(5))
-        );
-        assert_eq!(configuration, before_invalid_type);
+        for detector_type in [i32::MIN, -1, 4, i32::MAX] {
+            configuration.set_detector_type(detector_type);
+            assert_eq!(configuration.detector_type(), detector_type);
+        }
     }
 
     #[test]
@@ -233,7 +227,7 @@ mod tests {
 
         configuration.set_threshold(80);
         configuration.set_nonmax_suppression(false);
-        configuration.set_detector_type(1).expect("valid type");
+        configuration.set_detector_type(1);
 
         assert_eq!(configuration.threshold(), 80);
         assert!(!configuration.nonmax_suppression());
@@ -241,7 +235,7 @@ mod tests {
     }
 
     #[test]
-    fn fast_preserves_signed_thresholds_and_rejects_invalid_types() {
+    fn fast_preserves_signed_thresholds_and_factory_rejects_invalid_types() {
         for threshold in [i32::MIN, -1, 256, i32::MAX] {
             let configuration =
                 FastConfig::new(threshold, true, 2).expect("signed threshold is preserved");
@@ -257,11 +251,9 @@ mod tests {
         let mut configuration = FastConfig::default();
         configuration.set_threshold(i32::MAX);
         assert_eq!(configuration.threshold(), i32::MAX);
-        let before_invalid_type = configuration.clone();
-        assert_eq!(
-            configuration.set_detector_type(8),
-            Err(DetectorConfigError::FastType(8))
-        );
-        assert_eq!(configuration, before_invalid_type);
+        for detector_type in [i32::MIN, -1, 3, i32::MAX] {
+            configuration.set_detector_type(detector_type);
+            assert_eq!(configuration.detector_type(), detector_type);
+        }
     }
 }

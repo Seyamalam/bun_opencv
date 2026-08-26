@@ -134,10 +134,8 @@ impl KazeConfig {
         self.octave_layers = value;
     }
 
-    pub(crate) fn set_diffusivity(&mut self, value: i32) -> Result<(), KazeConfigError> {
-        validate_diffusivity(value)?;
+    pub(crate) fn set_diffusivity(&mut self, value: i32) {
         self.diffusivity = value;
-        Ok(())
     }
 }
 
@@ -288,7 +286,7 @@ mod tests {
         configuration.set_threshold(-0.125);
         configuration.set_octaves(6);
         configuration.set_octave_layers(8);
-        configuration.set_diffusivity(3).expect("valid diffusivity");
+        configuration.set_diffusivity(3);
 
         assert!(configuration.extended());
         assert!(configuration.upright());
@@ -324,14 +322,12 @@ mod tests {
     }
 
     #[test]
-    fn invalid_diffusivity_setter_leaves_the_configuration_unchanged() {
+    fn diffusivity_setter_preserves_unknown_wire_codes() {
         let mut configuration = KazeConfig::default();
-        let before = configuration.clone();
 
-        assert_eq!(
-            configuration.set_diffusivity(-1),
-            Err(KazeConfigError::Diffusivity(-1))
-        );
-        assert_eq!(configuration, before);
+        for value in [i32::MIN, -1, 4, i32::MAX] {
+            configuration.set_diffusivity(value);
+            assert_eq!(configuration.diffusivity(), value);
+        }
     }
 }

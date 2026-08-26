@@ -65,13 +65,10 @@ impl AgastFeatureDetector {
         self.configuration.set_nonmax_suppression(value);
     }
 
-    /// # Errors
-    /// Returns an error without changing the handle when the type is outside 0 through 3.
+    /// Stores the signed 32-bit wire value produced by the JavaScript enum binding.
     #[wasm_bindgen(js_name = setType)]
-    pub fn set_detector_type(&mut self, value: i32) -> Result<(), JsError> {
-        self.configuration
-            .set_detector_type(value)
-            .map_err(JsError::from)
+    pub fn set_detector_type(&mut self, value: i32) {
+        self.configuration.set_detector_type(value);
     }
 }
 
@@ -133,13 +130,10 @@ impl FastFeatureDetector {
         self.configuration.set_nonmax_suppression(value);
     }
 
-    /// # Errors
-    /// Returns an error without changing the handle when the type is outside 0 through 2.
+    /// Stores the signed 32-bit wire value produced by the JavaScript enum binding.
     #[wasm_bindgen(js_name = setType)]
-    pub fn set_detector_type(&mut self, value: i32) -> Result<(), JsError> {
-        self.configuration
-            .set_detector_type(value)
-            .map_err(JsError::from)
+    pub fn set_detector_type(&mut self, value: i32) {
+        self.configuration.set_detector_type(value);
     }
 }
 
@@ -172,7 +166,7 @@ mod tests {
 
         detector.set_threshold(90);
         detector.set_nonmax_suppression(true);
-        detector.set_detector_type(2).expect("valid type");
+        detector.set_detector_type(2);
 
         assert_eq!(detector.get_threshold(), 90);
         assert!(detector.get_nonmax_suppression());
@@ -201,10 +195,26 @@ mod tests {
 
         detector.set_threshold(110);
         detector.set_nonmax_suppression(true);
-        detector.set_detector_type(1).expect("valid type");
+        detector.set_detector_type(1);
 
         assert_eq!(detector.get_threshold(), 110);
         assert!(detector.get_nonmax_suppression());
         assert_eq!(detector.get_detector_type(), 1);
+    }
+
+    #[test]
+    fn exported_enum_setters_preserve_unknown_wasm_wire_codes() {
+        let mut agast = AgastFeatureDetector::create(None, None, None)
+            .expect("documented AGAST defaults are valid");
+        let mut fast = FastFeatureDetector::create(None, None, None)
+            .expect("documented FAST defaults are valid");
+
+        for value in [i32::MIN, -1, 4, i32::MAX] {
+            agast.set_detector_type(value);
+            assert_eq!(agast.get_detector_type(), value);
+
+            fast.set_detector_type(value);
+            assert_eq!(fast.get_detector_type(), value);
+        }
     }
 }

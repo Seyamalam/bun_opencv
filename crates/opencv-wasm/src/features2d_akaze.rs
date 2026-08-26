@@ -152,10 +152,8 @@ impl AkazeConfig {
         self.max_points
     }
 
-    pub(crate) fn set_descriptor_type(&mut self, value: i32) -> Result<(), AkazeConfigError> {
-        validate_descriptor_type(value)?;
+    pub(crate) fn set_descriptor_type(&mut self, value: i32) {
         self.descriptor_type = value;
-        Ok(())
     }
 
     pub(crate) fn set_descriptor_size(&mut self, value: i32) {
@@ -178,10 +176,8 @@ impl AkazeConfig {
         self.octave_layers = value;
     }
 
-    pub(crate) fn set_diffusivity(&mut self, value: i32) -> Result<(), AkazeConfigError> {
-        validate_diffusivity(value)?;
+    pub(crate) fn set_diffusivity(&mut self, value: i32) {
         self.diffusivity = value;
-        Ok(())
     }
 }
 
@@ -357,13 +353,13 @@ mod tests {
     fn setters_replace_each_mutable_configuration_value() {
         let mut configuration = AkazeConfig::default();
 
-        configuration.set_descriptor_type(2).expect("valid type");
+        configuration.set_descriptor_type(2);
         configuration.set_descriptor_size(64);
         configuration.set_descriptor_channels(1);
         configuration.set_threshold(0.125);
         configuration.set_octaves(6);
         configuration.set_octave_layers(8);
-        configuration.set_diffusivity(3).expect("valid diffusivity");
+        configuration.set_diffusivity(3);
 
         assert_eq!(configuration.descriptor_type(), 2);
         assert_eq!(configuration.descriptor_size(), 64);
@@ -375,21 +371,16 @@ mod tests {
     }
 
     #[test]
-    fn enum_setters_reject_invalid_values_without_mutation() {
+    fn enum_setters_preserve_unknown_wire_codes() {
         let mut configuration = AkazeConfig::default();
 
-        let before = configuration.clone();
-        assert_eq!(
-            configuration.set_descriptor_type(6),
-            Err(AkazeConfigError::DescriptorType(6))
-        );
-        assert_eq!(configuration, before);
+        for value in [i32::MIN, -1, 0, 6, i32::MAX] {
+            configuration.set_descriptor_type(value);
+            assert_eq!(configuration.descriptor_type(), value);
 
-        assert_eq!(
-            configuration.set_diffusivity(-1),
-            Err(AkazeConfigError::Diffusivity(-1))
-        );
-        assert_eq!(configuration, before);
+            configuration.set_diffusivity(value);
+            assert_eq!(configuration.diffusivity(), value);
+        }
     }
 
     #[test]
