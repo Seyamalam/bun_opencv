@@ -167,7 +167,7 @@
         const elementSize = empty && !matrix.isContinuous ? 0 : depthWidth * matrix.channels;
         const compactBytes = matrix.toUint8Array();
         const rowByteLength = matrix.columns * matrix.channels * depthWidth;
-        const ucharPointerLength = matrix.columns * matrix.channels;
+        const ucharPointerLength = Math.min(rowByteLength, matrix.rowStride / depthWidth);
         const bytes = Array.from({ length: matrix.rows }, (_, row) =>
           Array.from(
             compactBytes.subarray(row * rowByteLength, row * rowByteLength + ucharPointerLength),
