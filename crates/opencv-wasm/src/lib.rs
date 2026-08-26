@@ -4,6 +4,8 @@ use std::{error::Error, fmt};
 
 use wasm_bindgen::prelude::*;
 
+mod core_channels;
+mod core_channels_wasm;
 mod core_layout;
 mod core_layout_wasm;
 mod core_ops;
