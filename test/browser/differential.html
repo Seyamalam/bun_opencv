@@ -40,6 +40,21 @@
         }
       }
 
+      function sameNumbers(actual, expected, operation, tolerance = 1e-12) {
+        if (actual.length !== expected.length) {
+          throw new Error(
+            `${operation} length differs: package=${actual.length} OpenCV.js=${expected.length}`,
+          );
+        }
+        for (let index = 0; index < actual.length; index += 1) {
+          if (Math.abs(actual[index] - expected[index]) > tolerance) {
+            throw new Error(
+              `${operation} differs at ${index}: package=${actual[index]} OpenCV.js=${expected[index]}`,
+            );
+          }
+        }
+      }
+
       function runReference(input) {
         return new Promise((resolve, reject) => {
           const worker = new Worker("/test/browser/opencv-reference-worker.js");
@@ -87,8 +102,61 @@
           packageOutput.dispose();
         }
 
+        const packageContour = packageCv.matFromI32(
+          4,
+          1,
+          2,
+          new Int32Array([0, 0, 4, 0, 4, 3, 0, 3]),
+        );
+        sameNumbers(
+          [packageCv.arcLength(packageContour, true)],
+          [referenceOutputs.arcLength],
+          "arcLength",
+        );
+        sameNumbers(
+          [packageCv.contourArea(packageContour)],
+          [referenceOutputs.contourArea],
+          "contourArea",
+        );
+        const packageBounds = packageCv.boundingRect(packageContour);
+        sameNumbers(
+          [packageBounds.x, packageBounds.y, packageBounds.width, packageBounds.height],
+          referenceOutputs.boundingRect,
+          "boundingRect",
+          0,
+        );
+        if (packageCv.isContourConvex(packageContour) !== referenceOutputs.isContourConvex) {
+          throw new Error("isContourConvex differs from OpenCV.js");
+        }
+        sameNumbers(
+          [packageCv.pointPolygonTest(packageContour, { x: 2, y: 1 }, true)],
+          [referenceOutputs.pointPolygonTest],
+          "pointPolygonTest",
+        );
+        packageContour.dispose();
+
+        const packageKernel = packageCv.getStructuringElement(
+          1,
+          { width: 3, height: 3 },
+          { x: 1, y: 1 },
+        );
+        sameBytes(
+          packageKernel.toUint8Array(),
+          referenceOutputs.getStructuringElement,
+          "getStructuringElement",
+        );
+        packageKernel.dispose();
+
+        const packageRotation = packageCv.getRotationMatrix2D({ x: 1, y: 2 }, 90, 1);
+        sameNumbers(
+          packageRotation.toFloat64Array(),
+          referenceOutputs.getRotationMatrix2D,
+          "getRotationMatrix2D",
+        );
+        packageRotation.dispose();
+
         packageSource.dispose();
-        result.value = "PASS OpenCV.js 4.13.0 layout differential";
+        result.value = "PASS OpenCV.js 4.13.0 layout, geometry, and helper differential";
         document.body.dataset.status = "passed";
       } catch (error) {
         result.value = `FAIL ${String(error)}`;

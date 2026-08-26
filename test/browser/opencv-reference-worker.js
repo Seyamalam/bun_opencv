@@ -5,6 +5,10 @@ function copyBytes(matrix) {
   return new Uint8Array(matrix.data);
 }
 
+function copyF64(matrix) {
+  return Array.from(matrix.data64F);
+}
+
 async function loadOpenCv() {
   try {
     importScripts("/test/browser/.cache/opencv-4.13.0.js");
@@ -56,6 +60,32 @@ self.addEventListener("message", async ({ data: input }) => {
       target.delete();
     }
     source.delete();
+
+    const contour = reference.matFromArray(
+      4,
+      1,
+      reference.CV_32SC2,
+      new Int32Array([0, 0, 4, 0, 4, 3, 0, 3]),
+    );
+    const bounds = reference.boundingRect(contour);
+    outputs.arcLength = reference.arcLength(contour, true);
+    outputs.contourArea = reference.contourArea(contour, false);
+    outputs.boundingRect = [bounds.x, bounds.y, bounds.width, bounds.height];
+    outputs.isContourConvex = reference.isContourConvex(contour);
+    outputs.pointPolygonTest = reference.pointPolygonTest(contour, new reference.Point(2, 1), true);
+    contour.delete();
+
+    const kernel = reference.getStructuringElement(
+      reference.MORPH_CROSS,
+      new reference.Size(3, 3),
+      new reference.Point(1, 1),
+    );
+    outputs.getStructuringElement = copyBytes(kernel);
+    kernel.delete();
+
+    const rotation = reference.getRotationMatrix2D(new reference.Point(1, 2), 90, 1);
+    outputs.getRotationMatrix2D = copyF64(rotation);
+    rotation.delete();
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });
