@@ -901,11 +901,18 @@
         });
       }
 
-      try {
+      differential: try {
         const packageCv = await initOpenCv();
         const input = new Uint8Array([1, 2, 3, 4, 5, 6]);
         const packageSource = packageCv.matFromU8(2, 3, 1, input);
         const referenceOutputs = await runReference(input);
+        if (new URLSearchParams(globalThis.location.search).has("reference-enums")) {
+          packageSource.dispose();
+          globalThis.detectorEnumReferenceAudit = referenceOutputs.detectorEnumAudit;
+          result.style.whiteSpace = "pre-wrap";
+          result.textContent = JSON.stringify(referenceOutputs.detectorEnumAudit, null, 2);
+          break differential;
+        }
 
         const cases = [
           ["flip", packageCv.flip(packageSource, 1)],
