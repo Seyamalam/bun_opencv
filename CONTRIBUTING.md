@@ -14,6 +14,8 @@ bun run build
 
 The full check runs formatting, Oxlint, strict TypeScript, Bun tests, Rust tests, parity validation, documentation links, and version validation. The build also runs a smoke test against the emitted WASM binary.
 
+Browser differential tests use the official OpenCV.js 4.13.0 runtime only as a development oracle. Run `bun run test:browser:prepare` to download it into an ignored cache and verify its pinned SHA-256 digest. The cache is not committed and is excluded from the npm package.
+
 ## Add an operation
 
 1. Write the pure Rust implementation and native unit tests.

@@ -7,5 +7,6 @@ dist/
 node_modules/
 target/
 wasm/
+test/browser/.cache/
 *.log
 *.tgz

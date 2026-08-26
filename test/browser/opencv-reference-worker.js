@@ -6,7 +6,11 @@ function copyBytes(matrix) {
 }
 
 async function loadOpenCv() {
-  importScripts("https://docs.opencv.org/4.13.0/opencv.js");
+  try {
+    importScripts("/test/browser/.cache/opencv-4.13.0.js");
+  } catch {
+    importScripts("https://docs.opencv.org/4.13.0/opencv.js");
+  }
   if (cv instanceof Promise) {
     return cv;
   }
