@@ -303,9 +303,62 @@
         );
         packageKaze.dispose();
 
+        const packageGftt = packageCv.createGFTTDetector();
+        if (packageGftt.getDefaultName() !== referenceOutputs.gfttDefaultName) {
+          throw new Error(
+            `GFTT default name differs: package=${packageGftt.getDefaultName()} OpenCV.js=${referenceOutputs.gfttDefaultName}`,
+          );
+        }
+        sameNumbers(
+          [
+            packageGftt.getBlockSize(),
+            packageGftt.getHarrisDetector(),
+            packageGftt.getK(),
+            packageGftt.getMaxFeatures(),
+            packageGftt.getMinDistance(),
+            packageGftt.getQualityLevel(),
+          ],
+          referenceOutputs.gfttDefaults,
+          "GFTT defaults",
+          0,
+        );
+        packageGftt.setBlockSize(-1);
+        packageGftt.setHarrisDetector(true);
+        packageGftt.setK(-1);
+        packageGftt.setMaxFeatures(-1);
+        packageGftt.setMinDistance(-1);
+        packageGftt.setQualityLevel(-1);
+        sameNumbers(
+          [
+            packageGftt.getBlockSize(),
+            packageGftt.getHarrisDetector(),
+            packageGftt.getK(),
+            packageGftt.getMaxFeatures(),
+            packageGftt.getMinDistance(),
+            packageGftt.getQualityLevel(),
+          ],
+          referenceOutputs.gfttMutated,
+          "GFTT mutations",
+          0,
+        );
+        packageGftt.setK(Number.NaN);
+        packageGftt.setMinDistance(Number.NEGATIVE_INFINITY);
+        packageGftt.setQualityLevel(Number.POSITIVE_INFINITY);
+        sameNumbers(
+          [
+            Number.isNaN(packageGftt.getK()),
+            packageGftt.getMinDistance() === Number.NEGATIVE_INFINITY,
+            packageGftt.getQualityLevel() === Number.POSITIVE_INFINITY,
+          ],
+          referenceOutputs.gfttNonFinite,
+          "GFTT non-finite values",
+          0,
+        );
+        packageGftt.dispose();
+
         packageSource.dispose();
         result.value =
-          "PASS OpenCV.js 4.13.0 layout, geometry, helper, DFT, AKAZE, AGAST, FAST, and KAZE differential";
+          "PASS OpenCV.js 4.13.0 layout, geometry, helper, DFT, AKAZE, AGAST, FAST, KAZE, and GFTT differential";
         document.body.dataset.status = "passed";
       } catch (error) {
         result.value = `FAIL ${String(error)}`;

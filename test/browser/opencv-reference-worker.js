@@ -169,6 +169,39 @@ self.addEventListener("message", async ({ data: input }) => {
       kaze.getUpright(),
     ];
     kaze.delete();
+    const gftt = new reference.GFTTDetector();
+    outputs.gfttDefaultName = gftt.getDefaultName();
+    outputs.gfttDefaults = [
+      gftt.getBlockSize(),
+      gftt.getHarrisDetector(),
+      gftt.getK(),
+      gftt.getMaxFeatures(),
+      gftt.getMinDistance(),
+      gftt.getQualityLevel(),
+    ];
+    gftt.setBlockSize(-1);
+    gftt.setHarrisDetector(true);
+    gftt.setK(-1);
+    gftt.setMaxFeatures(-1);
+    gftt.setMinDistance(-1);
+    gftt.setQualityLevel(-1);
+    outputs.gfttMutated = [
+      gftt.getBlockSize(),
+      gftt.getHarrisDetector(),
+      gftt.getK(),
+      gftt.getMaxFeatures(),
+      gftt.getMinDistance(),
+      gftt.getQualityLevel(),
+    ];
+    gftt.setK(Number.NaN);
+    gftt.setMinDistance(Number.NEGATIVE_INFINITY);
+    gftt.setQualityLevel(Number.POSITIVE_INFINITY);
+    outputs.gfttNonFinite = [
+      Number.isNaN(gftt.getK()),
+      gftt.getMinDistance() === Number.NEGATIVE_INFINITY,
+      gftt.getQualityLevel() === Number.POSITIVE_INFINITY,
+    ];
+    gftt.delete();
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });
