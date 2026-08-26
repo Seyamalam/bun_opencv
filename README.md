@@ -153,20 +153,20 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | features2d | `KAZE.setThreshold`                         | `cv.KAZE.setThreshold`                         | Partial | Finite threshold mutation                |
 | features2d | `KAZE.setUpright`                           | `cv.KAZE.setUpright`                           | Partial | Configuration mutation                   |
 | features2d | `createAgastFeatureDetector`                | `cv.AgastFeatureDetector.create`               | Partial | Configuration handle only; no detection  |
-| features2d | `AgastFeatureDetector.getDefaultName`       | `cv.AgastFeatureDetector.getDefaultName`       | Partial | Package-owned configuration name         |
-| features2d | `AgastFeatureDetector.getNonmaxSuppression` | `cv.AgastFeatureDetector.getNonmaxSuppression` | Partial | Boolean configuration state              |
-| features2d | `AgastFeatureDetector.getThreshold`         | `cv.AgastFeatureDetector.getThreshold`         | Partial | Signed 32-bit threshold state            |
+| features2d | `AgastFeatureDetector.getDefaultName`       | `cv.AgastFeatureDetector.getDefaultName`       | Full    | Exact name, arity, and lifecycle         |
+| features2d | `AgastFeatureDetector.getNonmaxSuppression` | `cv.AgastFeatureDetector.getNonmaxSuppression` | Full    | Exact boolean state and lifecycle        |
+| features2d | `AgastFeatureDetector.getThreshold`         | `cv.AgastFeatureDetector.getThreshold`         | Full    | Exact signed i32 state and lifecycle     |
 | features2d | `AgastFeatureDetector.getType`              | `cv.AgastFeatureDetector.getType`              | Partial | AGAST types 0 through 3                  |
-| features2d | `AgastFeatureDetector.setNonmaxSuppression` | `cv.AgastFeatureDetector.setNonmaxSuppression` | Partial | Configuration mutation                   |
-| features2d | `AgastFeatureDetector.setThreshold`         | `cv.AgastFeatureDetector.setThreshold`         | Partial | Signed 32-bit mutation                   |
+| features2d | `AgastFeatureDetector.setNonmaxSuppression` | `cv.AgastFeatureDetector.setNonmaxSuppression` | Full    | Exact boolean coercion and call contract |
+| features2d | `AgastFeatureDetector.setThreshold`         | `cv.AgastFeatureDetector.setThreshold`         | Full    | Exact i32 coercion and call contract     |
 | features2d | `AgastFeatureDetector.setType`              | `cv.AgastFeatureDetector.setType`              | Partial | Validated configuration mutation         |
 | features2d | `createFastFeatureDetector`                 | `cv.FastFeatureDetector.create`                | Partial | Configuration handle only; no detection  |
-| features2d | `FastFeatureDetector.getDefaultName`        | `cv.FastFeatureDetector.getDefaultName`        | Partial | Package-owned configuration name         |
-| features2d | `FastFeatureDetector.getNonmaxSuppression`  | `cv.FastFeatureDetector.getNonmaxSuppression`  | Partial | Boolean configuration state              |
-| features2d | `FastFeatureDetector.getThreshold`          | `cv.FastFeatureDetector.getThreshold`          | Partial | Signed 32-bit threshold state            |
+| features2d | `FastFeatureDetector.getDefaultName`        | `cv.FastFeatureDetector.getDefaultName`        | Full    | Exact name, arity, and lifecycle         |
+| features2d | `FastFeatureDetector.getNonmaxSuppression`  | `cv.FastFeatureDetector.getNonmaxSuppression`  | Full    | Exact boolean state and lifecycle        |
+| features2d | `FastFeatureDetector.getThreshold`          | `cv.FastFeatureDetector.getThreshold`          | Full    | Exact signed i32 state and lifecycle     |
 | features2d | `FastFeatureDetector.getType`               | `cv.FastFeatureDetector.getType`               | Partial | FAST types 0 through 2                   |
-| features2d | `FastFeatureDetector.setNonmaxSuppression`  | `cv.FastFeatureDetector.setNonmaxSuppression`  | Partial | Configuration mutation                   |
-| features2d | `FastFeatureDetector.setThreshold`          | `cv.FastFeatureDetector.setThreshold`          | Partial | Signed 32-bit mutation                   |
+| features2d | `FastFeatureDetector.setNonmaxSuppression`  | `cv.FastFeatureDetector.setNonmaxSuppression`  | Full    | Exact boolean coercion and call contract |
+| features2d | `FastFeatureDetector.setThreshold`          | `cv.FastFeatureDetector.setThreshold`          | Full    | Exact i32 coercion and call contract     |
 | features2d | `FastFeatureDetector.setType`               | `cv.FastFeatureDetector.setType`               | Partial | Validated configuration mutation         |
 | features2d | `createGFTTDetector`                        | `cv.GFTTDetector.create`                       | Partial | Selected six-argument configuration      |
 | features2d | `GFTTDetector.getBlockSize`                 | `cv.GFTTDetector.getBlockSize`                 | Full    | Exact arity, state, and lifecycle        |
@@ -203,13 +203,13 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `findContours`                              | `cv.findContours`                              | Planned | Not started                              |
 | imgproc    | `warpPerspective`                           | `cv.warpPerspective`                           | Planned | Not started                              |
 
-Current full parity is **13 of 488 (2.66%)**. There are **116 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+Current full parity is **23 of 488 (4.71%)**. There are **106 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
 
 The pinned OpenCV.js 4.13.0 browser fixture passes AKAZE defaults and mutations for all 15 instance members. The same artifact exposes `AKAZE` as a directly constructible class but omits the config-listed static `AKAZE.create`, so the `createAKAZE` factory cannot receive direct runtime credit from that artifact.
 
 The fixture passes KAZE defaults and mutations for all 13 instance methods, including threshold `-1` and typed diffusivity changes. The artifact exposes a direct `KAZE` constructor but omits the config-listed static `KAZE.create` method.
 
-The fixture also passes AGAST and FAST defaults and mutations for all seven instance methods on each class. It preserves the signed AGAST threshold `-1` and the FAST threshold `256`. Both classes are directly constructible in the official artifact, but neither exposes the config-listed static `create` method.
+The fixture passes the complete pinned browser contract for five primitive AGAST methods and five primitive FAST methods. It checks exact arity, return values, signed i32 and boolean coercion, argument errors, deletion, repeat deletion, and calls after deletion. These ten families count as full parity. The factory, `getType`, and `setType` families remain partial because direct construction and enum-object behavior do not yet match the pinned binding.
 
 The fixture passes the complete pinned browser matrix for all 13 GFTT instance methods. It checks method arity, defaults, return values, integer, number, and boolean coercion, missing and extra arguments, deletion, repeat deletion, and calls after deletion. These 13 method families count as full parity. The official artifact exposes the direct constructor but omits the config-listed static `GFTTDetector.create` method. The package factory remains partial because it covers one six-argument shape and omits the `gradientSize` overload.
 

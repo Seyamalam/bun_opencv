@@ -362,11 +362,13 @@ FAST uses these numeric neighborhood types:
 
 Both factories default to threshold `10` with non-maximum suppression enabled. AGAST defaults to `OAST_9_16`, and FAST defaults to `TYPE_9_16`. `getDefaultName()` returns `"Feature2D.AgastFeatureDetector"` or `"Feature2D.FastFeatureDetector"`.
 
-Thresholds accept the complete signed 32-bit range, including negative values and values above 255. TypeScript rejects fractional, unsafe, or out-of-range numbers before calling WebAssembly. The browser differential fixture confirms that OpenCV.js preserves AGAST threshold `-1` and FAST threshold `256`. Type setters accept only the enum values listed above. A rejected type update leaves the old value unchanged.
+`setThreshold(value)` follows the pinned binding's signed i32 coercion and returns `undefined`. Fractional values truncate toward zero, and `NaN` becomes zero. The browser differential fixture also confirms that AGAST preserves `-1` and FAST preserves `256`. `setNonmaxSuppression(value)` applies JavaScript boolean coercion and returns `undefined`.
 
-Each handle also exposes `getNonmaxSuppression()`, `getThreshold()`, `getType()`, and their matching setters. Call `dispose()` after use. Disposal is idempotent, and every getter or setter throws `OpenCvInputError` after disposal.
+The five primitive methods on each class, `getDefaultName`, `getNonmaxSuppression`, `getThreshold`, `setNonmaxSuppression`, and `setThreshold`, enforce the pinned argument counts. Missing setter arguments and extra getter or setter arguments throw `BindingError`. `delete()` returns `undefined`; a second deletion and every primitive method call after deletion also throw `BindingError`. The package keeps idempotent `dispose()` as a convenience.
 
-The pinned OpenCV.js 4.13.0 artifact exposes direct `AgastFeatureDetector` and `FastFeatureDetector` constructors and all seven instance methods on both. It omits the config-listed static `create` method on each class, so the package factories have no direct static-factory comparator for that artifact.
+`getType()` and `setType(value)` remain partial. The package uses the numeric enums listed above, while the pinned OpenCV.js binding returns and accepts Embind enum objects. A rejected package type update leaves the old value unchanged. The factories remain partial because the pinned artifact exposes direct constructors but omits both config-listed static `create` methods.
+
+The pinned OpenCV.js 4.13.0 artifact exposes direct `AgastFeatureDetector` and `FastFeatureDetector` constructors and all seven instance methods on both. The five primitive methods on each class pass the complete call-contract matrix and count as implemented. The factories and two enum methods on each class remain partial for the reasons above.
 
 ### GFTT detector configuration
 
