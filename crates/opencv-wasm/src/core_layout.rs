@@ -162,7 +162,6 @@ mod tests {
     fn invalid_transform_codes_are_rejected() {
         let bytes = [1];
         let source = matrix(&bytes, 1, 1, 1, 1);
-        assert_eq!(flip_bytes(source, 2), Err(LayoutError::InvalidFlipCode(2)));
         assert_eq!(
             rotate_bytes(source, -1),
             Err(LayoutError::InvalidRotateCode(-1))
@@ -170,6 +169,21 @@ mod tests {
         assert_eq!(
             rotate_bytes(source, 3),
             Err(LayoutError::InvalidRotateCode(3))
+        );
+    }
+
+    #[test]
+    fn flip_uses_the_sign_of_every_i32_code() {
+        let bytes = [1, 2, 3, 4, 5, 6];
+        let source = matrix(&bytes, 2, 3, 1, 1);
+
+        assert_eq!(
+            flip_bytes(source, 2).expect("positive codes flip columns").bytes(),
+            [3, 2, 1, 6, 5, 4]
+        );
+        assert_eq!(
+            flip_bytes(source, -2).expect("negative codes flip both axes").bytes(),
+            [6, 5, 4, 3, 2, 1]
         );
     }
 
@@ -370,7 +384,6 @@ pub(crate) enum LayoutError {
         expected: usize,
         actual: usize,
     },
-    InvalidFlipCode(i32),
     InvalidRotateCode(i32),
     InvalidRepeatCount {
         rows: i32,
@@ -402,7 +415,6 @@ impl fmt::Display for LayoutError {
                 formatter,
                 "matrix buffer has {actual} bytes; expected {expected} bytes"
             ),
-            Self::InvalidFlipCode(code) => write!(formatter, "flip code {code} is not -1, 0, or 1"),
             Self::InvalidRotateCode(code) => {
                 write!(formatter, "rotate code {code} is not 0, 1, or 2")
             }
@@ -428,16 +440,16 @@ impl fmt::Display for LayoutError {
 
 impl Error for LayoutError {}
 
-/// Flips compact matrix bytes vertically (`0`), horizontally (`1`), or on both axes (`-1`).
+/// Flips compact matrix bytes vertically (`0`), horizontally (positive), or on both axes
+/// (negative).
 pub(crate) fn flip_bytes(
     source: ByteMatrix<'_>,
     flip_code: i32,
 ) -> Result<OwnedByteMatrix, LayoutError> {
-    let (flip_rows, flip_columns) = match flip_code {
-        0 => (true, false),
-        1 => (false, true),
-        -1 => (true, true),
-        code => return Err(LayoutError::InvalidFlipCode(code)),
+    let (flip_rows, flip_columns) = match flip_code.cmp(&0) {
+        std::cmp::Ordering::Equal => (true, false),
+        std::cmp::Ordering::Greater => (false, true),
+        std::cmp::Ordering::Less => (true, true),
     };
     remap_pixels(source, source.layout, |row, column| {
         let source_row = if flip_rows {

@@ -924,9 +924,9 @@ class CopyingBackend implements OpenCvBackend {
     const pixelBytes = source.channels * depthByteWidth(source.depth);
     for (let row = 0; row < source.rows; row += 1) {
       for (let column = 0; column < source.columns; column += 1) {
-        const sourceRow = flipCode === 0 || flipCode === -1 ? source.rows - row - 1 : row;
+        const sourceRow = flipCode <= 0 ? source.rows - row - 1 : row;
         const sourceColumn =
-          flipCode === 1 || flipCode === -1 ? source.columns - column - 1 : column;
+          flipCode !== 0 ? source.columns - column - 1 : column;
         const sourceOffset = (sourceRow * source.columns + sourceColumn) * pixelBytes;
         const outputOffset = (row * source.columns + column) * pixelBytes;
         output.set(input.subarray(sourceOffset, sourceOffset + pixelBytes), outputOffset);
@@ -2310,7 +2310,7 @@ describe("OpenCv client", () => {
     expect(client).toHaveProperty("repeat");
 
     const source = client.matFromU8(2, 3, 1, new Uint8Array([1, 2, 3, 4, 5, 6]));
-    const horizontal = client.flip(source, 1);
+    const horizontal = client.flipAlloc(source, 1);
     const transposed = client.transposeAlloc(source);
     const clockwise = client.rotate(source, 0);
     const repeated = client.repeat(source, 2, 1);
@@ -2367,6 +2367,44 @@ describe("OpenCv client", () => {
       // @ts-expect-error Runtime parity requires testing an extra argument from plain JavaScript.
       client.transpose(source, destination, 1);
     }).toThrow(new BindingError("function transpose called with 3 arguments, expected 2 args!"));
+
+    destination.dispose();
+    source.dispose();
+  });
+
+  test("matches the exact three-argument flip call contract", () => {
+    const source = client.matFromU8(2, 3, 1, new Uint8Array([1, 2, 3, 4, 5, 6]));
+    const destination = client.zerosU8(2, 3, 1);
+
+    expect(client.flip.length).toBe(3);
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing missing arguments from plain JavaScript.
+      client.flip();
+    }).toThrow(new BindingError("function flip called with 0 arguments, expected 3 args!"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a missing destination and code.
+      client.flip(source);
+    }).toThrow(new BindingError("function flip called with 1 arguments, expected 3 args!"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a missing code.
+      client.flip(source, destination);
+    }).toThrow(new BindingError("function flip called with 2 arguments, expected 3 args!"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing an extra argument.
+      client.flip(source, destination, 1, 2);
+    }).toThrow(new BindingError("function flip called with 4 arguments, expected 3 args!"));
+
+    expect(client.flip(source, destination, 2)).toBeUndefined();
+    expect(destination.toUint8Array()).toEqual(new Uint8Array([3, 2, 1, 6, 5, 4]));
+    expect(client.flip(source, destination, -2)).toBeUndefined();
+    expect(destination.toUint8Array()).toEqual(new Uint8Array([6, 5, 4, 3, 2, 1]));
+    expect(client.flip(source, destination, Number.NaN)).toBeUndefined();
+    expect(destination.toUint8Array()).toEqual(new Uint8Array([4, 5, 6, 1, 2, 3]));
+    expect(() => client.flip(source, destination, 2_147_483_648)).toThrow(
+      new TypeError(
+        'Passing a number "2147483648" from JS side to C/C++ side to an argument of type "int", which is outside the valid range [-2147483648, 2147483647]!',
+      ),
+    );
 
     destination.dispose();
     source.dispose();

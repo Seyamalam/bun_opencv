@@ -46,7 +46,7 @@
 
         const signed = cv.matFromI16(2, 2, 1, new Int16Array([-2, 7, 30000, -5]));
         const signedTotal = cv.sum(signed).join(",");
-        const flipped = cv.flip(signed, 1);
+        const flipped = cv.flipAlloc(signed, 1);
         const flippedValues = flipped.toInt16Array().join(",");
         flipped.dispose();
         signed.dispose();

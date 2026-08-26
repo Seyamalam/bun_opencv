@@ -414,8 +414,8 @@ export interface OpenCv {
   ): Point[];
   exp(source: Mat): Mat;
   emptyMat(): Mat;
-  flip(source: Mat, flipCode: -1 | 0 | 1): Mat;
-  flip(source: Mat, destination: Mat, flipCode: -1 | 0 | 1): void;
+  flip(source: Mat, destination: Mat, flipCode: number): void;
+  flipAlloc(source: Mat, flipCode: number): Mat;
   grayscale(image: RgbaImage): RgbaImage;
   hconcat(
     sources: readonly [Mat, Mat] | readonly [Mat, Mat, Mat] | readonly [Mat, Mat, Mat, Mat],

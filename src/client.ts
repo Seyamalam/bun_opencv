@@ -353,18 +353,17 @@ class WasmOpenCv implements OpenCv {
     return new Mat(this.#backend.matEmpty());
   }
 
-  flip(source: Mat, flipCode: -1 | 0 | 1): Mat;
-  flip(source: Mat, destination: Mat, flipCode: -1 | 0 | 1): void;
-  flip(source: Mat, destinationOrCode: Mat | -1 | 0 | 1, flipCode?: -1 | 0 | 1): Mat | void {
-    if (destinationOrCode instanceof Mat) {
-      this.#backend.matFlipInto(
-        source.handleForBackend(),
-        destinationOrCode.handleForBackend(),
-        requiredCode(flipCode),
-      );
-      return;
-    }
-    return new Mat(this.#backend.matFlip(source.handleForBackend(), destinationOrCode));
+  flip(source: Mat, destination: Mat, flipCode: number): void {
+    requireExactArity(arguments.length, 3, "flip");
+    this.#backend.matFlipInto(
+      source.handleForBackend(),
+      destination.handleForBackend(),
+      toWasmI32(flipCode),
+    );
+  }
+
+  flipAlloc(source: Mat, flipCode: number): Mat {
+    return new Mat(this.#backend.matFlip(source.handleForBackend(), toWasmI32(flipCode)));
   }
 
   rotate(source: Mat, rotateCode: 0 | 1 | 2): Mat;

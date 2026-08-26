@@ -71,12 +71,12 @@ impl From<MatError> for LayoutWasmError {
 
 /// Flips a matrix vertically, horizontally, or across both axes.
 ///
-/// The accepted codes match `OpenCV`: `0` flips rows, `1` flips columns, and `-1` flips both.
+/// The accepted codes match `OpenCV`: `0` flips rows, positive values flip columns, and negative
+/// values flip both.
 ///
 /// # Errors
 ///
-/// Returns an error when `flip_code` is not `-1`, `0`, or `1`, or when the output cannot be
-/// allocated.
+/// Returns an error when the output cannot be allocated.
 #[wasm_bindgen(js_name = matFlip)]
 pub fn mat_flip(source: &Mat, flip_code: i32) -> Result<Mat, JsError> {
     apply_layout(source, |matrix| flip_bytes(matrix, flip_code)).map_err(JsError::from)
@@ -86,7 +86,7 @@ pub fn mat_flip(source: &Mat, flip_code: i32) -> Result<Mat, JsError> {
 ///
 /// # Errors
 ///
-/// Returns an error for an invalid flip code or output allocation failure.
+/// Returns an error for output allocation failure.
 #[wasm_bindgen(js_name = matFlipInto)]
 pub fn mat_flip_into(source: &Mat, destination: &Mat, flip_code: i32) -> Result<(), JsError> {
     apply_layout_into(source, destination, |matrix| flip_bytes(matrix, flip_code))
@@ -501,10 +501,6 @@ mod tests {
     fn adapters_reject_invalid_codes_and_repeat_counts() {
         let source = u8_matrix(vec![1], 1, 1, 1);
 
-        assert!(matches!(
-            apply_layout(&source, |matrix| flip_bytes(matrix, 7)),
-            Err(LayoutWasmError::Kernel(LayoutError::InvalidFlipCode(7)))
-        ));
         assert!(matches!(
             apply_layout(&source, |matrix| rotate_bytes(matrix, -1)),
             Err(LayoutWasmError::Kernel(LayoutError::InvalidRotateCode(-1)))
