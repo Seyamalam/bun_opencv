@@ -99,6 +99,14 @@ Channel operations preserve raw scalar bytes for all seven depths and compact st
 
 These methods accept F32 and F64 matrices, including strided regions. The optional `degrees` argument defaults to `false`. Results follow Rust and WebAssembly IEEE 754 behavior; parity fixtures use declared tolerances because optimized OpenCV kernels may use different approximations.
 
+### Typed numeric operations
+
+- `multiply(a, b, scale)` and `divide(a, b, scale)` process matching matrices at every scalar depth.
+- `addWeighted(a, alpha, b, beta, gamma)` combines matching matrices.
+- `convertScaleAbs(source, alpha, beta)` computes an absolute affine transform into U8.
+
+Integer outputs use nearest-even rounding and saturation. Integer division by zero produces zero. Floating-point outputs retain IEEE 754 behavior. Inputs may be strided regions.
+
 ### Matrix reductions
 
 - `countNonZero(source)` supports every scalar depth and requires one channel.

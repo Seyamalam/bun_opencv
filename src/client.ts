@@ -23,6 +23,13 @@ class WasmOpenCv implements OpenCv {
     return new Mat(this.#backend.matAddU8(left.handleForBackend(), right.handleForBackend()));
   }
 
+  addWeighted(a: Mat, alpha: number, b: Mat, beta: number, gamma: number): Mat {
+    validateFiniteNumbers({ alpha, beta, gamma });
+    return new Mat(
+      this.#backend.matAddWeighted(a.handleForBackend(), alpha, b.handleForBackend(), beta, gamma),
+    );
+  }
+
   bitwiseAnd(left: Mat, right: Mat): Mat {
     return new Mat(
       this.#backend.matBitwiseAndU8(left.handleForBackend(), right.handleForBackend()),
@@ -59,6 +66,16 @@ class WasmOpenCv implements OpenCv {
 
   countNonZero(source: Mat): number {
     return this.#backend.matCountNonZero(source.handleForBackend());
+  }
+
+  convertScaleAbs(source: Mat, alpha = 1, beta = 0): Mat {
+    validateFiniteNumbers({ alpha, beta });
+    return new Mat(this.#backend.matConvertScaleAbs(source.handleForBackend(), alpha, beta));
+  }
+
+  divide(a: Mat, b: Mat, scale = 1): Mat {
+    validateFiniteNumbers({ scale });
+    return new Mat(this.#backend.matDivide(a.handleForBackend(), b.handleForBackend(), scale));
   }
 
   extractChannel(source: Mat, channel: number): Mat {
@@ -214,6 +231,11 @@ class WasmOpenCv implements OpenCv {
 
   min(left: Mat, right: Mat): Mat {
     return new Mat(this.#backend.matMinU8(left.handleForBackend(), right.handleForBackend()));
+  }
+
+  multiply(a: Mat, b: Mat, scale = 1): Mat {
+    validateFiniteNumbers({ scale });
+    return new Mat(this.#backend.matMultiply(a.handleForBackend(), b.handleForBackend(), scale));
   }
 
   polarToCart(magnitude: Mat, angle: Mat, x: Mat, y: Mat, degrees = false): void {
@@ -427,6 +449,12 @@ function requiredCode<T extends number>(value: T | undefined): T {
 function validateChannelIndex(channel: number): void {
   if (!Number.isSafeInteger(channel) || channel < 0 || channel > 511) {
     throw new OpenCvInputError("channel must be a non-negative integer below 512");
+  }
+}
+
+function validateFiniteNumbers(values: Readonly<Record<string, number>>): void {
+  for (const [name, value] of Object.entries(values)) {
+    if (!Number.isFinite(value)) throw new OpenCvInputError(`${name} must be finite`);
   }
 }
 

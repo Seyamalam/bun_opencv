@@ -185,6 +185,18 @@ function zipFloatHandles(
   );
 }
 
+function binaryNumericU8(
+  left: WasmMatHandle,
+  right: WasmMatHandle,
+  operation: (left: number, right: number) => number,
+): WasmMatHandle {
+  const rightBytes = right.toUint8Array();
+  const output = Uint8Array.from(left.toUint8Array(), (value, index) =>
+    Math.min(255, Math.max(0, Math.round(operation(value, rightBytes[index] ?? 0)))),
+  );
+  return new CopyingMatHandle(left.rows, left.columns, left.channels, output);
+}
+
 class CopyingBackend implements OpenCvBackend {
   grayscaleRgba(data: Uint8Array): Uint8Array {
     return new Uint8Array(data);
@@ -383,6 +395,69 @@ class CopyingBackend implements OpenCvBackend {
         (length, direction) => length * Math.sin(direction * scale),
       ).toUint8Array(),
     );
+  }
+
+  matMultiply(a: WasmMatHandle, b: WasmMatHandle, scale: number): WasmMatHandle {
+    return binaryNumericU8(a, b, (left, right) => left * right * scale);
+  }
+
+  matMultiplyInto(
+    a: WasmMatHandle,
+    b: WasmMatHandle,
+    destination: WasmMatHandle,
+    scale: number,
+  ): void {
+    destination.copyFromBytes(this.matMultiply(a, b, scale).toUint8Array());
+  }
+
+  matDivide(a: WasmMatHandle, b: WasmMatHandle, scale: number): WasmMatHandle {
+    return binaryNumericU8(a, b, (left, right) => (right === 0 ? 0 : (left * scale) / right));
+  }
+
+  matDivideInto(
+    a: WasmMatHandle,
+    b: WasmMatHandle,
+    destination: WasmMatHandle,
+    scale: number,
+  ): void {
+    destination.copyFromBytes(this.matDivide(a, b, scale).toUint8Array());
+  }
+
+  matAddWeighted(
+    a: WasmMatHandle,
+    alpha: number,
+    b: WasmMatHandle,
+    beta: number,
+    gamma: number,
+  ): WasmMatHandle {
+    return binaryNumericU8(a, b, (left, right) => left * alpha + right * beta + gamma);
+  }
+
+  matAddWeightedInto(
+    a: WasmMatHandle,
+    alpha: number,
+    b: WasmMatHandle,
+    beta: number,
+    gamma: number,
+    destination: WasmMatHandle,
+  ): void {
+    destination.copyFromBytes(this.matAddWeighted(a, alpha, b, beta, gamma).toUint8Array());
+  }
+
+  matConvertScaleAbs(source: WasmMatHandle, alpha: number, beta: number): WasmMatHandle {
+    const output = Uint8Array.from(source.toUint8Array(), (value) =>
+      Math.min(255, Math.max(0, Math.round(Math.abs(value * alpha + beta)))),
+    );
+    return new CopyingMatHandle(source.rows, source.columns, source.channels, output);
+  }
+
+  matConvertScaleAbsInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    alpha: number,
+    beta: number,
+  ): void {
+    destination.copyFromBytes(this.matConvertScaleAbs(source, alpha, beta).toUint8Array());
   }
 
   matAbsdiffU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle {
@@ -940,5 +1015,19 @@ describe("OpenCv client", () => {
     expect(vertical.columns).toBe(2);
     expect(vertical.toUint8Array()).toEqual(new Uint8Array([7, 8, 9, 10, 11, 12]));
     for (const matrix of [vertical, bottom, top, horizontal, right, left]) matrix.dispose();
+  });
+
+  test("runs scaled all-depth numeric operations", () => {
+    const left = client.matFromU8(1, 3, 1, new Uint8Array([10, 20, 250]));
+    const right = client.matFromU8(1, 3, 1, new Uint8Array([2, 0, 2]));
+    const product = client.multiply(left, right, 0.5);
+    const quotient = client.divide(left, right, 2);
+    const blended = client.addWeighted(left, 0.5, right, 0.5, 1);
+    const absolute = client.convertScaleAbs(left, -1, 5);
+    expect(product.toUint8Array()).toEqual(new Uint8Array([10, 0, 250]));
+    expect(quotient.toUint8Array()).toEqual(new Uint8Array([10, 0, 250]));
+    expect(blended.toUint8Array()).toEqual(new Uint8Array([7, 11, 127]));
+    expect(absolute.toUint8Array()).toEqual(new Uint8Array([5, 15, 245]));
+    for (const matrix of [absolute, blended, quotient, product, right, left]) matrix.dispose();
   });
 });

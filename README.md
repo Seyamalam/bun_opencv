@@ -71,12 +71,15 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | ------- | ----------------- | -------------------- | ------- | ------------------------------------- |
 | core    | `absdiff`         | `cv.absdiff`         | Partial | Matching U8 matrices                  |
 | core    | `add`             | `cv.add`             | Partial | Saturating U8 matrix operands         |
+| core    | `addWeighted`     | `cv.addWeighted`     | Partial | All depths and finite weights         |
 | core    | `bitwiseAnd`      | `cv.bitwise_and`     | Partial | U8 matrix operands, no mask           |
 | core    | `bitwiseNot`      | `cv.bitwise_not`     | Partial | U8 matrix, no mask                    |
 | core    | `bitwiseOr`       | `cv.bitwise_or`      | Partial | U8 matrix operands, no mask           |
 | core    | `bitwiseXor`      | `cv.bitwise_xor`     | Partial | U8 matrix operands, no mask           |
 | core    | `compareEqual`    | `cv.compare`         | Partial | U8 equality mode                      |
 | core    | `countNonZero`    | `cv.countNonZero`    | Partial | All single-channel scalar depths      |
+| core    | `convertScaleAbs` | `cv.convertScaleAbs` | Partial | All input depths to saturated U8      |
+| core    | `divide`          | `cv.divide`          | Partial | All depths and matching matrices      |
 | core    | `cartToPolar`     | `cv.cartToPolar`     | Partial | F32/F64 with mutable outputs          |
 | core    | `exp`             | `cv.exp`             | Partial | F32/F64 element-wise output           |
 | core    | `flip`            | `cv.flip`            | Partial | All depths and destination mutation   |
@@ -89,6 +92,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | core    | `merge`           | `cv.merge`           | Partial | Two through four all-depth inputs     |
 | core    | `min`             | `cv.min`             | Partial | U8 matrix operands                    |
 | core    | `minMaxLoc`       | `cv.minMaxLoc`       | Partial | All single-channel depths, no mask    |
+| core    | `multiply`        | `cv.multiply`        | Partial | All depths and matching matrices      |
 | core    | `polarToCart`     | `cv.polarToCart`     | Partial | F32/F64 with mutable outputs          |
 | core    | `pow`             | `cv.pow`             | Partial | F32/F64 and finite scalar exponent    |
 | core    | `repeat`          | `cv.repeat`          | Partial | All depths, positive tile counts      |
@@ -107,7 +111,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc | `findContours`    | `cv.findContours`    | Planned | Not started                           |
 | imgproc | `warpPerspective` | `cv.warpPerspective` | Planned | Not started                           |
 
-Current full parity is **0 of 488 (0%)**. There are **33 partial families** with working Rust/WASM slices. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+Current full parity is **0 of 488 (0%)**. There are **37 partial families** with working Rust/WASM slices. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
 
 Read [the inventory](docs/INVENTORY.md) and [complete parity contract](docs/PARITY.md) for the denominator, exclusions, and definition of done.
 

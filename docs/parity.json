@@ -4,6 +4,54 @@
   "entries": [
     {
       "implementationOrigin": "original",
+      "method": "addWeighted",
+      "module": "core",
+      "notes": "All scalar depths with finite weights; dtype and public destination forms remain.",
+      "patentReview": "required",
+      "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
+      "status": "partial",
+      "upstream": "cv.addWeighted",
+      "upstreamId": "core.function.add-weighted",
+      "wasmExport": "matAddWeighted"
+    },
+    {
+      "implementationOrigin": "original",
+      "method": "convertScaleAbs",
+      "module": "core",
+      "notes": "All scalar input depths with ties-even U8 saturation; public destination form remains.",
+      "patentReview": "required",
+      "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
+      "status": "partial",
+      "upstream": "cv.convertScaleAbs",
+      "upstreamId": "core.function.convert-scale-abs",
+      "wasmExport": "matConvertScaleAbs"
+    },
+    {
+      "implementationOrigin": "original",
+      "method": "divide",
+      "module": "core",
+      "notes": "All scalar depths for matching matrices; scalar, dtype, and public destination forms remain.",
+      "patentReview": "required",
+      "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
+      "status": "partial",
+      "upstream": "cv.divide",
+      "upstreamId": "core.function.divide",
+      "wasmExport": "matDivide"
+    },
+    {
+      "implementationOrigin": "original",
+      "method": "multiply",
+      "module": "core",
+      "notes": "All scalar depths for matching matrices; dtype and public destination forms remain.",
+      "patentReview": "required",
+      "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
+      "status": "partial",
+      "upstream": "cv.multiply",
+      "upstreamId": "core.function.multiply",
+      "wasmExport": "matMultiply"
+    },
+    {
+      "implementationOrigin": "original",
       "method": "hconcat",
       "module": "core",
       "notes": "Two through four all-depth inputs; MatVector and mutable destination forms remain.",
