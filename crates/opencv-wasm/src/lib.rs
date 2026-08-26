@@ -15,6 +15,8 @@ mod core_ops;
 mod core_reductions;
 mod core_reductions_wasm;
 mod core_wasm;
+mod imgproc_border;
+mod imgproc_border_wasm;
 mod mat;
 mod mutable_storage;
 
