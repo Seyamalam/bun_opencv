@@ -382,7 +382,7 @@ impl Mat {
             && destination_header.columns == source_header.columns
             && destination_header.channels == source_header.channels
             && destination_header.depth == source_header.depth;
-        if !compatible || flip_code < 0 {
+        if !compatible {
             return Ok(false);
         }
 
@@ -398,13 +398,22 @@ impl Mat {
             return Ok(false);
         }
 
-        if flip_code == 0 {
-            destination_storage.write_vertical_flip_from_shared(source_storage)?;
-        } else {
-            let pixel_bytes = usize::from(source_header.channels)
-                .checked_mul(source_header.depth.byte_width())
-                .ok_or(MatError::BufferSizeOverflow)?;
-            destination_storage.write_horizontal_flip_from_shared(source_storage, pixel_bytes)?;
+        let pixel_bytes = usize::from(source_header.channels)
+            .checked_mul(source_header.depth.byte_width())
+            .ok_or(MatError::BufferSizeOverflow)?;
+        match flip_code.cmp(&0) {
+            std::cmp::Ordering::Equal => {
+                destination_storage.write_vertical_flip_from_shared(source_storage, pixel_bytes)?;
+            }
+            std::cmp::Ordering::Greater => {
+                destination_storage
+                    .write_horizontal_flip_from_shared(source_storage, pixel_bytes)?;
+            }
+            std::cmp::Ordering::Less => {
+                destination_storage.write_vertical_flip_from_shared(source_storage, pixel_bytes)?;
+                destination_storage
+                    .write_horizontal_flip_from_shared(destination_storage, pixel_bytes)?;
+            }
         }
         Ok(true)
     }

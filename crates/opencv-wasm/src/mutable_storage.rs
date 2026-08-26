@@ -149,10 +149,13 @@ impl MutableStorage {
     pub(crate) fn write_vertical_flip_from_shared(
         &self,
         source: &Self,
+        pixel_bytes: usize,
     ) -> Result<(), MutableStorageError> {
         if !self.shares_allocation_with(source)
             || self.rows != source.rows
             || self.row_bytes != source.row_bytes
+            || pixel_bytes == 0
+            || self.row_bytes % pixel_bytes != 0
         {
             return Err(MutableStorageError::IncorrectBufferLength {
                 expected: source.row_bytes,
@@ -160,27 +163,40 @@ impl MutableStorage {
             });
         }
 
+        let columns = self.row_bytes / pixel_bytes;
         let mut data = self.data.borrow_mut();
-        let mut top_row = vec![0; self.row_bytes];
-        let mut bottom_row = vec![0; self.row_bytes];
+        let mut top_pixel = vec![0; pixel_bytes];
+        let mut bottom_pixel = vec![0; pixel_bytes];
         for top in 0..self.rows / 2 {
             let bottom = self.rows - top - 1;
-            let source_top = source.offset + top * source.row_stride;
-            let source_bottom = source.offset + bottom * source.row_stride;
-            top_row.copy_from_slice(&data[source_top..source_top + source.row_bytes]);
-            bottom_row.copy_from_slice(&data[source_bottom..source_bottom + source.row_bytes]);
+            let source_top_row = source.offset + top * source.row_stride;
+            let source_bottom_row = source.offset + bottom * source.row_stride;
+            let destination_top_row = self.offset + top * self.row_stride;
+            let destination_bottom_row = self.offset + bottom * self.row_stride;
+            for column in 0..columns {
+                let source_top = source_top_row + column * pixel_bytes;
+                let source_bottom = source_bottom_row + column * pixel_bytes;
+                top_pixel.copy_from_slice(&data[source_top..source_top + pixel_bytes]);
+                bottom_pixel.copy_from_slice(&data[source_bottom..source_bottom + pixel_bytes]);
 
-            let destination_top = self.offset + top * self.row_stride;
-            let destination_bottom = self.offset + bottom * self.row_stride;
-            data[destination_bottom..destination_bottom + self.row_bytes].copy_from_slice(&top_row);
-            data[destination_top..destination_top + self.row_bytes].copy_from_slice(&bottom_row);
+                let destination_top = destination_top_row + column * pixel_bytes;
+                let destination_bottom = destination_bottom_row + column * pixel_bytes;
+                data[destination_bottom..destination_bottom + pixel_bytes]
+                    .copy_from_slice(&top_pixel);
+                data[destination_top..destination_top + pixel_bytes].copy_from_slice(&bottom_pixel);
+            }
         }
         if self.rows % 2 == 1 {
             let center = self.rows / 2;
-            let source_center = source.offset + center * source.row_stride;
-            top_row.copy_from_slice(&data[source_center..source_center + source.row_bytes]);
-            let destination_center = self.offset + center * self.row_stride;
-            data[destination_center..destination_center + self.row_bytes].copy_from_slice(&top_row);
+            let source_center_row = source.offset + center * source.row_stride;
+            let destination_center_row = self.offset + center * self.row_stride;
+            for column in 0..columns {
+                let source_center = source_center_row + column * pixel_bytes;
+                top_pixel.copy_from_slice(&data[source_center..source_center + pixel_bytes]);
+                let destination_center = destination_center_row + column * pixel_bytes;
+                data[destination_center..destination_center + pixel_bytes]
+                    .copy_from_slice(&top_pixel);
+            }
         }
         Ok(())
     }

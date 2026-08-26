@@ -495,10 +495,78 @@ mod tests {
     }
 
     #[test]
+    fn negative_flip_matches_opencv_for_diagonally_overlapping_regions() {
+        let parent = u8_matrix((1..=30).collect(), 5, 6, 1);
+        let source = parent.roi(0, 0, 3, 3).expect("valid source region");
+        let destination = parent
+            .roi(1, 1, 3, 3)
+            .expect("valid diagonally overlapping destination region");
+
+        mat_flip_into(&source, &destination, -1).expect("flip overlapping regions");
+
+        assert_eq!(
+            parent.to_u8_array(),
+            [
+                1, 2, 3, 4, 5, 6, 7, 15, 14, 13, 11, 12, 13, 14, 13, 7, 17, 18, 19, 3, 2, 1, 23,
+                24, 25, 26, 27, 28, 29, 30
+            ]
+        );
+        assert_eq!(source.to_u8_array(), [1, 2, 3, 7, 15, 14, 13, 14, 13]);
+        assert_eq!(destination.to_u8_array(), [15, 14, 13, 14, 13, 7, 3, 2, 1]);
+    }
+
+    #[test]
+    fn negative_flip_matches_opencv_for_axis_shifted_overlaps() {
+        let horizontal_parent = u8_matrix((1..=30).collect(), 5, 6, 1);
+        let horizontal_source = horizontal_parent
+            .roi(0, 0, 3, 3)
+            .expect("valid source region");
+        let horizontal_destination = horizontal_parent
+            .roi(0, 1, 3, 3)
+            .expect("valid horizontally shifted destination");
+        mat_flip_into(&horizontal_source, &horizontal_destination, -1)
+            .expect("flip horizontal overlap");
+        assert_eq!(
+            horizontal_destination.to_u8_array(),
+            [13, 1, 13, 7, 7, 7, 1, 13, 1]
+        );
+
+        let vertical_parent = u8_matrix((1..=30).collect(), 5, 6, 1);
+        let vertical_source = vertical_parent
+            .roi(0, 0, 3, 3)
+            .expect("valid source region");
+        let vertical_destination = vertical_parent
+            .roi(1, 0, 3, 3)
+            .expect("valid vertically shifted destination");
+        mat_flip_into(&vertical_source, &vertical_destination, -1).expect("flip vertical overlap");
+        assert_eq!(
+            vertical_destination.to_u8_array(),
+            [15, 14, 13, 15, 14, 13, 3, 2, 1]
+        );
+    }
+
+    #[test]
+    fn negative_flip_matches_opencv_for_even_diagonal_overlap() {
+        let parent = u8_matrix((1..=30).collect(), 5, 6, 1);
+        let source = parent.roi(0, 0, 2, 2).expect("valid source region");
+        let destination = parent
+            .roi(1, 1, 2, 2)
+            .expect("valid diagonally overlapping destination region");
+
+        mat_flip_into(&source, &destination, -1).expect("flip overlapping regions");
+
+        assert_eq!(destination.to_u8_array(), [7, 7, 2, 1]);
+    }
+
+    #[test]
     fn flip_keeps_exact_same_views_on_the_snapshot_safe_path() {
         let matrix = u8_matrix((1..=6).collect(), 2, 3, 1);
         mat_flip_into(&matrix, &matrix, 1).expect("flip root matrix in place");
         assert_eq!(matrix.to_u8_array(), [3, 2, 1, 6, 5, 4]);
+
+        let both_axes = u8_matrix((1..=6).collect(), 2, 3, 1);
+        mat_flip_into(&both_axes, &both_axes, -1).expect("flip both axes in place");
+        assert_eq!(both_axes.to_u8_array(), [6, 5, 4, 3, 2, 1]);
 
         let parent = u8_matrix((1..=20).collect(), 4, 5, 1);
         let source = parent.roi(1, 1, 2, 3).expect("valid source region");
