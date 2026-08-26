@@ -2777,6 +2777,326 @@
         };
       }
 
+      function auditPackageCoordinateConversions(packageCv) {
+        const makeF32 = (values) =>
+          makePackageSeedMat(packageCv, 1, values.length, "f32", 1, values);
+        const captureCart = (arguments_) => captureCall(() => packageCv.cartToPolar(...arguments_));
+        const capturePolar = (arguments_) =>
+          captureCall(() => packageCv.polarToCart(...arguments_));
+        const x = makeF32([1, 0, -1, 0]);
+        const y = makeF32([0, 1, 0, -1]);
+        const magnitude = packageCv.emptyMat();
+        const angle = packageCv.emptyMat();
+        const cartArity = {
+          functionLength: capturePrimitive(() => packageCv.cartToPolar.length),
+          zero: captureCart([]),
+          one: captureCart([x]),
+          two: captureCart([x, y]),
+          three: captureCart([x, y, magnitude]),
+          four: captureCart([x, y, magnitude, angle]),
+          five: captureCart([x, y, magnitude, angle, true]),
+          six: captureCart([x, y, magnitude, angle, true, 1]),
+          magnitude: capturePrimitive(() => summarizePackageTypedMat(magnitude)),
+          angle: capturePrimitive(() => summarizePackageTypedMat(angle)),
+        };
+        disposePackageMat(angle);
+        disposePackageMat(magnitude);
+        disposePackageMat(y);
+        disposePackageMat(x);
+
+        const flagCases = [
+          ["false", false],
+          ["true", true],
+          ["zero", 0],
+          ["one", 1],
+          ["empty-string", ""],
+          ["string", "x"],
+          ["null", null],
+          ["undefined", undefined],
+          ["NaN", Number.NaN],
+        ].map(([name, flag]) => {
+          const flagX = makeF32([0, 0]);
+          const flagY = makeF32([1, -1]);
+          const flagMagnitude = packageCv.emptyMat();
+          const flagAngle = packageCv.emptyMat();
+          const audit = auditPackageTypedMatCall(
+            () => packageCv.cartToPolar(flagX, flagY, flagMagnitude, flagAngle, flag),
+            [
+              ["x", flagX],
+              ["y", flagY],
+              ["magnitude", flagMagnitude],
+              ["angle", flagAngle],
+            ],
+          );
+          disposePackageMat(flagAngle);
+          disposePackageMat(flagMagnitude);
+          disposePackageMat(flagY);
+          disposePackageMat(flagX);
+          return { name, audit };
+        });
+
+        const polarMagnitude = makeF32([1, 1, 1, 1]);
+        const polarAngle = makeF32([0, 90, 180, 270]);
+        const outputX = packageCv.emptyMat();
+        const outputY = packageCv.emptyMat();
+        const polarArity = {
+          functionLength: capturePrimitive(() => packageCv.polarToCart.length),
+          zero: capturePolar([]),
+          one: capturePolar([polarMagnitude]),
+          two: capturePolar([polarMagnitude, polarAngle]),
+          three: capturePolar([polarMagnitude, polarAngle, outputX]),
+          four: capturePolar([polarMagnitude, polarAngle, outputX, outputY]),
+          five: capturePolar([polarMagnitude, polarAngle, outputX, outputY, true]),
+          six: capturePolar([polarMagnitude, polarAngle, outputX, outputY, true, 1]),
+          x: capturePrimitive(() => summarizePackageTypedMat(outputX)),
+          y: capturePrimitive(() => summarizePackageTypedMat(outputY)),
+        };
+        disposePackageMat(outputY);
+        disposePackageMat(outputX);
+        disposePackageMat(polarAngle);
+        disposePackageMat(polarMagnitude);
+
+        const replacementX = makeF32([3, 0, -4, 0]);
+        const replacementY = makeF32([4, 2, 0, -5]);
+        const replacementMagnitude = makePackageSeedMat(
+          packageCv,
+          2,
+          2,
+          "f64",
+          2,
+          [99, 99, 99, 99, 99, 99, 99, 99],
+        );
+        const replacementAngle = makePackageSeedMat(packageCv, 2, 2, "u8", 1, [99, 99, 99, 99]);
+        const replacement = auditPackageTypedMatCall(
+          () =>
+            packageCv.cartToPolar(
+              replacementX,
+              replacementY,
+              replacementMagnitude,
+              replacementAngle,
+            ),
+          [
+            ["x", replacementX],
+            ["y", replacementY],
+            ["magnitude", replacementMagnitude],
+            ["angle", replacementAngle],
+          ],
+        );
+        disposePackageMat(replacementAngle);
+        disposePackageMat(replacementMagnitude);
+        disposePackageMat(replacementY);
+        disposePackageMat(replacementX);
+
+        const emptyX = packageCv.emptyMat();
+        const emptyY = packageCv.emptyMat();
+        const emptyMagnitude = makeF32([9]);
+        const emptyAngle = makeF32([9]);
+        const empty = auditPackageTypedMatCall(
+          () => packageCv.cartToPolar(emptyX, emptyY, emptyMagnitude, emptyAngle),
+          [
+            ["x", emptyX],
+            ["y", emptyY],
+            ["magnitude", emptyMagnitude],
+            ["angle", emptyAngle],
+          ],
+        );
+        disposePackageMat(emptyAngle);
+        disposePackageMat(emptyMagnitude);
+        disposePackageMat(emptyY);
+        disposePackageMat(emptyX);
+
+        const cartAliasParent = makeF32([2, 3, 4, 99]);
+        const cartAliasX = cartAliasParent.roi(0, 0, 1, 3);
+        const cartAliasY = makeF32([0, 0, 0]);
+        const cartAliasMagnitude = cartAliasParent.roi(0, 1, 1, 3);
+        const cartAliasAngle = packageCv.emptyMat();
+        const cartOverlap = auditPackageTypedMatCall(
+          () => packageCv.cartToPolar(cartAliasX, cartAliasY, cartAliasMagnitude, cartAliasAngle),
+          [
+            ["parent", cartAliasParent],
+            ["x", cartAliasX],
+            ["y", cartAliasY],
+            ["magnitude", cartAliasMagnitude],
+            ["angle", cartAliasAngle],
+          ],
+        );
+        disposePackageMat(cartAliasAngle);
+        disposePackageMat(cartAliasMagnitude);
+        disposePackageMat(cartAliasY);
+        disposePackageMat(cartAliasX);
+        disposePackageMat(cartAliasParent);
+
+        const polarAliasParent = makeF32([2, 3, 4, 99]);
+        const polarAliasMagnitude = polarAliasParent.roi(0, 0, 1, 3);
+        const polarAliasAngle = makeF32([0, 0, 0]);
+        const polarAliasX = polarAliasParent.roi(0, 1, 1, 3);
+        const polarAliasY = packageCv.emptyMat();
+        const polarOverlap = auditPackageTypedMatCall(
+          () =>
+            packageCv.polarToCart(polarAliasMagnitude, polarAliasAngle, polarAliasX, polarAliasY),
+          [
+            ["parent", polarAliasParent],
+            ["magnitude", polarAliasMagnitude],
+            ["angle", polarAliasAngle],
+            ["x", polarAliasX],
+            ["y", polarAliasY],
+          ],
+        );
+        disposePackageMat(polarAliasY);
+        disposePackageMat(polarAliasX);
+        disposePackageMat(polarAliasAngle);
+        disposePackageMat(polarAliasMagnitude);
+        disposePackageMat(polarAliasParent);
+
+        const sharedOutputX = makeF32([3, 0]);
+        const sharedOutputY = makeF32([4, -2]);
+        const sharedOutput = packageCv.emptyMat();
+        const cartSharedOutput = auditPackageTypedMatCall(
+          () => packageCv.cartToPolar(sharedOutputX, sharedOutputY, sharedOutput, sharedOutput),
+          [
+            ["x", sharedOutputX],
+            ["y", sharedOutputY],
+            ["output", sharedOutput],
+          ],
+        );
+        disposePackageMat(sharedOutput);
+        disposePackageMat(sharedOutputY);
+        disposePackageMat(sharedOutputX);
+
+        const typeCases = [
+          ["CV_32FC3", "f32", 3, [1, 2, 3, 4, 5, 6]],
+          ["CV_64FC2", "f64", 2, [1, 2, 3, 4]],
+          ["CV_8UC1", "u8", 1, [1, 2]],
+        ].map(([name, depth, channels, values]) => {
+          const typeX = makePackageSeedMat(packageCv, 1, 2, depth, channels, values);
+          const typeY = makePackageSeedMat(packageCv, 1, 2, depth, channels, values);
+          const typeMagnitude = packageCv.emptyMat();
+          const typeAngle = packageCv.emptyMat();
+          const audit = auditPackageTypedMatCall(
+            () => packageCv.cartToPolar(typeX, typeY, typeMagnitude, typeAngle),
+            [
+              ["x", typeX],
+              ["y", typeY],
+              ["magnitude", typeMagnitude],
+              ["angle", typeAngle],
+            ],
+          );
+          disposePackageMat(typeAngle);
+          disposePackageMat(typeMagnitude);
+          disposePackageMat(typeY);
+          disposePackageMat(typeX);
+          return { name, audit };
+        });
+
+        const typedEmptyCases = [
+          ["zero-by-three", 0, 3],
+          ["three-by-zero", 3, 0],
+          ["zero-by-zero", 0, 0],
+        ].map(([name, rows, columns]) => {
+          const typedX = makePackageSeedMat(packageCv, rows, columns, "f32", 1, []);
+          const typedY = makePackageSeedMat(packageCv, rows, columns, "f32", 1, []);
+          const typedMagnitude = makeF32([9]);
+          const typedAngle = makeF32([9]);
+          const audit = auditPackageTypedMatCall(
+            () => packageCv.cartToPolar(typedX, typedY, typedMagnitude, typedAngle),
+            [
+              ["x", typedX],
+              ["y", typedY],
+              ["magnitude", typedMagnitude],
+              ["angle", typedAngle],
+            ],
+          );
+          disposePackageMat(typedAngle);
+          disposePackageMat(typedMagnitude);
+          disposePackageMat(typedY);
+          disposePackageMat(typedX);
+          return { name, audit };
+        });
+
+        const preciseCartX = makePackageSeedMat(packageCv, 1, 4, "f64", 1, [
+          1.0000000001,
+          Math.PI,
+          1e200,
+          1e-200,
+        ]);
+        const preciseCartY = makePackageSeedMat(packageCv, 1, 4, "f64", 1, [
+          1.0000000002,
+          Math.E,
+          0,
+          1e-200,
+        ]);
+        const preciseCartMagnitude = packageCv.emptyMat();
+        const preciseCartAngle = packageCv.emptyMat();
+        const preciseCart = auditPackageTypedMatCall(
+          () =>
+            packageCv.cartToPolar(
+              preciseCartX,
+              preciseCartY,
+              preciseCartMagnitude,
+              preciseCartAngle,
+            ),
+          [
+            ["x", preciseCartX],
+            ["y", preciseCartY],
+            ["magnitude", preciseCartMagnitude],
+            ["angle", preciseCartAngle],
+          ],
+        );
+        disposePackageMat(preciseCartAngle);
+        disposePackageMat(preciseCartMagnitude);
+        disposePackageMat(preciseCartY);
+        disposePackageMat(preciseCartX);
+
+        const precisePolarMagnitude = makePackageSeedMat(packageCv, 1, 4, "f64", 1, [
+          1.0000000001,
+          Math.PI,
+          1e200,
+          1e-200,
+        ]);
+        const precisePolarAngle = makePackageSeedMat(
+          packageCv,
+          1,
+          4,
+          "f64",
+          1,
+          [0.1234567890123, -0.75, 7, 1e-10],
+        );
+        const precisePolarX = packageCv.emptyMat();
+        const precisePolarY = packageCv.emptyMat();
+        const precisePolar = auditPackageTypedMatCall(
+          () =>
+            packageCv.polarToCart(
+              precisePolarMagnitude,
+              precisePolarAngle,
+              precisePolarX,
+              precisePolarY,
+            ),
+          [
+            ["magnitude", precisePolarMagnitude],
+            ["angle", precisePolarAngle],
+            ["x", precisePolarX],
+            ["y", precisePolarY],
+          ],
+        );
+        disposePackageMat(precisePolarY);
+        disposePackageMat(precisePolarX);
+        disposePackageMat(precisePolarAngle);
+        disposePackageMat(precisePolarMagnitude);
+
+        return {
+          cartArity,
+          polarArity,
+          flagCases,
+          replacement,
+          empty,
+          aliases: { cartOverlap, polarOverlap, cartSharedOutput },
+          typeCases,
+          typedEmptyCases,
+          preciseCart,
+          precisePolar,
+        };
+      }
+
       function propertyDescriptorSummary(owner, property) {
         const descriptor = Object.getOwnPropertyDescriptor(owner, property);
         if (descriptor === undefined) return { present: false };
@@ -3992,6 +4312,35 @@
         return { ...audit, unary, magnitude };
       }
 
+      function normalizeCoordinateNumber(value) {
+        if (Number.isNaN(value)) return "NaN";
+        if (value === Number.POSITIVE_INFINITY) return "+Infinity";
+        if (value === Number.NEGATIVE_INFINITY) return "-Infinity";
+        if (Object.is(value, -0)) return "-0";
+        if (Math.abs(value) < 1e-5) return 0;
+        return Number(value.toPrecision(6));
+      }
+
+      function normalizeCoordinateAudit(value, key = "") {
+        if (Array.isArray(value)) {
+          return value.map((entry) =>
+            key === "values" && typeof entry === "number"
+              ? normalizeCoordinateNumber(entry)
+              : normalizeCoordinateAudit(entry),
+          );
+        }
+        if (typeof value !== "object" || value === null) return value;
+        if (value.threw === true) return { threw: true };
+        return Object.fromEntries(
+          Object.entries(value)
+            .filter(([entryKey]) => entryKey !== "bytes" && entryKey !== "error")
+            .map(([entryKey, entryValue]) => [
+              entryKey,
+              normalizeCoordinateAudit(entryValue, entryKey),
+            ]),
+        );
+      }
+
       function runReference(input, referenceRequest) {
         return new Promise((resolve, reject) => {
           const worker = new Worker("/test/browser/opencv-reference-worker.js");
@@ -4081,6 +4430,15 @@
         );
         if (floatMathDifference !== undefined) {
           throw new Error(floatMathDifference);
+        }
+        const packageCoordinateAudit = auditPackageCoordinateConversions(packageCv);
+        const coordinateDifference = findDifference(
+          normalizeCoordinateAudit(packageCoordinateAudit),
+          normalizeCoordinateAudit(referenceOutputs.coordinateAudit),
+          "coordinate conversion audit",
+        );
+        if (coordinateDifference !== undefined) {
+          throw new Error(coordinateDifference);
         }
         const packageFlipAudit = auditPackageFlip(packageCv);
         const flipDifference = findDifference(
@@ -4497,7 +4855,7 @@
 
         packageSource.dispose();
         result.value =
-          "PASS OpenCV.js 4.13.0 float math, layout, geometry, helper, DFT, AKAZE, AGAST, FAST, KAZE, and GFTT differential";
+          "PASS OpenCV.js 4.13.0 coordinate conversion, float math, layout, geometry, helper, DFT, AKAZE, AGAST, FAST, KAZE, and GFTT differential";
         document.body.dataset.status = "passed";
       } catch (error) {
         result.value = `FAIL ${String(error)}`;

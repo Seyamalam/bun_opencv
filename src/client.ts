@@ -157,7 +157,7 @@ class WasmOpenCv implements OpenCv {
       matHandleForBinding(y),
       matHandleForBinding(magnitude),
       matHandleForBinding(angle),
-      Boolean(degrees),
+      coerceBoolean(degrees),
     );
   }
 
@@ -726,7 +726,7 @@ class WasmOpenCv implements OpenCv {
       matHandleForBinding(angle),
       matHandleForBinding(x),
       matHandleForBinding(y),
-      Boolean(degrees),
+      coerceBoolean(degrees),
     );
   }
 
@@ -1157,6 +1157,12 @@ function matHandleForBinding(value: Mat): ReturnType<Mat["handleForBackend"]> {
     throw new BindingError(`Cannot pass "${String(value)}" as a Mat`);
   }
   return value.handleForBackend();
+}
+
+function coerceBoolean(
+  value: boolean | number | bigint | string | symbol | null | undefined,
+): boolean {
+  return Boolean(value);
 }
 
 function requireExactArity(actual: number, expected: number, method: string): void {

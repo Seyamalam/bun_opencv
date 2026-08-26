@@ -2537,6 +2537,304 @@ function auditFloatMath(reference) {
   };
 }
 
+function auditCoordinateConversions(reference) {
+  const makeF32 = (values) => makeSeedMat(reference, 1, values.length, reference.CV_32FC1, values);
+  const captureCart = (arguments_) => captureCall(() => reference.cartToPolar(...arguments_));
+  const capturePolar = (arguments_) => captureCall(() => reference.polarToCart(...arguments_));
+  const x = makeF32([1, 0, -1, 0]);
+  const y = makeF32([0, 1, 0, -1]);
+  const magnitude = new reference.Mat();
+  const angle = new reference.Mat();
+  const cartArity = {
+    functionLength: capturePrimitive(() => reference.cartToPolar.length),
+    zero: captureCart([]),
+    one: captureCart([x]),
+    two: captureCart([x, y]),
+    three: captureCart([x, y, magnitude]),
+    four: captureCart([x, y, magnitude, angle]),
+    five: captureCart([x, y, magnitude, angle, true]),
+    six: captureCart([x, y, magnitude, angle, true, 1]),
+    magnitude: capturePrimitive(() => summarizeTypedMat(magnitude)),
+    angle: capturePrimitive(() => summarizeTypedMat(angle)),
+  };
+  safeDelete(angle);
+  safeDelete(magnitude);
+  safeDelete(y);
+  safeDelete(x);
+
+  const flagCases = [
+    ["false", false],
+    ["true", true],
+    ["zero", 0],
+    ["one", 1],
+    ["empty-string", ""],
+    ["string", "x"],
+    ["null", null],
+    ["undefined", undefined],
+    ["NaN", Number.NaN],
+  ].map(([name, flag]) => {
+    const flagX = makeF32([0, 0]);
+    const flagY = makeF32([1, -1]);
+    const flagMagnitude = new reference.Mat();
+    const flagAngle = new reference.Mat();
+    const audit = auditTypedMatCall(
+      () => reference.cartToPolar(flagX, flagY, flagMagnitude, flagAngle, flag),
+      [
+        ["x", flagX],
+        ["y", flagY],
+        ["magnitude", flagMagnitude],
+        ["angle", flagAngle],
+      ],
+    );
+    safeDelete(flagAngle);
+    safeDelete(flagMagnitude);
+    safeDelete(flagY);
+    safeDelete(flagX);
+    return { name, audit };
+  });
+
+  const polarMagnitude = makeF32([1, 1, 1, 1]);
+  const polarAngle = makeF32([0, 90, 180, 270]);
+  const outputX = new reference.Mat();
+  const outputY = new reference.Mat();
+  const polarArity = {
+    functionLength: capturePrimitive(() => reference.polarToCart.length),
+    zero: capturePolar([]),
+    one: capturePolar([polarMagnitude]),
+    two: capturePolar([polarMagnitude, polarAngle]),
+    three: capturePolar([polarMagnitude, polarAngle, outputX]),
+    four: capturePolar([polarMagnitude, polarAngle, outputX, outputY]),
+    five: capturePolar([polarMagnitude, polarAngle, outputX, outputY, true]),
+    six: capturePolar([polarMagnitude, polarAngle, outputX, outputY, true, 1]),
+    x: capturePrimitive(() => summarizeTypedMat(outputX)),
+    y: capturePrimitive(() => summarizeTypedMat(outputY)),
+  };
+  safeDelete(outputY);
+  safeDelete(outputX);
+  safeDelete(polarAngle);
+  safeDelete(polarMagnitude);
+
+  const replacementX = makeF32([3, 0, -4, 0]);
+  const replacementY = makeF32([4, 2, 0, -5]);
+  const replacementMagnitude = makeSeedMat(
+    reference,
+    2,
+    2,
+    reference.CV_64FC2,
+    [99, 99, 99, 99, 99, 99, 99, 99],
+  );
+  const replacementAngle = makeSeedMat(reference, 2, 2, reference.CV_8UC1, [99, 99, 99, 99]);
+  const replacement = auditTypedMatCall(
+    () => reference.cartToPolar(replacementX, replacementY, replacementMagnitude, replacementAngle),
+    [
+      ["x", replacementX],
+      ["y", replacementY],
+      ["magnitude", replacementMagnitude],
+      ["angle", replacementAngle],
+    ],
+  );
+  safeDelete(replacementAngle);
+  safeDelete(replacementMagnitude);
+  safeDelete(replacementY);
+  safeDelete(replacementX);
+
+  const emptyX = new reference.Mat();
+  const emptyY = new reference.Mat();
+  const emptyMagnitude = makeF32([9]);
+  const emptyAngle = makeF32([9]);
+  const empty = auditTypedMatCall(
+    () => reference.cartToPolar(emptyX, emptyY, emptyMagnitude, emptyAngle),
+    [
+      ["x", emptyX],
+      ["y", emptyY],
+      ["magnitude", emptyMagnitude],
+      ["angle", emptyAngle],
+    ],
+  );
+  safeDelete(emptyAngle);
+  safeDelete(emptyMagnitude);
+  safeDelete(emptyY);
+  safeDelete(emptyX);
+
+  const cartAliasParent = makeF32([2, 3, 4, 99]);
+  const cartAliasX = cartAliasParent.roi(new reference.Rect(0, 0, 3, 1));
+  const cartAliasY = makeF32([0, 0, 0]);
+  const cartAliasMagnitude = cartAliasParent.roi(new reference.Rect(1, 0, 3, 1));
+  const cartAliasAngle = new reference.Mat();
+  const cartOverlap = auditTypedMatCall(
+    () => reference.cartToPolar(cartAliasX, cartAliasY, cartAliasMagnitude, cartAliasAngle),
+    [
+      ["parent", cartAliasParent],
+      ["x", cartAliasX],
+      ["y", cartAliasY],
+      ["magnitude", cartAliasMagnitude],
+      ["angle", cartAliasAngle],
+    ],
+  );
+  safeDelete(cartAliasAngle);
+  safeDelete(cartAliasMagnitude);
+  safeDelete(cartAliasY);
+  safeDelete(cartAliasX);
+  safeDelete(cartAliasParent);
+
+  const polarAliasParent = makeF32([2, 3, 4, 99]);
+  const polarAliasMagnitude = polarAliasParent.roi(new reference.Rect(0, 0, 3, 1));
+  const polarAliasAngle = makeF32([0, 0, 0]);
+  const polarAliasX = polarAliasParent.roi(new reference.Rect(1, 0, 3, 1));
+  const polarAliasY = new reference.Mat();
+  const polarOverlap = auditTypedMatCall(
+    () => reference.polarToCart(polarAliasMagnitude, polarAliasAngle, polarAliasX, polarAliasY),
+    [
+      ["parent", polarAliasParent],
+      ["magnitude", polarAliasMagnitude],
+      ["angle", polarAliasAngle],
+      ["x", polarAliasX],
+      ["y", polarAliasY],
+    ],
+  );
+  safeDelete(polarAliasY);
+  safeDelete(polarAliasX);
+  safeDelete(polarAliasAngle);
+  safeDelete(polarAliasMagnitude);
+  safeDelete(polarAliasParent);
+
+  const sharedOutputX = makeF32([3, 0]);
+  const sharedOutputY = makeF32([4, -2]);
+  const sharedOutput = new reference.Mat();
+  const cartSharedOutput = auditTypedMatCall(
+    () => reference.cartToPolar(sharedOutputX, sharedOutputY, sharedOutput, sharedOutput),
+    [
+      ["x", sharedOutputX],
+      ["y", sharedOutputY],
+      ["output", sharedOutput],
+    ],
+  );
+  safeDelete(sharedOutput);
+  safeDelete(sharedOutputY);
+  safeDelete(sharedOutputX);
+
+  const typeCases = [
+    ["CV_32FC3", reference.CV_32FC3, [1, 2, 3, 4, 5, 6]],
+    ["CV_64FC2", reference.CV_64FC2, [1, 2, 3, 4]],
+    ["CV_8UC1", reference.CV_8UC1, [1, 2]],
+  ].map(([name, type, values]) => {
+    const typeX = makeSeedMat(reference, 1, 2, type, values);
+    const typeY = makeSeedMat(reference, 1, 2, type, values);
+    const typeMagnitude = new reference.Mat();
+    const typeAngle = new reference.Mat();
+    const audit = auditTypedMatCall(
+      () => reference.cartToPolar(typeX, typeY, typeMagnitude, typeAngle),
+      [
+        ["x", typeX],
+        ["y", typeY],
+        ["magnitude", typeMagnitude],
+        ["angle", typeAngle],
+      ],
+    );
+    safeDelete(typeAngle);
+    safeDelete(typeMagnitude);
+    safeDelete(typeY);
+    safeDelete(typeX);
+    return { name, audit };
+  });
+
+  const typedEmptyCases = [
+    ["zero-by-three", 0, 3],
+    ["three-by-zero", 3, 0],
+    ["zero-by-zero", 0, 0],
+  ].map(([name, rows, cols]) => {
+    const typedX = new reference.Mat(rows, cols, reference.CV_32FC1);
+    const typedY = new reference.Mat(rows, cols, reference.CV_32FC1);
+    const typedMagnitude = makeF32([9]);
+    const typedAngle = makeF32([9]);
+    const audit = auditTypedMatCall(
+      () => reference.cartToPolar(typedX, typedY, typedMagnitude, typedAngle),
+      [
+        ["x", typedX],
+        ["y", typedY],
+        ["magnitude", typedMagnitude],
+        ["angle", typedAngle],
+      ],
+    );
+    safeDelete(typedAngle);
+    safeDelete(typedMagnitude);
+    safeDelete(typedY);
+    safeDelete(typedX);
+    return { name, audit };
+  });
+
+  const preciseCartX = makeSeedMat(reference, 1, 4, reference.CV_64FC1, [
+    1.0000000001,
+    Math.PI,
+    1e200,
+    1e-200,
+  ]);
+  const preciseCartY = makeSeedMat(reference, 1, 4, reference.CV_64FC1, [
+    1.0000000002,
+    Math.E,
+    0,
+    1e-200,
+  ]);
+  const preciseCartMagnitude = new reference.Mat();
+  const preciseCartAngle = new reference.Mat();
+  const preciseCart = auditTypedMatCall(
+    () => reference.cartToPolar(preciseCartX, preciseCartY, preciseCartMagnitude, preciseCartAngle),
+    [
+      ["x", preciseCartX],
+      ["y", preciseCartY],
+      ["magnitude", preciseCartMagnitude],
+      ["angle", preciseCartAngle],
+    ],
+  );
+  safeDelete(preciseCartAngle);
+  safeDelete(preciseCartMagnitude);
+  safeDelete(preciseCartY);
+  safeDelete(preciseCartX);
+
+  const precisePolarMagnitude = makeSeedMat(reference, 1, 4, reference.CV_64FC1, [
+    1.0000000001,
+    Math.PI,
+    1e200,
+    1e-200,
+  ]);
+  const precisePolarAngle = makeSeedMat(
+    reference,
+    1,
+    4,
+    reference.CV_64FC1,
+    [0.1234567890123, -0.75, 7, 1e-10],
+  );
+  const precisePolarX = new reference.Mat();
+  const precisePolarY = new reference.Mat();
+  const precisePolar = auditTypedMatCall(
+    () =>
+      reference.polarToCart(precisePolarMagnitude, precisePolarAngle, precisePolarX, precisePolarY),
+    [
+      ["magnitude", precisePolarMagnitude],
+      ["angle", precisePolarAngle],
+      ["x", precisePolarX],
+      ["y", precisePolarY],
+    ],
+  );
+  safeDelete(precisePolarY);
+  safeDelete(precisePolarX);
+  safeDelete(precisePolarAngle);
+  safeDelete(precisePolarMagnitude);
+
+  return {
+    cartArity,
+    polarArity,
+    flagCases,
+    replacement,
+    empty,
+    aliases: { cartOverlap, polarOverlap, cartSharedOutput },
+    typeCases,
+    typedEmptyCases,
+    preciseCart,
+    precisePolar,
+  };
+}
+
 function encodeValue(value) {
   if (value === undefined) {
     return { type: "undefined" };
@@ -3717,6 +4015,12 @@ self.addEventListener("message", async ({ data: input }) => {
       self.postMessage({ outputs: { floatMathAudit: auditFloatMath(reference) } });
       return;
     }
+    if (request === "coordinate-conversions") {
+      self.postMessage({
+        outputs: { coordinateAudit: auditCoordinateConversions(reference) },
+      });
+      return;
+    }
     const source = reference.matFromArray(2, 3, reference.CV_8UC1, sourceInput);
     const outputs = {};
     const operations = [
@@ -3893,6 +4197,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.transposeAudit = auditTranspose(reference);
     outputs.countNonZeroAudit = auditCountNonZero(reference);
     outputs.floatMathAudit = auditFloatMath(reference);
+    outputs.coordinateAudit = auditCoordinateConversions(reference);
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });
