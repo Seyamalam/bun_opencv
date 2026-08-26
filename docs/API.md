@@ -310,11 +310,13 @@ try {
 }
 ```
 
-The OpenCV 4.13 defaults are `extended: false`, `upright: false`, threshold `0.0010000000474974513`, four octaves, four octave layers, and `KAZEDiffusivity.PM_G2`. Diffusivity accepts the typed PM G1, PM G2, Weickert, and Charbonnier enum members. Octaves and octave layers must be positive signed 32-bit integers. The threshold may be any finite number, including `-1`.
+The OpenCV 4.13 defaults are `extended: false`, `upright: false`, threshold `0.0010000000474974513`, four octaves, four octave layers, and `KAZEDiffusivity.PM_G2`. Factory options are deliberately stricter than instance mutation: octave counts must be positive signed 32-bit integers, the threshold must be finite, and diffusivity accepts the typed PM G1, PM G2, Weickert, and Charbonnier enum members.
 
-The instance exposes `getDefaultName()`, getters and setters for every option, and `dispose()`. `getDefaultName()` returns `"Feature2D.KAZE"`. A rejected diffusivity, octave, or threshold update preserves the previous value. Repeated disposal does nothing, and every getter or setter throws `OpenCvInputError` after disposal.
+The instance exposes `getDefaultName()`, getters and setters for every option, OpenCV.js-compatible `delete()`, and idempotent `dispose()`. `getDefaultName()` returns `"Feature2D.KAZE"`. The non-enum setters reproduce the pinned Embind boundary: octave setters coerce numbers to signed i32, threshold preserves the complete F64 domain including negative zero, `NaN`, and both infinities, and boolean setters use JavaScript truthiness. Missing or extra method arguments throw `BindingError`; unsupported scalar input and integer range failures throw `TypeError`. Diffusivity remains a validated package enum, and a rejected diffusivity update preserves the previous value.
 
-The pinned OpenCV.js 4.13.0 browser fixture exposes the direct `KAZE` constructor and all 13 instance methods. Its documented defaults and mutations pass, including threshold `-1` and typed diffusivity changes. The artifact omits the config-listed static `KAZE.create`, so the package factory has no direct static-factory comparator for that baseline.
+`delete()` releases the handle and a repeated call throws `BindingError`, matching OpenCV.js. `dispose()` is the package convenience for idempotent cleanup. Every getter or setter after either release path throws `BindingError`.
+
+The pinned OpenCV.js 4.13.0 browser fixture exposes the direct `KAZE` constructor and all 13 instance methods. The complete compatibility matrix passes for the 11 non-enum methods, covering exact arity, defaults, return values, scalar coercion, argument errors, and lifetime behavior. The typed diffusivity methods remain partial because the official binding exchanges enum objects. The artifact omits the config-listed static `KAZE.create`, so the package factory has no direct static-factory comparator for that baseline.
 
 ### AGAST and FAST configuration
 
@@ -405,7 +407,7 @@ The pinned OpenCV.js 4.13.0 fixture exposes the direct `GFTTDetector` constructo
 
 ## Errors
 
-The TypeScript boundary throws `OpenCvInputError` for invalid dimensions, byte lengths, thresholds, and strictly validated factory options. GFTT instance methods throw `BindingError` for argument-count and deleted-object failures, matching the pinned browser binding. Their scalar conversion failures throw `TypeError`. Rust rejects invalid dimensions and byte lengths if a caller bypasses the TypeScript client.
+The TypeScript boundary throws `OpenCvInputError` for invalid dimensions, byte lengths, thresholds, and strictly validated factory options. Non-enum KAZE and GFTT instance methods throw `BindingError` for argument-count and deleted-object failures, matching the pinned browser binding. Their scalar conversion failures throw `TypeError`. Rust rejects invalid dimensions and byte lengths if a caller bypasses the TypeScript client.
 
 ## Matrices
 

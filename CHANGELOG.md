@@ -27,6 +27,8 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - OpenCV.js-compatible `BindingError` identity and GFTT `delete()` lifecycle behavior, while retaining idempotent `dispose()` as a package convenience.
 - Ten fully implemented primitive AGAST and FAST instance methods with exact arity, return values, scalar coercion, `BindingError` argument checks, and deletion behavior, bringing the totals to 106 partial, 23 implemented, and 129 supported families.
 - AGAST and FAST enum getters, enum setters, and factories remain partial because enum objects and direct construction do not yet match the pinned browser binding.
+- Eleven fully implemented non-enum KAZE instance methods with exact arity, complete signed i32, F64, and boolean coercion, `BindingError` argument checks, and deletion behavior, bringing the totals to 95 partial, 34 implemented, and 129 supported families.
+- KAZE diffusivity methods and the factory remain partial because enum objects and static construction do not yet match the pinned browser binding.
 - OpenCV.js-compatible negative-input and upper-sentinel behavior for `getOptimalDFTSize`, plus a fail-closed numeric browser comparator for enum-backed values.
 - Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
 

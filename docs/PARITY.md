@@ -25,24 +25,29 @@ Desktop modules that the official OpenCV.js build disables are outside this pari
 
 ## Fully implemented families
 
-Twenty-three detector instance methods meet the full-family definition. Current full parity is 23 of 488, or 4.71%.
+Thirty-four detector instance methods meet the full-family definition. Current full parity is 34 of 488, or 6.97%.
 
-| Package methods                                                                                                   | OpenCV.js families                         | Verified contract                                                        |
-| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------ |
-| `GFTTDetector.getBlockSize`, `GFTTDetector.getDefaultName`, `GFTTDetector.getHarrisDetector`                      | Matching `cv.GFTTDetector` getters         | Exact arity, defaults, return values, and deleted-handle errors          |
-| `GFTTDetector.getK`, `GFTTDetector.getMaxFeatures`, `GFTTDetector.getMinDistance`, `GFTTDetector.getQualityLevel` | Matching `cv.GFTTDetector` numeric getters | Exact signed i32, F64, non-finite, arity, and lifecycle behavior         |
-| `GFTTDetector.setBlockSize`, `GFTTDetector.setMaxFeatures`                                                        | Matching `cv.GFTTDetector` integer setters | Exact i32 coercion, undefined return, argument errors, and lifecycle     |
-| `GFTTDetector.setHarrisDetector`                                                                                  | `cv.GFTTDetector.setHarrisDetector`        | Exact boolean coercion, undefined return, argument errors, and lifecycle |
-| `GFTTDetector.setK`, `GFTTDetector.setMinDistance`, `GFTTDetector.setQualityLevel`                                | Matching `cv.GFTTDetector` F64 setters     | Exact number coercion, non-finite values, argument errors, and lifecycle |
-| `AgastFeatureDetector.getDefaultName`, `FastFeatureDetector.getDefaultName`                                       | Matching AGAST and FAST name getters       | Exact arity, return values, argument errors, and lifecycle               |
-| `AgastFeatureDetector.getNonmaxSuppression`, `FastFeatureDetector.getNonmaxSuppression`                           | Matching AGAST and FAST boolean getters    | Exact arity, boolean state, argument errors, and lifecycle               |
-| `AgastFeatureDetector.getThreshold`, `FastFeatureDetector.getThreshold`                                           | Matching AGAST and FAST threshold getters  | Exact arity, signed i32 state, argument errors, and lifecycle            |
-| `AgastFeatureDetector.setNonmaxSuppression`, `FastFeatureDetector.setNonmaxSuppression`                           | Matching AGAST and FAST boolean setters    | Exact boolean coercion, undefined return, argument errors, and lifecycle |
-| `AgastFeatureDetector.setThreshold`, `FastFeatureDetector.setThreshold`                                           | Matching AGAST and FAST threshold setters  | Exact i32 coercion, undefined return, argument errors, and lifecycle     |
+| Package methods                                                                                                   | OpenCV.js families                          | Verified contract                                                        |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------ |
+| `GFTTDetector.getBlockSize`, `GFTTDetector.getDefaultName`, `GFTTDetector.getHarrisDetector`                      | Matching `cv.GFTTDetector` getters          | Exact arity, defaults, return values, and deleted-handle errors          |
+| `GFTTDetector.getK`, `GFTTDetector.getMaxFeatures`, `GFTTDetector.getMinDistance`, `GFTTDetector.getQualityLevel` | Matching `cv.GFTTDetector` numeric getters  | Exact signed i32, F64, non-finite, arity, and lifecycle behavior         |
+| `GFTTDetector.setBlockSize`, `GFTTDetector.setMaxFeatures`                                                        | Matching `cv.GFTTDetector` integer setters  | Exact i32 coercion, undefined return, argument errors, and lifecycle     |
+| `GFTTDetector.setHarrisDetector`                                                                                  | `cv.GFTTDetector.setHarrisDetector`         | Exact boolean coercion, undefined return, argument errors, and lifecycle |
+| `GFTTDetector.setK`, `GFTTDetector.setMinDistance`, `GFTTDetector.setQualityLevel`                                | Matching `cv.GFTTDetector` F64 setters      | Exact number coercion, non-finite values, argument errors, and lifecycle |
+| `AgastFeatureDetector.getDefaultName`, `FastFeatureDetector.getDefaultName`                                       | Matching AGAST and FAST name getters        | Exact arity, return values, argument errors, and lifecycle               |
+| `AgastFeatureDetector.getNonmaxSuppression`, `FastFeatureDetector.getNonmaxSuppression`                           | Matching AGAST and FAST boolean getters     | Exact arity, boolean state, argument errors, and lifecycle               |
+| `AgastFeatureDetector.getThreshold`, `FastFeatureDetector.getThreshold`                                           | Matching AGAST and FAST threshold getters   | Exact arity, signed i32 state, argument errors, and lifecycle            |
+| `AgastFeatureDetector.setNonmaxSuppression`, `FastFeatureDetector.setNonmaxSuppression`                           | Matching AGAST and FAST boolean setters     | Exact boolean coercion, undefined return, argument errors, and lifecycle |
+| `AgastFeatureDetector.setThreshold`, `FastFeatureDetector.setThreshold`                                           | Matching AGAST and FAST threshold setters   | Exact i32 coercion, undefined return, argument errors, and lifecycle     |
+| `KAZE.getDefaultName`, `KAZE.getExtended`, `KAZE.getUpright`                                                      | Matching non-enum `cv.KAZE` getters         | Exact arity, names or boolean state, argument errors, and lifecycle      |
+| `KAZE.getNOctaveLayers`, `KAZE.getNOctaves`, `KAZE.getThreshold`                                                  | Matching non-enum `cv.KAZE` numeric getters | Exact signed i32 or F64 state, non-finite values, errors, and lifecycle  |
+| `KAZE.setExtended`, `KAZE.setUpright`                                                                             | Matching non-enum `cv.KAZE` boolean setters | Exact boolean coercion, undefined return, argument errors, and lifecycle |
+| `KAZE.setNOctaveLayers`, `KAZE.setNOctaves`                                                                       | Matching non-enum `cv.KAZE` integer setters | Exact i32 coercion, undefined return, argument errors, and lifecycle     |
+| `KAZE.setThreshold`                                                                                               | `cv.KAZE.setThreshold`                      | Exact F64 coercion, non-finite values, argument errors, and lifecycle    |
 
 ## Working partial families
 
-One hundred six families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 129 families in total.
+Ninety-five families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 129 families in total.
 
 | Package methods                                                                              | OpenCV.js families                                                    | Current limit                                            |
 | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------- |
@@ -76,11 +81,8 @@ One hundred six families have useful original Rust/WASM slices but do not meet t
 | `AKAZE.getDiffusivity`, `AKAZE.getNOctaveLayers`, `AKAZE.getNOctaves`, `AKAZE.getThreshold`  | Matching `cv.AKAZE` detector getters                                  | Validated configuration state only                       |
 | `AKAZE.setDescriptorChannels`, `AKAZE.setDescriptorSize`, `AKAZE.setDescriptorType`          | Matching `cv.AKAZE` descriptor setters                                | Atomic configuration mutation only                       |
 | `AKAZE.setDiffusivity`, `AKAZE.setNOctaveLayers`, `AKAZE.setNOctaves`, `AKAZE.setThreshold`  | Matching `cv.AKAZE` detector setters                                  | Atomic configuration mutation only                       |
-| `createKAZE`, `KAZE.getDefaultName`                                                          | `cv.KAZE.create`, `cv.KAZE.getDefaultName`                            | Owned configuration only; detection remains              |
-| `KAZE.getDiffusivity`, `KAZE.getExtended`, `KAZE.getNOctaveLayers`, `KAZE.getNOctaves`       | Matching `cv.KAZE` configuration getters                              | Rust-owned configuration state only                      |
-| `KAZE.getThreshold`, `KAZE.getUpright`                                                       | Matching `cv.KAZE` detector and descriptor getters                    | Finite threshold and boolean state only                  |
-| `KAZE.setDiffusivity`, `KAZE.setExtended`, `KAZE.setNOctaveLayers`, `KAZE.setNOctaves`       | Matching `cv.KAZE` configuration setters                              | Validated configuration mutation only                    |
-| `KAZE.setThreshold`, `KAZE.setUpright`                                                       | Matching `cv.KAZE` detector and descriptor setters                    | Atomic configuration mutation only                       |
+| `createKAZE`                                                                                 | `cv.KAZE.create`                                                      | Static factory is absent from the pinned artifact        |
+| `KAZE.getDiffusivity`, `KAZE.setDiffusivity`                                                 | Matching `cv.KAZE` diffusivity methods                                | Enum-object behavior remains                             |
 | `createAgastFeatureDetector`, `AgastFeatureDetector.getType`, `AgastFeatureDetector.setType` | Matching `cv.AgastFeatureDetector` factory and enum families          | Construction and enum-object behavior remain             |
 | `createFastFeatureDetector`, `FastFeatureDetector.getType`, `FastFeatureDetector.setType`    | Matching `cv.FastFeatureDetector` factory and enum families           | Construction and enum-object behavior remain             |
 | `createGFTTDetector`                                                                         | `cv.GFTTDetector.create`                                              | One factory shape; `gradientSize` overload remains       |
@@ -88,7 +90,7 @@ One hundred six families have useful original Rust/WASM slices but do not meet t
 
 The pinned OpenCV.js 4.13.0 browser fixture passes the AKAZE defaults and state mutations for all 15 instance members. Its `AKAZE` class is directly constructible, but the artifact omits the static `AKAZE.create` binding listed by the browser configuration. That blocks a direct runtime comparison for `createAKAZE` without changing the 488-family inventory.
 
-The fixture also exposes the direct `KAZE` constructor and all 13 instance methods. Defaults and mutations pass, including the finite threshold `-1` and each typed diffusivity value. The artifact omits the config-listed static `KAZE.create` binding, so `createKAZE` has no direct static-factory comparison.
+The fixture exposes the direct `KAZE` constructor and all 13 instance methods. Its complete matrix checks exact arity, defaults, return values, signed i32, F64, and boolean coercion, missing and extra arguments, deletion, repeat deletion, and calls after deletion. The 11 non-enum instance methods pass and count as implemented. `getDiffusivity` and `setDiffusivity` remain partial because the official binding exchanges enum objects, and the config-listed static `KAZE.create` binding is absent from the artifact.
 
 The same fixture passes the complete call contract for five primitive AGAST methods and five primitive FAST methods. It checks exact arity, return values, signed i32 and boolean coercion, missing and extra arguments, deletion, repeat deletion, and calls after deletion. Those ten families count as implemented. The official artifact exposes direct constructors but omits the config-listed static `create` methods. The package factories remain partial. `getType` and `setType` also remain partial because the official binding uses enum objects rather than primitive numbers.
 

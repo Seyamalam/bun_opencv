@@ -139,19 +139,19 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | features2d | `AKAZE.setNOctaves`                         | `cv.AKAZE.setNOctaves`                         | Partial | Validated configuration mutation         |
 | features2d | `AKAZE.setThreshold`                        | `cv.AKAZE.setThreshold`                        | Partial | Validated configuration mutation         |
 | features2d | `createKAZE`                                | `cv.KAZE.create`                               | Partial | Configuration handle only; no detection  |
-| features2d | `KAZE.getDefaultName`                       | `cv.KAZE.getDefaultName`                       | Partial | Package-owned configuration name         |
+| features2d | `KAZE.getDefaultName`                       | `cv.KAZE.getDefaultName`                       | Full    | Exact name, arity, and lifecycle         |
 | features2d | `KAZE.getDiffusivity`                       | `cv.KAZE.getDiffusivity`                       | Partial | Typed diffusivity state                  |
-| features2d | `KAZE.getExtended`                          | `cv.KAZE.getExtended`                          | Partial | Extended-descriptor flag                 |
-| features2d | `KAZE.getNOctaveLayers`                     | `cv.KAZE.getNOctaveLayers`                     | Partial | Positive octave-layer state              |
-| features2d | `KAZE.getNOctaves`                          | `cv.KAZE.getNOctaves`                          | Partial | Positive octave-count state              |
-| features2d | `KAZE.getThreshold`                         | `cv.KAZE.getThreshold`                         | Partial | Any finite threshold                     |
-| features2d | `KAZE.getUpright`                           | `cv.KAZE.getUpright`                           | Partial | Upright-descriptor flag                  |
+| features2d | `KAZE.getExtended`                          | `cv.KAZE.getExtended`                          | Full    | Exact boolean state and lifecycle        |
+| features2d | `KAZE.getNOctaveLayers`                     | `cv.KAZE.getNOctaveLayers`                     | Full    | Exact signed i32 state and lifecycle     |
+| features2d | `KAZE.getNOctaves`                          | `cv.KAZE.getNOctaves`                          | Full    | Exact signed i32 state and lifecycle     |
+| features2d | `KAZE.getThreshold`                         | `cv.KAZE.getThreshold`                         | Full    | Exact F64 state and lifecycle            |
+| features2d | `KAZE.getUpright`                           | `cv.KAZE.getUpright`                           | Full    | Exact boolean state and lifecycle        |
 | features2d | `KAZE.setDiffusivity`                       | `cv.KAZE.setDiffusivity`                       | Partial | Validated configuration mutation         |
-| features2d | `KAZE.setExtended`                          | `cv.KAZE.setExtended`                          | Partial | Configuration mutation                   |
-| features2d | `KAZE.setNOctaveLayers`                     | `cv.KAZE.setNOctaveLayers`                     | Partial | Validated configuration mutation         |
-| features2d | `KAZE.setNOctaves`                          | `cv.KAZE.setNOctaves`                          | Partial | Validated configuration mutation         |
-| features2d | `KAZE.setThreshold`                         | `cv.KAZE.setThreshold`                         | Partial | Finite threshold mutation                |
-| features2d | `KAZE.setUpright`                           | `cv.KAZE.setUpright`                           | Partial | Configuration mutation                   |
+| features2d | `KAZE.setExtended`                          | `cv.KAZE.setExtended`                          | Full    | Exact boolean coercion and call contract |
+| features2d | `KAZE.setNOctaveLayers`                     | `cv.KAZE.setNOctaveLayers`                     | Full    | Exact i32 coercion and call contract     |
+| features2d | `KAZE.setNOctaves`                          | `cv.KAZE.setNOctaves`                          | Full    | Exact i32 coercion and call contract     |
+| features2d | `KAZE.setThreshold`                         | `cv.KAZE.setThreshold`                         | Full    | Exact number coercion and call contract  |
+| features2d | `KAZE.setUpright`                           | `cv.KAZE.setUpright`                           | Full    | Exact boolean coercion and call contract |
 | features2d | `createAgastFeatureDetector`                | `cv.AgastFeatureDetector.create`               | Partial | Configuration handle only; no detection  |
 | features2d | `AgastFeatureDetector.getDefaultName`       | `cv.AgastFeatureDetector.getDefaultName`       | Full    | Exact name, arity, and lifecycle         |
 | features2d | `AgastFeatureDetector.getNonmaxSuppression` | `cv.AgastFeatureDetector.getNonmaxSuppression` | Full    | Exact boolean state and lifecycle        |
@@ -203,11 +203,11 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `findContours`                              | `cv.findContours`                              | Planned | Not started                              |
 | imgproc    | `warpPerspective`                           | `cv.warpPerspective`                           | Planned | Not started                              |
 
-Current full parity is **23 of 488 (4.71%)**. There are **106 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+Current full parity is **34 of 488 (6.97%)**. There are **95 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
 
 The pinned OpenCV.js 4.13.0 browser fixture passes AKAZE defaults and mutations for all 15 instance members. The same artifact exposes `AKAZE` as a directly constructible class but omits the config-listed static `AKAZE.create`, so the `createAKAZE` factory cannot receive direct runtime credit from that artifact.
 
-The fixture passes KAZE defaults and mutations for all 13 instance methods, including threshold `-1` and typed diffusivity changes. The artifact exposes a direct `KAZE` constructor but omits the config-listed static `KAZE.create` method.
+The fixture passes the complete pinned browser contract for the 11 non-enum KAZE instance methods. It checks exact arity, defaults, return values, signed i32, F64, and boolean coercion, missing and extra arguments, deletion, repeat deletion, and calls after deletion. Those 11 families count as full parity. The factory and typed diffusivity getter and setter remain partial because static construction and enum-object behavior do not match the pinned binding.
 
 The fixture passes the complete pinned browser contract for five primitive AGAST methods and five primitive FAST methods. It checks exact arity, return values, signed i32 and boolean coercion, argument errors, deletion, repeat deletion, and calls after deletion. These ten families count as full parity. The factory, `getType`, and `setType` families remain partial because direct construction and enum-object behavior do not yet match the pinned binding.
 
