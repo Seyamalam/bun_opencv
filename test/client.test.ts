@@ -659,6 +659,7 @@ class CopyingBackend implements OpenCvBackend {
   #kazeFreeCount = 0;
   #logLevel = 3;
   #randomState = 0;
+  readonly optimalDftSizeInputs: number[] = [];
 
   readonly AKAZE: WasmAKAZEFactory = {
     create: (
@@ -862,6 +863,7 @@ class CopyingBackend implements OpenCvBackend {
   }
 
   getOptimalDFTSize(size: number): number {
+    this.optimalDftSizeInputs.push(size);
     if (size < 0 || size === 2_125_764_000) return -1;
     for (let candidate = Math.max(size, 1); candidate <= 2_125_764_000; candidate += 1) {
       let remainder = candidate;
@@ -2058,12 +2060,51 @@ describe("OpenCv client", () => {
     expect(client.setLogLevel(5)).toBe(initial);
     expect(client.getLogLevel()).toBe(5);
     expect(client.setLogLevel(initial)).toBe(5);
-    expect(client.getOptimalDFTSize(7)).toBe(8);
-    expect(client.getOptimalDFTSize(25)).toBe(25);
-    expect(client.getOptimalDFTSize(-1)).toBe(-1);
-    expect(client.getOptimalDFTSize(2_125_763_999)).toBe(2_125_764_000);
-    expect(client.getOptimalDFTSize(2_125_764_000)).toBe(-1);
-    expect(() => client.getOptimalDFTSize(2 ** 31)).toThrow(OpenCvInputError);
+    const backend = new CopyingBackend();
+    const localClient = createOpenCv(backend);
+    expect(localClient.getOptimalDFTSize.bind(localClient)).toHaveLength(1);
+    expect(localClient.getOptimalDFTSize(7)).toBe(8);
+    expect(localClient.getOptimalDFTSize(25)).toBe(25);
+    expect(localClient.getOptimalDFTSize(-1)).toBe(-1);
+    expect(localClient.getOptimalDFTSize(2_125_763_999)).toBe(2_125_764_000);
+    expect(localClient.getOptimalDFTSize(2_125_764_000)).toBe(-1);
+
+    // SAFETY: This widens only the plain-JavaScript call surface exercised by the binding audit.
+    const javascriptClient = localClient as typeof localClient & {
+      getOptimalDFTSize(size?: boolean | number | string | null, extra?: number): number;
+    };
+    expect(() => javascriptClient.getOptimalDFTSize()).toThrow(
+      new BindingError("function getOptimalDFTSize called with 0 arguments, expected 1 args!"),
+    );
+    expect(() => javascriptClient.getOptimalDFTSize(7, 1)).toThrow(
+      new BindingError("function getOptimalDFTSize called with 2 arguments, expected 1 args!"),
+    );
+    expect(javascriptClient.getOptimalDFTSize(7.9)).toBe(8);
+    expect(backend.optimalDftSizeInputs.at(-1)).toBe(7);
+    expect(javascriptClient.getOptimalDFTSize(Number.NaN)).toBe(1);
+    expect(backend.optimalDftSizeInputs.at(-1)).toBe(0);
+    expect(javascriptClient.getOptimalDFTSize(true)).toBe(1);
+    expect(backend.optimalDftSizeInputs.at(-1)).toBe(1);
+
+    const callCountBeforeInvalidInputs = backend.optimalDftSizeInputs.length;
+    const rejected: ReadonlyArray<readonly [boolean | number | string | null | undefined, string]> =
+      [
+        [null, 'Cannot convert "null" to int'],
+        [undefined, 'Cannot convert "undefined" to int'],
+        ["7", 'Cannot convert "7" to int'],
+        [
+          Number.POSITIVE_INFINITY,
+          'Passing a number "Infinity" from JS side to C/C++ side to an argument of type "int", which is outside the valid range [-2147483648, 2147483647]!',
+        ],
+        [
+          2_147_483_648,
+          'Passing a number "2147483648" from JS side to C/C++ side to an argument of type "int", which is outside the valid range [-2147483648, 2147483647]!',
+        ],
+      ];
+    for (const [input, message] of rejected) {
+      expect(() => javascriptClient.getOptimalDFTSize(input)).toThrow(new TypeError(message));
+    }
+    expect(backend.optimalDftSizeInputs).toHaveLength(callCountBeforeInvalidInputs);
   });
 
   test("applies linear and perspective transforms", () => {

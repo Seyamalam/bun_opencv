@@ -20,7 +20,7 @@ import {
   validateRgbaImage,
   validateThreshold,
 } from "./image.js";
-import { OpenCvInputError } from "./error.js";
+import { BindingError, OpenCvInputError } from "./error.js";
 import { Mat, validateMatrixDimension, validateMatrixInput } from "./mat.js";
 import type {
   BorderType,
@@ -392,8 +392,8 @@ class WasmOpenCv implements OpenCv {
   }
 
   getOptimalDFTSize(size: number): number {
-    validateSignedInteger(size, "size");
-    return this.#backend.getOptimalDFTSize(size);
+    requireExactArity(arguments.length, 1, "getOptimalDFTSize");
+    return this.#backend.getOptimalDFTSize(toWasmI32(size));
   }
 
   getPerspectiveTransform(source: Mat, destination: Mat): Mat {
@@ -1064,6 +1064,35 @@ function validateIntegerPoint(point: Point, name: string): void {
 function validateSignedInteger(value: number, name: string): void {
   if (!Number.isSafeInteger(value) || value < -2_147_483_648 || value > 2_147_483_647) {
     throw new OpenCvInputError(`${name} must be a signed 32-bit integer`);
+  }
+}
+
+interface EmbindObjectInput {
+  toString(): string;
+}
+
+type EmbindScalarInput = boolean | number | EmbindObjectInput | string | null | undefined;
+
+function toWasmI32(value: EmbindScalarInput): number {
+  if (value === true) return 1;
+  if (value === false) return 0;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- This is the JS-to-Embind scalar parser boundary.
+  if (typeof value !== "number") {
+    throw new TypeError(`Cannot convert "${String(value)}" to int`);
+  }
+  if (value < -2_147_483_648 || value > 2_147_483_647) {
+    throw new TypeError(
+      `Passing a number "${String(value)}" from JS side to C/C++ side to an argument of type "int", which is outside the valid range [-2147483648, 2147483647]!`,
+    );
+  }
+  return value | 0;
+}
+
+function requireExactArity(actual: number, expected: number, method: string): void {
+  if (actual !== expected) {
+    throw new BindingError(
+      `function ${method} called with ${actual} arguments, expected ${expected} args!`,
+    );
   }
 }
 
