@@ -758,6 +758,11 @@ class CopyingBackend implements OpenCvBackend {
     return source.toUint8Array().reduce((count, value) => count + Number(value !== 0), 0);
   }
 
+  matDeterminant(source: WasmMatHandle): number {
+    const values = source.toFloat64Array();
+    return (values[0] ?? 0) * (values[3] ?? 0) - (values[1] ?? 0) * (values[2] ?? 0);
+  }
+
   matInRangeU8(
     source: WasmMatHandle,
     lowerBound: WasmMatHandle,
@@ -777,6 +782,44 @@ class CopyingBackend implements OpenCvBackend {
       output[pixel] = inside ? 255 : 0;
     }
     return new CopyingMatHandle(source.rows, source.columns, 1, output);
+  }
+
+  matInvertInto(source: WasmMatHandle, destination: WasmMatHandle, _method: number): number {
+    const values = source.toFloat64Array();
+    const determinant = this.matDeterminant(source);
+    if (determinant === 0) return 0;
+    destination.copyFromBytes(
+      copyViewBytes(
+        new Float64Array([
+          (values[3] ?? 0) / determinant,
+          -(values[1] ?? 0) / determinant,
+          -(values[2] ?? 0) / determinant,
+          (values[0] ?? 0) / determinant,
+        ]),
+      ),
+    );
+    return 1;
+  }
+
+  matSolveInto(
+    coefficients: WasmMatHandle,
+    rightHandSides: WasmMatHandle,
+    destination: WasmMatHandle,
+    method: number,
+  ): boolean {
+    const inverse = new CopyingMatHandle(2, 2, 1, new Uint8Array(32), 6);
+    if (this.matInvertInto(coefficients, inverse, method) === 0) return false;
+    const inverseValues = inverse.toFloat64Array();
+    const right = rightHandSides.toFloat64Array();
+    destination.copyFromBytes(
+      copyViewBytes(
+        new Float64Array([
+          (inverseValues[0] ?? 0) * (right[0] ?? 0) + (inverseValues[1] ?? 0) * (right[1] ?? 0),
+          (inverseValues[2] ?? 0) * (right[0] ?? 0) + (inverseValues[3] ?? 0) * (right[1] ?? 0),
+        ]),
+      ),
+    );
+    return true;
   }
 
   matMaxU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle {
@@ -1198,6 +1241,22 @@ describe("OpenCv client", () => {
     ]) {
       matrix.dispose();
     }
+  });
+
+  test("computes determinants, inverses, and linear solves", () => {
+    const coefficients = client.matFromF64(2, 2, 1, new Float64Array([4, 7, 2, 6]));
+    expect(client.determinant(coefficients)).toBeCloseTo(10);
+
+    const inverse = client.zerosF64(2, 2, 1);
+    expect(client.invert(coefficients, inverse)).toBe(1);
+    expect(Array.from(inverse.toFloat64Array())).toEqual([0.6, -0.7, -0.2, 0.4]);
+
+    const rightHandSide = client.matFromF64(2, 1, 1, new Float64Array([1, 0]));
+    const solution = client.zerosF64(2, 1, 1);
+    expect(client.solve(coefficients, rightHandSide, solution)).toBeTrue();
+    expect(Array.from(solution.toFloat64Array())).toEqual([0.6, -0.2]);
+
+    for (const matrix of [solution, rightHandSide, inverse, coefficients]) matrix.dispose();
   });
 
   test("exposes matrix-based core operations", () => {

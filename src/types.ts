@@ -22,6 +22,9 @@ export type NormalizeType = 1 | 2 | 4 | 32;
 /** OpenCV reduce mode: sum, average, maximum, or minimum. */
 export type ReduceKind = 0 | 1 | 2 | 3;
 
+/** Implemented dense decomposition methods: LU, Cholesky, or QR. */
+export type DecompositionMethod = 0 | 3 | 4;
+
 /** Zero-based matrix coordinate. */
 export interface Point {
   readonly x: number;
@@ -66,11 +69,13 @@ export interface OpenCvBackend {
   matBitwiseXorU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matCompareEqU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matCountNonZero(source: WasmMatHandle): number;
+  matDeterminant(source: WasmMatHandle): number;
   matInRangeU8(
     source: WasmMatHandle,
     lowerBound: WasmMatHandle,
     upperBound: WasmMatHandle,
   ): WasmMatHandle;
+  matInvertInto(source: WasmMatHandle, destination: WasmMatHandle, method: number): number;
   matSplit(source: WasmMatHandle): WasmMatHandle[];
   matMerge(first: WasmMatHandle, second: WasmMatHandle): WasmMatHandle;
   matMerge3(first: WasmMatHandle, second: WasmMatHandle, third: WasmMatHandle): WasmMatHandle;
@@ -128,6 +133,12 @@ export interface OpenCvBackend {
   matRandn(destination: WasmMatHandle, mean: Float64Array, standardDeviation: Float64Array): void;
   matRandu(destination: WasmMatHandle, lower: Float64Array, upper: Float64Array): void;
   matSetIdentity(destination: WasmMatHandle, value: Float64Array): void;
+  matSolveInto(
+    coefficients: WasmMatHandle,
+    rightHandSides: WasmMatHandle,
+    destination: WasmMatHandle,
+    method: number,
+  ): boolean;
   matHconcat2(first: WasmMatHandle, second: WasmMatHandle): WasmMatHandle;
   matHconcat3(first: WasmMatHandle, second: WasmMatHandle, third: WasmMatHandle): WasmMatHandle;
   matHconcat4(
@@ -270,6 +281,7 @@ export interface OpenCv {
   compareEqual(left: Mat, right: Mat): Mat;
   cartToPolar(x: Mat, y: Mat, magnitude: Mat, angle: Mat, degrees?: boolean): void;
   countNonZero(source: Mat): number;
+  determinant(source: Mat): number;
   convertScaleAbs(source: Mat, alpha?: number, beta?: number): Mat;
   convertScaleAbs(source: Mat, destination: Mat, alpha?: number, beta?: number): void;
   copyMakeBorder(
@@ -301,6 +313,7 @@ export interface OpenCv {
   matFromU8(rows: number, columns: number, channels: number, data: Uint8Array): Mat;
   inRange(source: Mat, lowerBound: Mat, upperBound: Mat): Mat;
   insertChannel(source: Mat, destination: Mat, channel: number): void;
+  invert(source: Mat, destination: Mat, method?: DecompositionMethod): number;
   log(source: Mat): Mat;
   lut(source: Mat, table: Mat): Mat;
   lut(source: Mat, table: Mat, destination: Mat): void;
@@ -338,6 +351,12 @@ export interface OpenCv {
   rotate(source: Mat, destination: Mat, rotateCode: 0 | 1 | 2): void;
   setIdentity(destination: Mat, value?: Scalar): void;
   setRNGSeed(seed: number): void;
+  solve(
+    coefficients: Mat,
+    rightHandSides: Mat,
+    destination: Mat,
+    method?: DecompositionMethod,
+  ): boolean;
   reduce(source: Mat, destination: Mat, axis: 0 | 1, kind: ReduceKind): void;
   threshold(image: RgbaImage, threshold: number): RgbaImage;
   subtract(left: Mat, right: Mat): Mat;

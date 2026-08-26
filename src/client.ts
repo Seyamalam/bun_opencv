@@ -8,6 +8,7 @@ import { OpenCvInputError } from "./error.js";
 import { Mat, validateMatrixDimension, validateMatrixInput } from "./mat.js";
 import type {
   BorderType,
+  DecompositionMethod,
   MinMaxLocation,
   NormalizeType,
   NormType,
@@ -96,6 +97,10 @@ class WasmOpenCv implements OpenCv {
 
   countNonZero(source: Mat): number {
     return this.#backend.matCountNonZero(source.handleForBackend());
+  }
+
+  determinant(source: Mat): number {
+    return this.#backend.matDeterminant(source.handleForBackend());
   }
 
   convertScaleAbs(source: Mat, alpha?: number, beta?: number): Mat;
@@ -221,10 +226,30 @@ class WasmOpenCv implements OpenCv {
     return this.#concat(sources, "horizontal");
   }
 
-  invert(image: RgbaImage): RgbaImage {
-    validateRgbaImage(image);
-    const data = this.#backend.invertRgba(image.data, image.width, image.height);
-    return createRgbaImage(image.width, image.height, data);
+  invert(image: RgbaImage): RgbaImage;
+  invert(source: Mat, destination: Mat, method?: DecompositionMethod): number;
+  invert(
+    imageOrSource: RgbaImage | Mat,
+    destination?: Mat,
+    method: DecompositionMethod = 0,
+  ): RgbaImage | number {
+    if (imageOrSource instanceof Mat) {
+      if (destination === undefined) {
+        throw new OpenCvInputError("matrix inverse requires a destination");
+      }
+      return this.#backend.matInvertInto(
+        imageOrSource.handleForBackend(),
+        destination.handleForBackend(),
+        method,
+      );
+    }
+    validateRgbaImage(imageOrSource);
+    const data = this.#backend.invertRgba(
+      imageOrSource.data,
+      imageOrSource.width,
+      imageOrSource.height,
+    );
+    return createRgbaImage(imageOrSource.width, imageOrSource.height, data);
   }
 
   matFromF32(rows: number, columns: number, channels: number, data: Float32Array): Mat {
@@ -544,6 +569,20 @@ class WasmOpenCv implements OpenCv {
       throw new OpenCvInputError("seed must be a signed 32-bit integer");
     }
     this.#backend.setRNGSeed(seed);
+  }
+
+  solve(
+    coefficients: Mat,
+    rightHandSides: Mat,
+    destination: Mat,
+    method: DecompositionMethod = 0,
+  ): boolean {
+    return this.#backend.matSolveInto(
+      coefficients.handleForBackend(),
+      rightHandSides.handleForBackend(),
+      destination.handleForBackend(),
+      method,
+    );
   }
 
   threshold(image: RgbaImage, threshold: number): RgbaImage {

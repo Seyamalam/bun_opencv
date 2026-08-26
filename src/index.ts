@@ -10,6 +10,7 @@ export { Mat } from "./mat.js";
 export type { MatDepth, WasmMatHandle } from "./mat.js";
 export type {
   BorderType,
+  DecompositionMethod,
   MinMaxLocation,
   NormalizeType,
   NormType,
