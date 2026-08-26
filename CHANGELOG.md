@@ -26,13 +26,11 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - A comprehensive pinned-browser GFTT matrix for exact arity, return values, scalar coercion, argument errors, deletion, repeat deletion, and calls after deletion.
 - OpenCV.js-compatible `BindingError` identity and GFTT `delete()` lifecycle behavior, while retaining idempotent `dispose()` as a package convenience.
 - Ten fully implemented primitive AGAST and FAST instance methods with exact arity, return values, scalar coercion, `BindingError` argument checks, and deletion behavior, bringing the totals to 106 partial, 23 implemented, and 129 supported families.
-- AGAST and FAST enum getters, enum setters, and factories remain partial because enum objects and direct construction do not yet match the pinned browser binding.
 - Eleven fully implemented non-enum KAZE instance methods with exact arity, complete signed i32, F64, and boolean coercion, `BindingError` argument checks, and deletion behavior, bringing the totals to 95 partial, 34 implemented, and 129 supported families.
-- KAZE diffusivity methods and the factory remain partial because enum objects and static construction do not yet match the pinned browser binding.
 - Eleven fully implemented non-enum AKAZE instance methods with exact arity, complete signed i32 and F64 coercion, `BindingError` argument checks, and deletion behavior, bringing the totals to 84 partial, 45 implemented, and 129 supported families.
-- AKAZE descriptor-type and diffusivity methods and the factory remain partial because enum objects and static construction do not yet match the pinned browser binding.
 - OpenCV.js-compatible negative-input and upper-sentinel behavior for `getOptimalDFTSize`, plus a fail-closed numeric browser comparator for enum-backed values.
 - A fully implemented `getOptimalDFTSize` family with exact arity, Embind signed i32 coercion and errors, exhaustive smooth-size boundary tests, and the pinned upper sentinel, bringing the totals to 83 partial, 46 implemented, and 129 supported families.
+- Ten fully implemented enum-backed detector methods across AKAZE, KAZE, AGAST, and FAST. Their browser contract covers enum namespace descriptors, canonical and shared singleton identity, structural setter coercion, unknown signed i32 wire values, exact arity, and lifetime errors. The totals are now 73 partial, 56 implemented, and 129 supported families; detector factories remain partial.
 - Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
 
 ### Planned

@@ -126,27 +126,27 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | features2d | `AKAZE.getDefaultName`                      | `cv.AKAZE.getDefaultName`                      | Full    | Exact name, arity, and lifecycle         |
 | features2d | `AKAZE.getDescriptorChannels`               | `cv.AKAZE.getDescriptorChannels`               | Full    | Exact signed i32 state and lifecycle     |
 | features2d | `AKAZE.getDescriptorSize`                   | `cv.AKAZE.getDescriptorSize`                   | Full    | Exact signed i32 state and lifecycle     |
-| features2d | `AKAZE.getDescriptorType`                   | `cv.AKAZE.getDescriptorType`                   | Partial | KAZE and MLDB types 2 through 5          |
-| features2d | `AKAZE.getDiffusivity`                      | `cv.AKAZE.getDiffusivity`                      | Partial | Diffusivity modes 0 through 3            |
+| features2d | `AKAZE.getDescriptorType`                   | `cv.AKAZE.getDescriptorType`                   | Full    | Canonical enum identity and lifecycle    |
+| features2d | `AKAZE.getDiffusivity`                      | `cv.AKAZE.getDiffusivity`                      | Full    | Shared enum identity and lifecycle       |
 | features2d | `AKAZE.getNOctaveLayers`                    | `cv.AKAZE.getNOctaveLayers`                    | Full    | Exact signed i32 state and lifecycle     |
 | features2d | `AKAZE.getNOctaves`                         | `cv.AKAZE.getNOctaves`                         | Full    | Exact signed i32 state and lifecycle     |
 | features2d | `AKAZE.getThreshold`                        | `cv.AKAZE.getThreshold`                        | Full    | Exact F64 state and lifecycle            |
 | features2d | `AKAZE.setDescriptorChannels`               | `cv.AKAZE.setDescriptorChannels`               | Full    | Exact i32 coercion and call contract     |
 | features2d | `AKAZE.setDescriptorSize`                   | `cv.AKAZE.setDescriptorSize`                   | Full    | Exact i32 coercion and call contract     |
-| features2d | `AKAZE.setDescriptorType`                   | `cv.AKAZE.setDescriptorType`                   | Partial | Validated configuration mutation         |
-| features2d | `AKAZE.setDiffusivity`                      | `cv.AKAZE.setDiffusivity`                      | Partial | Validated configuration mutation         |
+| features2d | `AKAZE.setDescriptorType`                   | `cv.AKAZE.setDescriptorType`                   | Full    | Exact structural enum-object coercion    |
+| features2d | `AKAZE.setDiffusivity`                      | `cv.AKAZE.setDiffusivity`                      | Full    | Exact structural enum-object coercion    |
 | features2d | `AKAZE.setNOctaveLayers`                    | `cv.AKAZE.setNOctaveLayers`                    | Full    | Exact i32 coercion and call contract     |
 | features2d | `AKAZE.setNOctaves`                         | `cv.AKAZE.setNOctaves`                         | Full    | Exact i32 coercion and call contract     |
 | features2d | `AKAZE.setThreshold`                        | `cv.AKAZE.setThreshold`                        | Full    | Exact number coercion and call contract  |
 | features2d | `createKAZE`                                | `cv.KAZE.create`                               | Partial | Configuration handle only; no detection  |
 | features2d | `KAZE.getDefaultName`                       | `cv.KAZE.getDefaultName`                       | Full    | Exact name, arity, and lifecycle         |
-| features2d | `KAZE.getDiffusivity`                       | `cv.KAZE.getDiffusivity`                       | Partial | Typed diffusivity state                  |
+| features2d | `KAZE.getDiffusivity`                       | `cv.KAZE.getDiffusivity`                       | Full    | Shared enum identity and lifecycle       |
 | features2d | `KAZE.getExtended`                          | `cv.KAZE.getExtended`                          | Full    | Exact boolean state and lifecycle        |
 | features2d | `KAZE.getNOctaveLayers`                     | `cv.KAZE.getNOctaveLayers`                     | Full    | Exact signed i32 state and lifecycle     |
 | features2d | `KAZE.getNOctaves`                          | `cv.KAZE.getNOctaves`                          | Full    | Exact signed i32 state and lifecycle     |
 | features2d | `KAZE.getThreshold`                         | `cv.KAZE.getThreshold`                         | Full    | Exact F64 state and lifecycle            |
 | features2d | `KAZE.getUpright`                           | `cv.KAZE.getUpright`                           | Full    | Exact boolean state and lifecycle        |
-| features2d | `KAZE.setDiffusivity`                       | `cv.KAZE.setDiffusivity`                       | Partial | Validated configuration mutation         |
+| features2d | `KAZE.setDiffusivity`                       | `cv.KAZE.setDiffusivity`                       | Full    | Exact structural enum-object coercion    |
 | features2d | `KAZE.setExtended`                          | `cv.KAZE.setExtended`                          | Full    | Exact boolean coercion and call contract |
 | features2d | `KAZE.setNOctaveLayers`                     | `cv.KAZE.setNOctaveLayers`                     | Full    | Exact i32 coercion and call contract     |
 | features2d | `KAZE.setNOctaves`                          | `cv.KAZE.setNOctaves`                          | Full    | Exact i32 coercion and call contract     |
@@ -156,18 +156,18 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | features2d | `AgastFeatureDetector.getDefaultName`       | `cv.AgastFeatureDetector.getDefaultName`       | Full    | Exact name, arity, and lifecycle         |
 | features2d | `AgastFeatureDetector.getNonmaxSuppression` | `cv.AgastFeatureDetector.getNonmaxSuppression` | Full    | Exact boolean state and lifecycle        |
 | features2d | `AgastFeatureDetector.getThreshold`         | `cv.AgastFeatureDetector.getThreshold`         | Full    | Exact signed i32 state and lifecycle     |
-| features2d | `AgastFeatureDetector.getType`              | `cv.AgastFeatureDetector.getType`              | Partial | AGAST types 0 through 3                  |
+| features2d | `AgastFeatureDetector.getType`              | `cv.AgastFeatureDetector.getType`              | Full    | Canonical enum identity and lifecycle    |
 | features2d | `AgastFeatureDetector.setNonmaxSuppression` | `cv.AgastFeatureDetector.setNonmaxSuppression` | Full    | Exact boolean coercion and call contract |
 | features2d | `AgastFeatureDetector.setThreshold`         | `cv.AgastFeatureDetector.setThreshold`         | Full    | Exact i32 coercion and call contract     |
-| features2d | `AgastFeatureDetector.setType`              | `cv.AgastFeatureDetector.setType`              | Partial | Validated configuration mutation         |
+| features2d | `AgastFeatureDetector.setType`              | `cv.AgastFeatureDetector.setType`              | Full    | Exact structural enum-object coercion    |
 | features2d | `createFastFeatureDetector`                 | `cv.FastFeatureDetector.create`                | Partial | Configuration handle only; no detection  |
 | features2d | `FastFeatureDetector.getDefaultName`        | `cv.FastFeatureDetector.getDefaultName`        | Full    | Exact name, arity, and lifecycle         |
 | features2d | `FastFeatureDetector.getNonmaxSuppression`  | `cv.FastFeatureDetector.getNonmaxSuppression`  | Full    | Exact boolean state and lifecycle        |
 | features2d | `FastFeatureDetector.getThreshold`          | `cv.FastFeatureDetector.getThreshold`          | Full    | Exact signed i32 state and lifecycle     |
-| features2d | `FastFeatureDetector.getType`               | `cv.FastFeatureDetector.getType`               | Partial | FAST types 0 through 2                   |
+| features2d | `FastFeatureDetector.getType`               | `cv.FastFeatureDetector.getType`               | Full    | Canonical enum identity and lifecycle    |
 | features2d | `FastFeatureDetector.setNonmaxSuppression`  | `cv.FastFeatureDetector.setNonmaxSuppression`  | Full    | Exact boolean coercion and call contract |
 | features2d | `FastFeatureDetector.setThreshold`          | `cv.FastFeatureDetector.setThreshold`          | Full    | Exact i32 coercion and call contract     |
-| features2d | `FastFeatureDetector.setType`               | `cv.FastFeatureDetector.setType`               | Partial | Validated configuration mutation         |
+| features2d | `FastFeatureDetector.setType`               | `cv.FastFeatureDetector.setType`               | Full    | Exact structural enum-object coercion    |
 | features2d | `createGFTTDetector`                        | `cv.GFTTDetector.create`                       | Partial | Selected six-argument configuration      |
 | features2d | `GFTTDetector.getBlockSize`                 | `cv.GFTTDetector.getBlockSize`                 | Full    | Exact arity, state, and lifecycle        |
 | features2d | `GFTTDetector.getDefaultName`               | `cv.GFTTDetector.getDefaultName`               | Full    | Exact name, arity, and lifecycle         |
@@ -203,15 +203,15 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `findContours`                              | `cv.findContours`                              | Planned | Not started                              |
 | imgproc    | `warpPerspective`                           | `cv.warpPerspective`                           | Planned | Not started                              |
 
-Current full parity is **46 of 488 (9.43%)**. There are **83 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+Current full parity is **56 of 488 (11.48%)**. There are **73 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
 
 The fixture passes the complete pinned browser contract for `getOptimalDFTSize`, including exact arity, Embind signed i32 coercion and errors, negative and zero inputs, every smooth-size boundary exercised by Rust tests, and the exclusive `2,125,764,000` upper sentinel. This family counts as full parity.
 
-The fixture passes the complete pinned browser contract for the 11 non-enum AKAZE instance methods. It checks exact arity, defaults, return values, signed i32 and F64 coercion, missing and extra arguments, deletion, repeat deletion, and calls after deletion. Those 11 families count as full parity. The factory and four enum-backed descriptor-type and diffusivity methods remain partial because static construction and enum-object behavior do not match the pinned binding.
+The fixture passes the complete pinned browser contract for all 15 AKAZE instance methods. In addition to the scalar checks, the four enum methods match the official enum namespaces, canonical singleton identity, structural setter coercion, raw unknown wire values, arity errors, and lifetime behavior. The factory remains partial because the pinned artifact omits its config-listed static constructor.
 
-The fixture passes the complete pinned browser contract for the 11 non-enum KAZE instance methods. It checks exact arity, defaults, return values, signed i32, F64, and boolean coercion, missing and extra arguments, deletion, repeat deletion, and calls after deletion. Those 11 families count as full parity. The factory and typed diffusivity getter and setter remain partial because static construction and enum-object behavior do not match the pinned binding.
+The fixture passes the complete pinned browser contract for all 13 KAZE instance methods. Its diffusivity getter returns the shared canonical enum singleton, and its setter applies the official structural enum-object conversion while preserving unknown signed i32 wire values. The factory remains partial because the pinned artifact omits its config-listed static constructor.
 
-The fixture passes the complete pinned browser contract for five primitive AGAST methods and five primitive FAST methods. It checks exact arity, return values, signed i32 and boolean coercion, argument errors, deletion, repeat deletion, and calls after deletion. These ten families count as full parity. The factory, `getType`, and `setType` families remain partial because direct construction and enum-object behavior do not yet match the pinned binding.
+The fixture passes the complete pinned browser contract for all seven AGAST and all seven FAST instance methods. The type methods match the official enum namespaces, canonical singleton identity, structural setter coercion, raw unknown wire values, arity errors, and lifetime behavior. Both factories remain partial because the pinned artifact omits their config-listed static constructors.
 
 The fixture passes the complete pinned browser matrix for all 13 GFTT instance methods. It checks method arity, defaults, return values, integer, number, and boolean coercion, missing and extra arguments, deletion, repeat deletion, and calls after deletion. These 13 method families count as full parity. The official artifact exposes the direct constructor but omits the config-listed static `GFTTDetector.create` method. The package factory remains partial because it covers one six-argument shape and omits the `gradientSize` overload.
 

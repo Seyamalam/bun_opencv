@@ -272,8 +272,10 @@ const akaze = cv.createAKAZE({
 });
 
 try {
+  akaze.setDescriptorType(cv.AKAZE_DescriptorType.DESCRIPTOR_MLDB_UPRIGHT);
+  akaze.setDiffusivity(cv.KAZE_DiffusivityType.DIFF_WEICKERT);
   akaze.setThreshold(0.002);
-  console.log(akaze.getThreshold());
+  console.log(akaze.getDescriptorType(), akaze.getDiffusivity(), akaze.getThreshold());
 } finally {
   akaze.dispose();
 }
@@ -281,13 +283,13 @@ try {
 
 Omitting every option uses the OpenCV 4.13 defaults shown above. Factory options are deliberately stricter than instance mutation. Descriptor types accept KAZE upright, KAZE, MLDB upright, or MLDB. Descriptor channels range from 1 through 3, descriptor size is non-negative, octave counts are positive signed 32-bit integers, and thresholds are finite and non-negative. Diffusivity accepts PM G1, PM G2, Weickert, or Charbonnier. `maxPoints` accepts a signed 32-bit integer but has no getter or setter in the pinned AKAZE inventory.
 
-The non-enum instance setters reproduce the pinned Embind boundary. Descriptor-channel, descriptor-size, octave, and octave-layer setters coerce numbers to signed i32 and store the complete signed range. The threshold setter preserves the complete F64 domain, including negative zero, `NaN`, and both infinities. Missing or extra method arguments throw `BindingError`; unsupported scalar input and integer range failures throw `TypeError`. Descriptor type and diffusivity remain validated package enums, and a rejected enum update preserves the previous value. `getDefaultName()` returns `"Feature2D.AKAZE"`.
+The instance setters reproduce the pinned Embind boundary. Descriptor-channel, descriptor-size, octave, and octave-layer setters coerce numbers to signed i32 and store the complete signed range. The threshold setter preserves the complete F64 domain, including negative zero, `NaN`, and both infinities. Descriptor type and diffusivity setters read a structural object's `value` property and apply JavaScript signed 32-bit conversion. They accept canonical members, foreign enum members, inherited properties, and plain objects. Raw unknown codes remain in Rust-owned state; the matching getter returns `undefined` when no canonical singleton has that code. Missing or extra method arguments throw `BindingError`; unsupported scalar input and integer range failures throw `TypeError`. `getDefaultName()` returns `"Feature2D.AKAZE"`.
 
 The instance exposes OpenCV.js-compatible `delete()` and idempotent `dispose()`. `delete()` releases the handle and a repeated call throws `BindingError`. Every getter or setter after either release path throws `BindingError`.
 
-The pinned OpenCV.js 4.13.0 browser fixture exposes the direct `AKAZE` constructor and all 15 instance methods. The complete compatibility matrix passes for the 11 non-enum methods, covering exact arity, defaults, return values, scalar coercion, argument errors, and lifetime behavior. The four descriptor-type and diffusivity methods remain partial because the official binding exchanges enum objects. The artifact omits the config-listed static `AKAZE.create`, so the package factory has no direct runtime comparator for that baseline.
+The pinned OpenCV.js 4.13.0 browser fixture exposes the direct `AKAZE` constructor and all 15 instance methods. The complete compatibility matrix passes for every instance method. It covers exact arity, defaults, return values, scalar coercion, enum namespace descriptors, canonical singleton identity, structural enum inputs, raw unknown wire values, argument errors, and lifetime behavior. Enum getters use const-pointer deletion errors; setters use mutable-pointer deletion errors. The artifact omits the config-listed static `AKAZE.create`, so the package factory has no direct runtime comparator for that baseline.
 
-Call `dispose()` when the handle is no longer needed. Repeated disposal does nothing. Any getter or setter after disposal throws `OpenCvInputError`.
+Call `dispose()` when the handle is no longer needed. Repeated disposal does nothing. Any getter or setter after disposal throws `BindingError`.
 
 ### KAZE configuration
 
@@ -307,7 +309,7 @@ const kaze = cv.createKAZE({
 
 try {
   kaze.setThreshold(-1);
-  kaze.setDiffusivity(KAZEDiffusivity.CHARBONNIER);
+  kaze.setDiffusivity(cv.KAZE_DiffusivityType.DIFF_CHARBONNIER);
   console.log(kaze.getThreshold(), kaze.getDiffusivity());
 } finally {
   kaze.dispose();
@@ -316,11 +318,11 @@ try {
 
 The OpenCV 4.13 defaults are `extended: false`, `upright: false`, threshold `0.0010000000474974513`, four octaves, four octave layers, and `KAZEDiffusivity.PM_G2`. Factory options are deliberately stricter than instance mutation: octave counts must be positive signed 32-bit integers, the threshold must be finite, and diffusivity accepts the typed PM G1, PM G2, Weickert, and Charbonnier enum members.
 
-The instance exposes `getDefaultName()`, getters and setters for every option, OpenCV.js-compatible `delete()`, and idempotent `dispose()`. `getDefaultName()` returns `"Feature2D.KAZE"`. The non-enum setters reproduce the pinned Embind boundary: octave setters coerce numbers to signed i32, threshold preserves the complete F64 domain including negative zero, `NaN`, and both infinities, and boolean setters use JavaScript truthiness. Missing or extra method arguments throw `BindingError`; unsupported scalar input and integer range failures throw `TypeError`. Diffusivity remains a validated package enum, and a rejected diffusivity update preserves the previous value.
+The instance exposes `getDefaultName()`, getters and setters for every option, OpenCV.js-compatible `delete()`, and idempotent `dispose()`. `getDefaultName()` returns `"Feature2D.KAZE"`. Octave setters coerce numbers to signed i32, threshold preserves the complete F64 domain including negative zero, `NaN`, and both infinities, and boolean setters use JavaScript truthiness. The diffusivity setter reads a structural object's `value` property and stores its signed i32 conversion without validating the code. A raw unknown code makes the getter return `undefined`; known codes return the same canonical singleton used by AKAZE. Missing or extra method arguments throw `BindingError`; unsupported scalar input and integer range failures throw `TypeError`.
 
 `delete()` releases the handle and a repeated call throws `BindingError`, matching OpenCV.js. `dispose()` is the package convenience for idempotent cleanup. Every getter or setter after either release path throws `BindingError`.
 
-The pinned OpenCV.js 4.13.0 browser fixture exposes the direct `KAZE` constructor and all 13 instance methods. The complete compatibility matrix passes for the 11 non-enum methods, covering exact arity, defaults, return values, scalar coercion, argument errors, and lifetime behavior. The typed diffusivity methods remain partial because the official binding exchanges enum objects. The artifact omits the config-listed static `KAZE.create`, so the package factory has no direct static-factory comparator for that baseline.
+The pinned OpenCV.js 4.13.0 browser fixture exposes the direct `KAZE` constructor and all 13 instance methods. The complete compatibility matrix passes for every instance method. It covers exact arity, defaults, return values, scalar coercion, shared enum singleton identity, structural enum inputs, raw unknown wire values, argument errors, and const-getter versus mutable-setter lifetime behavior. The artifact omits the config-listed static `KAZE.create`, so the package factory has no direct static-factory comparator for that baseline.
 
 ### AGAST and FAST configuration
 
@@ -342,7 +344,9 @@ const fast = cv.createFastFeatureDetector({
 
 try {
   agast.setThreshold(-1);
+  agast.setType(cv.AgastFeatureDetector_DetectorType.AGAST_5_8);
   fast.setThreshold(256);
+  fast.setType(cv.FastFeatureDetector_DetectorType.TYPE_5_8);
 } finally {
   agast.dispose();
   fast.dispose();
@@ -372,9 +376,9 @@ Both factories default to threshold `10` with non-maximum suppression enabled. A
 
 The five primitive methods on each class, `getDefaultName`, `getNonmaxSuppression`, `getThreshold`, `setNonmaxSuppression`, and `setThreshold`, enforce the pinned argument counts. Missing setter arguments and extra getter or setter arguments throw `BindingError`. `delete()` returns `undefined`; a second deletion and every primitive method call after deletion also throw `BindingError`. The package keeps idempotent `dispose()` as a convenience.
 
-`getType()` and `setType(value)` remain partial. The package uses the numeric enums listed above, while the pinned OpenCV.js binding returns and accepts Embind enum objects. A rejected package type update leaves the old value unchanged. The factories remain partial because the pinned artifact exposes direct constructors but omits both config-listed static `create` methods.
+`getType()` returns the canonical Embind-compatible singleton for known codes. `setType(value)` reads a structural object's `value` property and stores its JavaScript signed 32-bit conversion. This accepts canonical or foreign enum members, inherited properties, plain objects, fractions, non-finite numbers, strings, and booleans with the same observable conversion as the pinned binding. Unknown raw codes remain in Rust-owned state and make the getter return `undefined`. Nullish inputs and throwing property getters propagate the matching errors without mutating state.
 
-The pinned OpenCV.js 4.13.0 artifact exposes direct `AgastFeatureDetector` and `FastFeatureDetector` constructors and all seven instance methods on both. The five primitive methods on each class pass the complete call-contract matrix and count as implemented. The factories and two enum methods on each class remain partial for the reasons above.
+The pinned OpenCV.js 4.13.0 artifact exposes direct `AgastFeatureDetector` and `FastFeatureDetector` constructors and all seven instance methods on both. Every instance method passes the complete call-contract matrix, including enum namespace descriptors, canonical singleton identity, structural setter coercion, raw unknown wire values, exact arity, and const-getter versus mutable-setter lifetime errors. The factories remain partial because the artifact omits both config-listed static `create` methods.
 
 ### GFTT detector configuration
 
@@ -411,7 +415,7 @@ The pinned OpenCV.js 4.13.0 fixture exposes the direct `GFTTDetector` constructo
 
 ## Errors
 
-The TypeScript boundary throws `OpenCvInputError` for invalid dimensions, byte lengths, thresholds, and strictly validated factory options. Non-enum AKAZE, KAZE, and GFTT instance methods throw `BindingError` for argument-count and deleted-object failures, matching the pinned browser binding. Their scalar conversion failures throw `TypeError`. Rust rejects invalid dimensions and byte lengths if a caller bypasses the TypeScript client.
+The TypeScript boundary throws `OpenCvInputError` for invalid dimensions, byte lengths, thresholds, and strictly validated factory options. Audited detector instance methods throw `BindingError` for argument-count and deleted-object failures, matching the pinned browser binding. Their scalar and enum-object boundary failures throw `TypeError` where the pinned binding does. Rust rejects invalid dimensions and byte lengths if a caller bypasses the TypeScript client.
 
 ## Matrices
 
