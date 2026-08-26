@@ -71,17 +71,17 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | ---------- | ------------------------------------------- | ---------------------------------------------- | ------- | ---------------------------------------- |
 | core       | `absdiff`                                   | `cv.absdiff`                                   | Partial | Matching U8 matrices                     |
 | core       | `add`                                       | `cv.add`                                       | Partial | Saturating U8 matrix operands            |
-| core       | `addWeighted`                               | `cv.addWeighted`                               | Partial | All depths and finite weights            |
+| core       | `addWeighted`                               | `cv.addWeighted`                               | Full    | Exact all-depth mutable-output contract  |
 | core       | `bitwiseAnd`                                | `cv.bitwise_and`                               | Partial | U8 matrix operands, no mask              |
 | core       | `bitwiseNot`                                | `cv.bitwise_not`                               | Partial | U8 matrix, no mask                       |
 | core       | `bitwiseOr`                                 | `cv.bitwise_or`                                | Partial | U8 matrix operands, no mask              |
 | core       | `bitwiseXor`                                | `cv.bitwise_xor`                               | Partial | U8 matrix operands, no mask              |
 | core       | `compareEqual`                              | `cv.compare`                                   | Partial | U8 equality mode                         |
 | core       | `countNonZero`                              | `cv.countNonZero`                              | Full    | Exact all-depth single-channel reduction |
-| core       | `convertScaleAbs`                           | `cv.convertScaleAbs`                           | Partial | All input depths to saturated U8         |
+| core       | `convertScaleAbs`                           | `cv.convertScaleAbs`                           | Full    | Exact all-depth mutable-output contract  |
 | core       | `copyMakeBorder`                            | `cv.copyMakeBorder`                            | Partial | All depths and five border modes         |
 | core       | `determinant`                               | `cv.determinant`                               | Partial | Square single-channel matrices           |
-| core       | `divide`                                    | `cv.divide`                                    | Partial | All depths and matching matrices         |
+| core       | `divide`                                    | `cv.divide`                                    | Full    | Exact all-depth mutable-output contract  |
 | core       | `cartToPolar`                               | `cv.cartToPolar`                               | Full    | Exact paired F32/F64 output contract     |
 | core       | `exp`                                       | `cv.exp`                                       | Full    | Exact F32/F64 mutable-output contract    |
 | core       | `flip`                                      | `cv.flip`                                      | Full    | Exact all-depth mutable-output contract  |
@@ -100,7 +100,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | core       | `min`                                       | `cv.min`                                       | Partial | U8 matrix operands                       |
 | core       | `minMaxLoc`                                 | `cv.minMaxLoc`                                 | Partial | All single-channel depths, no mask       |
 | core       | `mixChannels`                               | `cv.mixChannels`                               | Partial | One source and destination, all depths   |
-| core       | `multiply`                                  | `cv.multiply`                                  | Partial | All depths and matching matrices         |
+| core       | `multiply`                                  | `cv.multiply`                                  | Full    | Exact all-depth mutable-output contract  |
 | core       | `norm`                                      | `cv.norm`                                      | Partial | All depths, masks, and norm modes        |
 | core       | `normalize`                                 | `cv.normalize`                                 | Partial | All depths and mutable destinations      |
 | core       | `polarToCart`                               | `cv.polarToCart`                               | Full    | Exact paired F32/F64 output contract     |
@@ -203,11 +203,13 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `findContours`                              | `cv.findContours`                              | Planned | Not started                              |
 | imgproc    | `warpPerspective`                           | `cv.warpPerspective`                           | Planned | Not started                              |
 
-Current full parity is **68 of 488 (13.93%)**. There are **61 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+Current full parity is **72 of 488 (14.75%)**. There are **57 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
 
 The fixture passes the complete pinned browser contract for `exp`, `log`, `sqrt`, `pow`, and `magnitude`. It checks exact arity and Mat conversion, Embind F64 power conversion, typed and canonical empty matrices, destination replacement, detached and shared regions, live overlapping traversal, all valid scalar depths, integer saturation and wrapping, and floating-point bit patterns. The package rejects native calls that expose unsafe uninitialized output while preserving the observable rejection and unchanged-state contract.
 
 The fixture also passes the pinned `cartToPolar` and `polarToCart` contracts. It covers both overloads, JavaScript truthiness, F32/F64 multichannel matrices, paired destination replacement, typed empty layouts, full-rotation angles, live overlapping regions, shared-output rejection, and the reference runtime's F32 precision path for both accepted depths.
+
+The fixture passes the complete pinned contracts for `multiply`, `divide`, `addWeighted`, and `convertScaleAbs`. It covers exact overload dispatch, Embind scalar coercion, all seven depths, explicit mixed-depth conversion, OutputArray replacement, live shared regions, typed empty layouts, floating-point edges, and the reference runtime's non-saturating CV_32S overflow paths.
 
 The fixture passes the complete pinned browser contract for `rotate`, including exact arity and constants, Embind signed i32 conversion, all scalar depths, empty and deleted matrices, OutputArray replacement, in-place operation, detached regions, and live shared-region composition. Invalid native codes preserve the observable no-throw contract without exposing the official build's unsafe output state.
 

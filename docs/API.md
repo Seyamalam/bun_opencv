@@ -106,11 +106,11 @@ Channel operations preserve raw scalar bytes for all seven depths and compact st
 
 ### Typed numeric operations
 
-- `multiply(a, b, scale)` and `divide(a, b, scale)` process matching matrices at every scalar depth.
-- `addWeighted(a, alpha, b, beta, gamma)` combines matching matrices.
-- `convertScaleAbs(source, alpha, beta)` computes an absolute affine transform into U8.
+- `multiply(a, b, destination, scale?, dtype?)` and `divide(a, b, destination, scale?, dtype?)` match the pinned three-, four-, and five-argument matrix overloads. `multiplyAlloc` and `divideAlloc` are allocating conveniences.
+- `addWeighted(a, alpha, b, beta, gamma, destination, dtype?)` matches the pinned six- and seven-argument overloads. `addWeightedAlloc` is the allocating convenience.
+- `convertScaleAbs(source, destination, alpha?, beta?)` matches the pinned two-, three-, and four-argument overloads. `convertScaleAbsAlloc` is the allocating convenience.
 
-Integer outputs use nearest-even rounding and saturation. Integer division by zero produces zero. Floating-point outputs retain IEEE 754 behavior. Inputs may be strided regions.
+The mutable forms support all seven scalar depths, strided and overlapping regions, incompatible destination replacement, and explicit mixed-depth output conversion. Integer outputs use nearest-even conversion and saturation except CV_32S, whose non-saturating overflow follows the pinned runtime. Integer division by zero produces zero. Floating-point outputs retain IEEE 754 behavior.
 
 ### Matrix borders
 

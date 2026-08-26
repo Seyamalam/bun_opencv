@@ -25,7 +25,7 @@ Desktop modules that the official OpenCV.js build disables are outside this pari
 
 ## Fully implemented families
 
-Sixty-eight families meet the full-family definition. Current full parity is 68 of 488, or 13.93%.
+Seventy-two families meet the full-family definition. Current full parity is 72 of 488, or 14.75%.
 
 | Package methods                                                                                                   | OpenCV.js families                              | Verified contract                                                          |
 | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------- |
@@ -58,6 +58,7 @@ Sixty-eight families meet the full-family definition. Current full parity is 68 
 | `getOptimalDFTSize`                                                                                               | `cv.getOptimalDFTSize`                          | Exact arity, i32 coercion, smooth results, errors, and sentinel            |
 | `exp`, `log`, `sqrt`, `pow`, `magnitude`                                                                          | Matching `cv` float-math families               | Exact destinations, depths, aliases, empties, errors, and numeric edges    |
 | `cartToPolar`, `polarToCart`                                                                                      | Matching `cv` coordinate-conversion families    | Exact overloads, paired outputs, aliases, empties, types, and precision    |
+| `multiply`, `divide`, `addWeighted`, `convertScaleAbs`                                                            | Matching `cv` numeric families                  | Exact overloads, depths, dtype, outputs, aliases, empties, and overflow    |
 | `transpose`                                                                                                       | `cv.transpose`                                  | Exact all-depth OutputArray, aliasing, empty, arity, and lifetime behavior |
 | `flip`                                                                                                            | `cv.flip`                                       | Exact all-depth OutputArray, signed codes, aliasing, errors, and lifetime  |
 | `countNonZero`                                                                                                    | `cv.countNonZero`                               | Exact all-depth scalar reduction, empty, ROI, errors, and lifetime         |
@@ -66,38 +67,37 @@ Sixty-eight families meet the full-family definition. Current full parity is 68 
 
 ## Working partial families
 
-Sixty-one families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 129 families in total.
+Fifty-seven families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 129 families in total.
 
-| Package methods                                        | OpenCV.js families                                                    | Current limit                                            |
-| ------------------------------------------------------ | --------------------------------------------------------------------- | -------------------------------------------------------- |
-| `add`, `subtract`, `absdiff`, `min`, `max`             | `cv.add`, `cv.subtract`, `cv.absdiff`, `cv.min`, `cv.max`             | Matching U8 matrix operands                              |
-| `bitwiseAnd`, `bitwiseOr`, `bitwiseXor`, `bitwiseNot`  | `cv.bitwise_and`, `cv.bitwise_or`, `cv.bitwise_xor`, `cv.bitwise_not` | U8 matrices without scalar or mask forms                 |
-| `compareEqual`, `inRange`                              | `cv.compare`, `cv.inRange`                                            | Selected U8 forms                                        |
-| `split`, `merge`                                       | `cv.split`, `cv.merge`                                                | All depths; selected array call forms                    |
-| `hconcat`, `vconcat`                                   | `cv.hconcat`, `cv.vconcat`                                            | All depths; two through four inputs                      |
-| `multiply`, `divide`, `addWeighted`, `convertScaleAbs` | Matching `cv` numeric families                                        | All depths; selected matrix forms                        |
-| `copyMakeBorder`                                       | `cv.copyMakeBorder`                                                   | All depths and five border modes                         |
-| `lut`                                                  | `cv.LUT`                                                              | Byte sources and every table depth                       |
-| `norm`, `normalize`                                    | `cv.norm`, `cv.normalize`                                             | All depths, masks, and major norm modes                  |
-| `meanStdDev`, `reduce`                                 | `cv.meanStdDev`, `cv.reduce`                                          | All depths and mutable outputs                           |
-| `mean`, `minMaxLoc`, `trace`                           | `cv.mean`, `cv.minMaxLoc`, `cv.trace`                                 | Masks or multi-channel trace remain                      |
-| `mixChannels`                                          | `cv.mixChannels`                                                      | One source and destination; MatVector remains            |
-| `setIdentity`, `randu`, `randn`, `setRNGSeed`          | Matching `cv` initialization and random families                      | Package RNG sequences differ from OpenCV                 |
-| `getLogLevel`, `setLogLevel`                           | Matching `cv` logging families                                        | Log bindings stay absent from upstream browser artifact. |
-| `transform`, `perspectiveTransform`                    | `cv.transform`, `cv.perspectiveTransform`                             | Selected channel and coefficient forms                   |
-| `determinant`, `invert`, `solve`                       | `cv.determinant`, `cv.invert`, `cv.solve`                             | Selected dense single-channel methods                    |
-| `arcLength`, `contourArea`, `boundingRect`             | Matching `cv` contour geometry families                               | I32/F32/F64 2D contour layouts                           |
-| `isContourConvex`, `pointPolygonTest`                  | Matching `cv` polygon-query families                                  | Convexity, classification, or signed distance            |
-| `getStructuringElement`, `createHanningWindow`         | Matching `cv` kernel and window families                              | U8 kernels or F32/F64 windows                            |
-| `ellipse2Poly`, `clipLine`                             | Matching `cv` integer geometry helpers                                | Selected integer argument and return forms               |
-| `getRotationMatrix2D`, `getAffineTransform`            | Matching `cv` affine matrix constructors                              | Selected finite inputs with F64 output                   |
-| `invertAffineTransform`, `getPerspectiveTransform`     | Matching `cv` transform matrix families                               | Selected F32/F64 inputs with F64 output                  |
-| `createAKAZE`                                          | `cv.AKAZE.create`                                                     | Static factory is absent from the pinned artifact        |
-| `createKAZE`                                           | `cv.KAZE.create`                                                      | Static factory is absent from the pinned artifact        |
-| `createAgastFeatureDetector`                           | `cv.AgastFeatureDetector.create`                                      | Static factory is absent from the pinned artifact        |
-| `createFastFeatureDetector`                            | `cv.FastFeatureDetector.create`                                       | Static factory is absent from the pinned artifact        |
-| `createGFTTDetector`                                   | `cv.GFTTDetector.create`                                              | One factory shape; `gradientSize` overload remains       |
-| `grayscale`, `resizeNearest`, `threshold`              | `cv.cvtColor`, `cv.resize`, `cv.threshold`                            | One RGBA or luma-derived specialization each             |
+| Package methods                                       | OpenCV.js families                                                    | Current limit                                            |
+| ----------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------- |
+| `add`, `subtract`, `absdiff`, `min`, `max`            | `cv.add`, `cv.subtract`, `cv.absdiff`, `cv.min`, `cv.max`             | Matching U8 matrix operands                              |
+| `bitwiseAnd`, `bitwiseOr`, `bitwiseXor`, `bitwiseNot` | `cv.bitwise_and`, `cv.bitwise_or`, `cv.bitwise_xor`, `cv.bitwise_not` | U8 matrices without scalar or mask forms                 |
+| `compareEqual`, `inRange`                             | `cv.compare`, `cv.inRange`                                            | Selected U8 forms                                        |
+| `split`, `merge`                                      | `cv.split`, `cv.merge`                                                | All depths; selected array call forms                    |
+| `hconcat`, `vconcat`                                  | `cv.hconcat`, `cv.vconcat`                                            | All depths; two through four inputs                      |
+| `copyMakeBorder`                                      | `cv.copyMakeBorder`                                                   | All depths and five border modes                         |
+| `lut`                                                 | `cv.LUT`                                                              | Byte sources and every table depth                       |
+| `norm`, `normalize`                                   | `cv.norm`, `cv.normalize`                                             | All depths, masks, and major norm modes                  |
+| `meanStdDev`, `reduce`                                | `cv.meanStdDev`, `cv.reduce`                                          | All depths and mutable outputs                           |
+| `mean`, `minMaxLoc`, `trace`                          | `cv.mean`, `cv.minMaxLoc`, `cv.trace`                                 | Masks or multi-channel trace remain                      |
+| `mixChannels`                                         | `cv.mixChannels`                                                      | One source and destination; MatVector remains            |
+| `setIdentity`, `randu`, `randn`, `setRNGSeed`         | Matching `cv` initialization and random families                      | Package RNG sequences differ from OpenCV                 |
+| `getLogLevel`, `setLogLevel`                          | Matching `cv` logging families                                        | Log bindings stay absent from upstream browser artifact. |
+| `transform`, `perspectiveTransform`                   | `cv.transform`, `cv.perspectiveTransform`                             | Selected channel and coefficient forms                   |
+| `determinant`, `invert`, `solve`                      | `cv.determinant`, `cv.invert`, `cv.solve`                             | Selected dense single-channel methods                    |
+| `arcLength`, `contourArea`, `boundingRect`            | Matching `cv` contour geometry families                               | I32/F32/F64 2D contour layouts                           |
+| `isContourConvex`, `pointPolygonTest`                 | Matching `cv` polygon-query families                                  | Convexity, classification, or signed distance            |
+| `getStructuringElement`, `createHanningWindow`        | Matching `cv` kernel and window families                              | U8 kernels or F32/F64 windows                            |
+| `ellipse2Poly`, `clipLine`                            | Matching `cv` integer geometry helpers                                | Selected integer argument and return forms               |
+| `getRotationMatrix2D`, `getAffineTransform`           | Matching `cv` affine matrix constructors                              | Selected finite inputs with F64 output                   |
+| `invertAffineTransform`, `getPerspectiveTransform`    | Matching `cv` transform matrix families                               | Selected F32/F64 inputs with F64 output                  |
+| `createAKAZE`                                         | `cv.AKAZE.create`                                                     | Static factory is absent from the pinned artifact        |
+| `createKAZE`                                          | `cv.KAZE.create`                                                      | Static factory is absent from the pinned artifact        |
+| `createAgastFeatureDetector`                          | `cv.AgastFeatureDetector.create`                                      | Static factory is absent from the pinned artifact        |
+| `createFastFeatureDetector`                           | `cv.FastFeatureDetector.create`                                       | Static factory is absent from the pinned artifact        |
+| `createGFTTDetector`                                  | `cv.GFTTDetector.create`                                              | One factory shape; `gradientSize` overload remains       |
+| `grayscale`, `resizeNearest`, `threshold`             | `cv.cvtColor`, `cv.resize`, `cv.threshold`                            | One RGBA or luma-derived specialization each             |
 
 The fixture exposes the direct `AKAZE` constructor and all 15 instance methods. Its complete matrix checks exact arity, defaults, return values, scalar coercion, enum namespaces and singleton identity, structural enum setters, raw unknown wire values, deletion, repeat deletion, and calls after deletion. All 15 instance methods pass and count as implemented. The config-listed static `AKAZE.create` binding is absent from the artifact, so the package factory remains partial.
 
