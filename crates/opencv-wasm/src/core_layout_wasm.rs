@@ -19,16 +19,6 @@ enum LayoutWasmError {
         expected: MatDepth,
         actual: MatDepth,
     },
-    DestinationMetadata {
-        expected_rows: u32,
-        expected_columns: u32,
-        expected_channels: u16,
-        expected_depth: crate::mat::MatDepth,
-        actual_rows: u32,
-        actual_columns: u32,
-        actual_channels: u16,
-        actual_depth: crate::mat::MatDepth,
-    },
     ElementWidthOverflow(usize),
     Kernel(LayoutError),
     Matrix(MatError),
@@ -44,19 +34,6 @@ impl fmt::Display for LayoutWasmError {
             } => write!(
                 formatter,
                 "source matrix {index} has depth {actual:?}; expected {expected:?}"
-            ),
-            Self::DestinationMetadata {
-                expected_rows,
-                expected_columns,
-                expected_channels,
-                expected_depth,
-                actual_rows,
-                actual_columns,
-                actual_channels,
-                actual_depth,
-            } => write!(
-                formatter,
-                "destination is {actual_rows}x{actual_columns}x{actual_channels} {actual_depth:?}; expected {expected_rows}x{expected_columns}x{expected_channels} {expected_depth:?}"
             ),
             Self::ElementWidthOverflow(width) => {
                 write!(
@@ -75,9 +52,7 @@ impl Error for LayoutWasmError {
         match self {
             Self::Kernel(error) => Some(error),
             Self::Matrix(error) => Some(error),
-            Self::ElementWidthOverflow(_)
-            | Self::IncompatibleSourceDepth { .. }
-            | Self::DestinationMetadata { .. } => None,
+            Self::ElementWidthOverflow(_) | Self::IncompatibleSourceDepth { .. } => None,
         }
     }
 }
@@ -107,11 +82,11 @@ pub fn mat_flip(source: &Mat, flip_code: i32) -> Result<Mat, JsError> {
     apply_layout(source, |matrix| flip_bytes(matrix, flip_code)).map_err(JsError::from)
 }
 
-/// Flips a matrix into an exactly matching caller-provided destination.
+/// Flips a matrix into a caller-provided destination.
 ///
 /// # Errors
 ///
-/// Returns an error for an invalid flip code or destination metadata.
+/// Returns an error for an invalid flip code or an incompatible ROI destination.
 #[wasm_bindgen(js_name = matFlipInto)]
 pub fn mat_flip_into(source: &Mat, destination: &Mat, flip_code: i32) -> Result<(), JsError> {
     apply_layout_into(source, destination, |matrix| flip_bytes(matrix, flip_code))
@@ -128,11 +103,11 @@ pub fn mat_transpose(source: &Mat) -> Result<Mat, JsError> {
     apply_layout(source, transpose_bytes).map_err(JsError::from)
 }
 
-/// Transposes a matrix into an exactly matching caller-provided destination.
+/// Transposes a matrix into a caller-provided destination.
 ///
 /// # Errors
 ///
-/// Returns an error when destination metadata does not match the transposed output.
+/// Returns an error when an ROI destination does not match the transposed output.
 #[wasm_bindgen(js_name = matTransposeInto)]
 pub fn mat_transpose_into(source: &Mat, destination: &Mat) -> Result<(), JsError> {
     apply_layout_into(source, destination, transpose_bytes).map_err(JsError::from)
@@ -151,11 +126,11 @@ pub fn mat_rotate(source: &Mat, rotate_code: i32) -> Result<Mat, JsError> {
     apply_layout(source, |matrix| rotate_bytes(matrix, rotate_code)).map_err(JsError::from)
 }
 
-/// Rotates a matrix into an exactly matching caller-provided destination.
+/// Rotates a matrix into a caller-provided destination.
 ///
 /// # Errors
 ///
-/// Returns an error for an invalid rotation code or destination metadata.
+/// Returns an error for an invalid rotation code or an incompatible ROI destination.
 #[wasm_bindgen(js_name = matRotateInto)]
 pub fn mat_rotate_into(source: &Mat, destination: &Mat, rotate_code: i32) -> Result<(), JsError> {
     apply_layout_into(source, destination, |matrix| {
@@ -178,11 +153,11 @@ pub fn mat_repeat(source: &Mat, row_repeats: i32, column_repeats: i32) -> Result
     .map_err(JsError::from)
 }
 
-/// Repeats a matrix into an exactly matching caller-provided destination.
+/// Repeats a matrix into a caller-provided destination.
 ///
 /// # Errors
 ///
-/// Returns an error for invalid repeat counts or destination metadata.
+/// Returns an error for invalid repeat counts or an incompatible ROI destination.
 #[wasm_bindgen(js_name = matRepeatInto)]
 pub fn mat_repeat_into(
     source: &Mat,
@@ -352,24 +327,13 @@ fn apply_layout_into(
     let output = kernel(ByteMatrix::new(&bytes, source_layout)?)?;
     let (bytes, layout) = output.into_parts();
 
-    if destination.rows() != layout.rows()
-        || destination.columns() != layout.columns()
-        || destination.channels() != layout.channels()
-        || destination.depth() != source.depth()
-    {
-        return Err(LayoutWasmError::DestinationMetadata {
-            expected_rows: layout.rows(),
-            expected_columns: layout.columns(),
-            expected_channels: layout.channels(),
-            expected_depth: source.depth(),
-            actual_rows: destination.rows(),
-            actual_columns: destination.columns(),
-            actual_channels: destination.channels(),
-            actual_depth: destination.depth(),
-        });
-    }
-
-    destination.write_compact_bytes(&bytes)?;
+    destination.write_output(
+        bytes,
+        layout.rows(),
+        layout.columns(),
+        layout.channels(),
+        source.depth(),
+    )?;
     Ok(())
 }
 
@@ -516,7 +480,7 @@ mod tests {
     }
 
     #[test]
-    fn into_rejects_every_metadata_mismatch_without_mutation() {
+    fn into_rebinds_each_incompatible_ordinary_destination() {
         let source = u8_matrix(vec![1, 2, 3, 4, 5, 6], 2, 3, 1);
         let wrong_shape = u8_matrix(vec![9; 6], 2, 3, 1);
         let wrong_channels = u8_matrix(vec![8; 6], 3, 1, 2);
@@ -524,13 +488,28 @@ mod tests {
             .expect("valid wrong-depth destination");
 
         for destination in [&wrong_shape, &wrong_channels, &wrong_depth] {
-            let before = destination.to_u8_array();
-            assert!(matches!(
-                apply_layout_into(&source, destination, transpose_bytes),
-                Err(LayoutWasmError::DestinationMetadata { .. })
-            ));
-            assert_eq!(destination.to_u8_array(), before);
+            apply_layout_into(&source, destination, transpose_bytes)
+                .expect("ordinary destination header can rebind");
+            assert_eq!((destination.rows(), destination.columns()), (3, 2));
+            assert_eq!(destination.channels(), 1);
+            assert_eq!(destination.depth(), MatDepth::U8);
+            assert_eq!(destination.to_u8_array(), [1, 4, 2, 5, 3, 6]);
         }
+    }
+
+    #[test]
+    fn into_rejects_incompatible_roi_without_changing_parent_or_header() {
+        let source = u8_matrix(vec![1, 2, 3, 4, 5, 6], 2, 3, 1);
+        let parent = u8_matrix(vec![9; 12], 3, 4, 1);
+        let destination = parent.roi(0, 0, 2, 3).expect("valid ROI");
+        let before = parent.to_u8_array();
+
+        assert!(matches!(
+            apply_layout_into(&source, &destination, transpose_bytes),
+            Err(LayoutWasmError::Matrix(MatError::IncompatibleRegionOutput))
+        ));
+        assert_eq!(parent.to_u8_array(), before);
+        assert_eq!((destination.rows(), destination.columns()), (2, 3));
     }
 
     #[test]

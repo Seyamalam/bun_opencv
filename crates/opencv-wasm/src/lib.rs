@@ -47,7 +47,7 @@ mod imgproc_transform_matrices_wasm;
 mod mat;
 mod mutable_storage;
 
-pub use mat::{Mat, MatDepth, mat_from_u8, mat_zeros_u8};
+pub use mat::{Mat, MatDepth, mat_empty, mat_from_u8, mat_zeros_u8};
 
 const RGBA_CHANNELS: u32 = 4;
 

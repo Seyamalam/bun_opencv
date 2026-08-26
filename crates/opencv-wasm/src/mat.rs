@@ -1,4 +1,4 @@
-use std::{error::Error, fmt};
+use std::{cell::RefCell, error::Error, fmt};
 
 use wasm_bindgen::prelude::*;
 
@@ -17,6 +17,7 @@ pub(crate) enum MatError {
         expected: MatDepth,
         actual: MatDepth,
     },
+    IncompatibleRegionOutput,
     RegionOutOfBounds,
 }
 
@@ -41,6 +42,9 @@ impl fmt::Display for MatError {
                     formatter,
                     "matrix depth is {actual:?}; expected {expected:?}"
                 )
+            }
+            Self::IncompatibleRegionOutput => {
+                formatter.write_str("an ROI destination cannot be rebound to different metadata")
             }
             Self::RegionOutOfBounds => {
                 formatter.write_str("matrix region extends outside its parent")
@@ -133,11 +137,17 @@ impl_mat_element!(f64, F64, 8);
 #[wasm_bindgen]
 #[derive(Debug, Clone)]
 pub struct Mat {
-    storage: MutableStorage,
+    header: RefCell<MatHeader>,
+}
+
+#[derive(Debug, Clone)]
+struct MatHeader {
+    storage: Option<MutableStorage>,
     rows: u32,
     columns: u32,
     channels: u16,
     depth: MatDepth,
+    is_region: bool,
 }
 
 impl Mat {
@@ -187,11 +197,18 @@ impl Mat {
         let length = checked_buffer_length(rows, columns, channels, depth)?;
         let row_stride = checked_row_bytes(columns, channels, depth)?;
         Ok(Self {
-            storage: MutableStorage::from_compact(vec![0; length], rows as usize, row_stride)?,
-            rows,
-            columns,
-            channels,
-            depth,
+            header: RefCell::new(MatHeader {
+                storage: Some(MutableStorage::from_compact(
+                    vec![0; length],
+                    rows as usize,
+                    row_stride,
+                )?),
+                rows,
+                columns,
+                channels,
+                depth,
+                is_region: false,
+            }),
         })
     }
 
@@ -212,29 +229,98 @@ impl Mat {
 
         let row_bytes = checked_row_bytes(columns, channels, depth)?;
         Ok(Self {
-            storage: MutableStorage::from_compact(data, rows as usize, row_bytes)?,
-            rows,
-            columns,
-            channels,
-            depth,
+            header: RefCell::new(MatHeader {
+                storage: Some(MutableStorage::from_compact(
+                    data,
+                    rows as usize,
+                    row_bytes,
+                )?),
+                rows,
+                columns,
+                channels,
+                depth,
+                is_region: false,
+            }),
         })
     }
 
+    fn empty() -> Self {
+        Self {
+            header: RefCell::new(MatHeader {
+                storage: None,
+                rows: 0,
+                columns: 0,
+                channels: 1,
+                depth: MatDepth::U8,
+                is_region: false,
+            }),
+        }
+    }
+
     fn logical_byte_length(&self) -> usize {
-        self.rows as usize
-            * self.columns as usize
-            * usize::from(self.channels)
-            * self.depth.byte_width()
+        let header = self.header.borrow();
+        header.rows as usize
+            * header.columns as usize
+            * usize::from(header.channels)
+            * header.depth.byte_width()
     }
 
     pub(crate) fn compact_bytes(&self) -> Vec<u8> {
-        self.storage.compact_bytes()
+        self.header
+            .borrow()
+            .storage
+            .as_ref()
+            .map_or_else(Vec::new, MutableStorage::compact_bytes)
     }
 
     pub(crate) fn write_compact_bytes(&self, source: &[u8]) -> Result<(), MatError> {
-        self.storage
-            .write_from_compact(source)
-            .map_err(MatError::from)
+        let storage = self.header.borrow().storage.clone();
+        match storage {
+            Some(storage) => storage.write_from_compact(source).map_err(MatError::from),
+            None if source.is_empty() => Ok(()),
+            None => Err(MatError::IncorrectBufferLength {
+                expected: 0,
+                actual: source.len(),
+            }),
+        }
+    }
+
+    pub(crate) fn write_output(
+        &self,
+        data: Vec<u8>,
+        rows: u32,
+        columns: u32,
+        channels: u16,
+        depth: MatDepth,
+    ) -> Result<(), MatError> {
+        let replacement = Self::from_owned_bytes(data, rows, columns, channels, depth)?;
+        let replacement_header = replacement.header.into_inner();
+        let current = self.header.borrow();
+        let compatible = current.rows == rows
+            && current.columns == columns
+            && current.channels == channels
+            && current.depth == depth;
+        if compatible {
+            let storage = current.storage.clone();
+            drop(current);
+            return storage
+                .expect("nonempty compatible output has storage")
+                .write_from_compact(
+                    replacement_header
+                        .storage
+                        .as_ref()
+                        .expect("nonempty replacement has storage")
+                        .compact_bytes()
+                        .as_slice(),
+                )
+                .map_err(MatError::from);
+        }
+        if current.is_region {
+            return Err(MatError::IncompatibleRegionOutput);
+        }
+        drop(current);
+        self.header.replace(replacement_header);
+        Ok(())
     }
 
     fn compact_u8(&self) -> Vec<u8> {
@@ -246,10 +332,11 @@ impl Mat {
     }
 
     fn compact_typed<T: MatElement>(&self) -> Result<Vec<T>, MatError> {
-        if self.depth != T::DEPTH {
+        let depth = self.depth();
+        if depth != T::DEPTH {
             return Err(MatError::IncorrectDepth {
                 expected: T::DEPTH,
-                actual: self.depth,
+                actual: depth,
             });
         }
 
@@ -269,12 +356,13 @@ impl Mat {
         let column_end = column
             .checked_add(columns)
             .ok_or(MatError::RegionOutOfBounds)?;
-        if row_end > self.rows || column_end > self.columns {
+        let header = self.header.borrow();
+        if row_end > header.rows || column_end > header.columns {
             return Err(MatError::RegionOutOfBounds);
         }
 
-        let bytes_per_column = usize::from(self.channels)
-            .checked_mul(self.depth.byte_width())
+        let bytes_per_column = usize::from(header.channels)
+            .checked_mul(header.depth.byte_width())
             .ok_or(MatError::BufferSizeOverflow)?;
         let byte_column = (column as usize)
             .checked_mul(bytes_per_column)
@@ -284,21 +372,29 @@ impl Mat {
             .ok_or(MatError::BufferSizeOverflow)?;
 
         Ok(Self {
-            storage: self.storage.region(
-                row as usize,
-                byte_column,
-                rows as usize,
-                region_row_bytes,
-            )?,
-            rows,
-            columns,
-            channels: self.channels,
-            depth: self.depth,
+            header: RefCell::new(MatHeader {
+                storage: Some(
+                    header
+                        .storage
+                        .as_ref()
+                        .ok_or(MatError::RegionOutOfBounds)?
+                        .region(row as usize, byte_column, rows as usize, region_row_bytes)?,
+                ),
+                rows,
+                columns,
+                channels: header.channels,
+                depth: header.depth,
+                is_region: true,
+            }),
         })
     }
 
     fn is_continuous_storage(&self) -> bool {
-        self.storage.is_continuous()
+        self.header
+            .borrow()
+            .storage
+            .as_ref()
+            .is_none_or(MutableStorage::is_continuous)
     }
 }
 
@@ -308,35 +404,41 @@ impl Mat {
     #[must_use]
     #[wasm_bindgen(getter)]
     pub fn rows(&self) -> u32 {
-        self.rows
+        self.header.borrow().rows
     }
 
     /// Returns the number of columns.
     #[must_use]
     #[wasm_bindgen(getter)]
     pub fn columns(&self) -> u32 {
-        self.columns
+        self.header.borrow().columns
     }
 
     /// Returns the number of interleaved channels.
     #[must_use]
     #[wasm_bindgen(getter)]
     pub fn channels(&self) -> u16 {
-        self.channels
+        self.header.borrow().channels
     }
 
     /// Returns the element depth.
     #[must_use]
     #[wasm_bindgen(getter)]
     pub fn depth(&self) -> MatDepth {
-        self.depth
+        self.header.borrow().depth
     }
 
     /// Returns the byte distance between the start of adjacent rows.
     #[must_use]
     #[wasm_bindgen(getter, js_name = rowStride)]
     pub fn row_stride(&self) -> u32 {
-        u32::try_from(self.storage.row_stride()).unwrap_or(u32::MAX)
+        self.header
+            .borrow()
+            .storage
+            .as_ref()
+            .map_or(0, MutableStorage::row_stride)
+            .try_into()
+            .unwrap_or(u32::MAX)
     }
 
     /// Returns the logical byte length without padding between rows.
@@ -516,6 +618,13 @@ pub fn mat_from_f64(data: &[f64], rows: u32, columns: u32, channels: u16) -> Res
     Mat::from_typed_slice(data, rows, columns, channels).map_err(JsError::from)
 }
 
+/// Creates the canonical empty unsigned 8-bit, single-channel matrix header.
+#[must_use]
+#[wasm_bindgen(js_name = matEmpty)]
+pub fn mat_empty() -> Mat {
+    Mat::empty()
+}
+
 /// Allocates a zero-filled unsigned 8-bit matrix in Rust-owned WASM memory.
 ///
 /// # Errors
@@ -640,6 +749,99 @@ mod tests {
         let matrix = Mat::zeros_u8(2, 3, 4).expect("valid matrix");
         assert_eq!(matrix.logical_byte_length(), 24);
         assert_eq!(matrix.compact_u8(), vec![0; 24]);
+    }
+
+    #[test]
+    fn empty_matrix_has_canonical_header_without_relaxing_constructors() {
+        let matrix = mat_empty();
+
+        assert_eq!(
+            (matrix.rows(), matrix.columns(), matrix.channels()),
+            (0, 0, 1)
+        );
+        assert_eq!(matrix.depth(), MatDepth::U8);
+        assert_eq!(matrix.row_stride(), 0);
+        assert_eq!(matrix.byte_length(), 0);
+        assert!(matrix.is_continuous());
+        assert!(matrix.to_u8_array().is_empty());
+        assert!(matches!(
+            Mat::zeros_u8(0, 1, 1),
+            Err(MatError::EmptyDimensions)
+        ));
+        assert!(matches!(
+            Mat::from_u8_slice(&[], 0, 1, 1),
+            Err(MatError::EmptyDimensions)
+        ));
+    }
+
+    #[test]
+    fn output_rebinds_an_empty_or_incompatible_ordinary_header() {
+        let empty = mat_empty();
+        empty
+            .write_output(vec![1, 2, 3, 4], 2, 2, 1, MatDepth::U8)
+            .expect("empty destination can acquire output");
+        assert_eq!((empty.rows(), empty.columns()), (2, 2));
+        assert_eq!(empty.to_u8_array(), [1, 2, 3, 4]);
+
+        empty
+            .write_output(vec![0; 8], 1, 2, 2, MatDepth::U16)
+            .expect("ordinary destination can change shape and type");
+        assert_eq!((empty.rows(), empty.columns(), empty.channels()), (1, 2, 2));
+        assert_eq!(empty.depth(), MatDepth::U16);
+        assert_eq!(empty.to_u8_array(), [0; 8]);
+    }
+
+    #[test]
+    fn rebind_keeps_existing_rois_attached_to_the_old_allocation() {
+        let destination = Mat::from_u8_slice(&[1, 2, 3, 4], 2, 2, 1).expect("valid destination");
+        let old_roi = destination.region(0, 0, 1, 2).expect("valid old ROI");
+
+        destination
+            .write_output(vec![9, 8, 7], 1, 3, 1, MatDepth::U8)
+            .expect("ordinary destination can rebind");
+        old_roi
+            .write_compact_bytes(&[20, 30])
+            .expect("old ROI allocation remains alive");
+
+        assert_eq!(destination.to_u8_array(), [9, 8, 7]);
+        assert_eq!(old_roi.to_u8_array(), [20, 30]);
+    }
+
+    #[test]
+    fn output_writes_through_compatible_roi_and_rejects_incompatible_roi_atomically() {
+        let parent = Mat::from_u8_slice(&[1, 2, 3, 4, 5, 6], 2, 3, 1).expect("valid parent");
+        let roi = parent.region(0, 1, 2, 2).expect("valid ROI");
+
+        roi.write_output(vec![9, 8, 7, 6], 2, 2, 1, MatDepth::U8)
+            .expect("compatible ROI writes through");
+        assert_eq!(parent.to_u8_array(), [1, 9, 8, 4, 7, 6]);
+
+        let before = parent.to_u8_array();
+        let error = roi
+            .write_output(vec![5, 4, 3], 1, 3, 1, MatDepth::U8)
+            .expect_err("incompatible ROI cannot detach");
+        assert_eq!(error, MatError::IncompatibleRegionOutput);
+        assert_eq!(parent.to_u8_array(), before);
+        assert_eq!((roi.rows(), roi.columns()), (2, 2));
+    }
+
+    #[test]
+    fn invalid_output_never_changes_an_existing_header_or_bytes() {
+        let destination = Mat::from_u8_slice(&[1, 2, 3, 4], 2, 2, 1).expect("valid destination");
+
+        let error = destination
+            .write_output(vec![9, 8, 7], 2, 2, 1, MatDepth::U8)
+            .expect_err("invalid output buffer must fail");
+
+        assert_eq!(
+            error,
+            MatError::IncorrectBufferLength {
+                expected: 4,
+                actual: 3
+            }
+        );
+        assert_eq!((destination.rows(), destination.columns()), (2, 2));
+        assert_eq!(destination.to_u8_array(), [1, 2, 3, 4]);
     }
 
     #[test]
