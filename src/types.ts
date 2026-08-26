@@ -194,6 +194,7 @@ export interface OpenCv {
   absdiff(left: Mat, right: Mat): Mat;
   add(left: Mat, right: Mat): Mat;
   addWeighted(a: Mat, alpha: number, b: Mat, beta: number, gamma: number): Mat;
+  addWeighted(a: Mat, alpha: number, b: Mat, beta: number, gamma: number, destination: Mat): void;
   bitwiseAnd(left: Mat, right: Mat): Mat;
   bitwiseNot(source: Mat): Mat;
   bitwiseOr(left: Mat, right: Mat): Mat;
@@ -202,6 +203,7 @@ export interface OpenCv {
   cartToPolar(x: Mat, y: Mat, magnitude: Mat, angle: Mat, degrees?: boolean): void;
   countNonZero(source: Mat): number;
   convertScaleAbs(source: Mat, alpha?: number, beta?: number): Mat;
+  convertScaleAbs(source: Mat, destination: Mat, alpha?: number, beta?: number): void;
   copyMakeBorder(
     source: Mat,
     top: number,
@@ -212,6 +214,7 @@ export interface OpenCv {
     constant?: Scalar,
   ): Mat;
   divide(a: Mat, b: Mat, scale?: number): Mat;
+  divide(a: Mat, b: Mat, destination: Mat, scale?: number): void;
   extractChannel(source: Mat, channel: number): Mat;
   exp(source: Mat): Mat;
   flip(source: Mat, flipCode: -1 | 0 | 1): Mat;
@@ -240,6 +243,7 @@ export interface OpenCv {
   minMaxLoc(source: Mat): MinMaxLocation;
   min(left: Mat, right: Mat): Mat;
   multiply(a: Mat, b: Mat, scale?: number): Mat;
+  multiply(a: Mat, b: Mat, destination: Mat, scale?: number): void;
   polarToCart(magnitude: Mat, angle: Mat, x: Mat, y: Mat, degrees?: boolean): void;
   pow(source: Mat, exponent: number): Mat;
   resizeNearest(image: RgbaImage, targetWidth: number, targetHeight: number): RgbaImage;

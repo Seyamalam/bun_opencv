@@ -1066,11 +1066,15 @@ describe("OpenCv client", () => {
     const quotient = client.divide(left, right, 2);
     const blended = client.addWeighted(left, 0.5, right, 0.5, 1);
     const absolute = client.convertScaleAbs(left, -1, 5);
+    const destination = client.zerosU8(1, 3, 1);
+    client.multiply(left, right, destination, 0.5);
     expect(product.toUint8Array()).toEqual(new Uint8Array([10, 0, 250]));
     expect(quotient.toUint8Array()).toEqual(new Uint8Array([10, 0, 250]));
     expect(blended.toUint8Array()).toEqual(new Uint8Array([7, 11, 127]));
     expect(absolute.toUint8Array()).toEqual(new Uint8Array([5, 15, 245]));
-    for (const matrix of [absolute, blended, quotient, product, right, left]) matrix.dispose();
+    expect(destination.toUint8Array()).toEqual(product.toUint8Array());
+    for (const matrix of [destination, absolute, blended, quotient, product, right, left])
+      matrix.dispose();
   });
 
   test("adds typed matrix borders", () => {

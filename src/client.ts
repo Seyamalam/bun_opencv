@@ -30,8 +30,28 @@ class WasmOpenCv implements OpenCv {
     return new Mat(this.#backend.matAddU8(left.handleForBackend(), right.handleForBackend()));
   }
 
-  addWeighted(a: Mat, alpha: number, b: Mat, beta: number, gamma: number): Mat {
+  addWeighted(a: Mat, alpha: number, b: Mat, beta: number, gamma: number): Mat;
+  addWeighted(a: Mat, alpha: number, b: Mat, beta: number, gamma: number, destination: Mat): void;
+  addWeighted(
+    a: Mat,
+    alpha: number,
+    b: Mat,
+    beta: number,
+    gamma: number,
+    destination?: Mat,
+  ): Mat | void {
     validateFiniteNumbers({ alpha, beta, gamma });
+    if (destination !== undefined) {
+      this.#backend.matAddWeightedInto(
+        a.handleForBackend(),
+        alpha,
+        b.handleForBackend(),
+        beta,
+        gamma,
+        destination.handleForBackend(),
+      );
+      return;
+    }
     return new Mat(
       this.#backend.matAddWeighted(a.handleForBackend(), alpha, b.handleForBackend(), beta, gamma),
     );
@@ -75,9 +95,28 @@ class WasmOpenCv implements OpenCv {
     return this.#backend.matCountNonZero(source.handleForBackend());
   }
 
-  convertScaleAbs(source: Mat, alpha = 1, beta = 0): Mat {
-    validateFiniteNumbers({ alpha, beta });
-    return new Mat(this.#backend.matConvertScaleAbs(source.handleForBackend(), alpha, beta));
+  convertScaleAbs(source: Mat, alpha?: number, beta?: number): Mat;
+  convertScaleAbs(source: Mat, destination: Mat, alpha?: number, beta?: number): void;
+  convertScaleAbs(
+    source: Mat,
+    destinationOrAlpha: Mat | number = 1,
+    alphaOrBeta = 0,
+    beta = 0,
+  ): Mat | void {
+    if (destinationOrAlpha instanceof Mat) {
+      validateFiniteNumbers({ alpha: alphaOrBeta, beta });
+      this.#backend.matConvertScaleAbsInto(
+        source.handleForBackend(),
+        destinationOrAlpha.handleForBackend(),
+        alphaOrBeta,
+        beta,
+      );
+      return;
+    }
+    validateFiniteNumbers({ alpha: destinationOrAlpha, beta: alphaOrBeta });
+    return new Mat(
+      this.#backend.matConvertScaleAbs(source.handleForBackend(), destinationOrAlpha, alphaOrBeta),
+    );
   }
 
   copyMakeBorder(
@@ -112,7 +151,20 @@ class WasmOpenCv implements OpenCv {
     );
   }
 
-  divide(a: Mat, b: Mat, scale = 1): Mat {
+  divide(a: Mat, b: Mat, scale?: number): Mat;
+  divide(a: Mat, b: Mat, destination: Mat, scale?: number): void;
+  divide(a: Mat, b: Mat, destinationOrScale: Mat | number = 1, scale = 1): Mat | void {
+    if (destinationOrScale instanceof Mat) {
+      validateFiniteNumbers({ scale });
+      this.#backend.matDivideInto(
+        a.handleForBackend(),
+        b.handleForBackend(),
+        destinationOrScale.handleForBackend(),
+        scale,
+      );
+      return;
+    }
+    scale = destinationOrScale;
     validateFiniteNumbers({ scale });
     return new Mat(this.#backend.matDivide(a.handleForBackend(), b.handleForBackend(), scale));
   }
@@ -272,7 +324,20 @@ class WasmOpenCv implements OpenCv {
     return new Mat(this.#backend.matMinU8(left.handleForBackend(), right.handleForBackend()));
   }
 
-  multiply(a: Mat, b: Mat, scale = 1): Mat {
+  multiply(a: Mat, b: Mat, scale?: number): Mat;
+  multiply(a: Mat, b: Mat, destination: Mat, scale?: number): void;
+  multiply(a: Mat, b: Mat, destinationOrScale: Mat | number = 1, scale = 1): Mat | void {
+    if (destinationOrScale instanceof Mat) {
+      validateFiniteNumbers({ scale });
+      this.#backend.matMultiplyInto(
+        a.handleForBackend(),
+        b.handleForBackend(),
+        destinationOrScale.handleForBackend(),
+        scale,
+      );
+      return;
+    }
+    scale = destinationOrScale;
     validateFiniteNumbers({ scale });
     return new Mat(this.#backend.matMultiply(a.handleForBackend(), b.handleForBackend(), scale));
   }
