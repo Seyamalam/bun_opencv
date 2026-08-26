@@ -32,6 +32,7 @@ thread_local! {
 }
 
 static OPTIMAL_DFT_SIZES: OnceLock<Box<[i32]>> = OnceLock::new();
+const LARGEST_REPRESENTABLE_SMOOTH_SIZE: i32 = 2_125_764_000;
 
 /// Failure produced by a core runtime utility.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -71,6 +72,9 @@ pub(crate) fn set_log_level(level: i32) -> Result<i32, CoreRuntimeError> {
 /// Returns the least 5-smooth signed integer greater than or equal to `vector_size`.
 #[must_use]
 pub(crate) fn get_optimal_dft_size(vector_size: i32) -> i32 {
+    if vector_size < 0 || vector_size == LARGEST_REPRESENTABLE_SMOOTH_SIZE {
+        return -1;
+    }
     if vector_size <= 1 {
         return 1;
     }
@@ -110,8 +114,6 @@ fn optimal_dft_sizes() -> &'static [i32] {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    const LARGEST_REPRESENTABLE_SMOOTH_SIZE: i32 = 2_125_764_000;
 
     #[test]
     fn every_documented_log_level_round_trips_and_returns_the_previous_level() {
@@ -184,10 +186,10 @@ mod tests {
     }
 
     #[test]
-    fn documented_dft_examples_and_non_positive_sizes_have_stable_results() {
+    fn browser_dft_examples_and_non_positive_sizes_have_stable_results() {
         let cases = [
-            (i32::MIN, 1),
-            (-1, 1),
+            (i32::MIN, -1),
+            (-1, -1),
             (0, 1),
             (1, 1),
             (2, 2),
@@ -222,10 +224,15 @@ mod tests {
     }
 
     #[test]
-    fn every_representable_five_smooth_boundary_selects_itself_and_its_successor() {
+    fn every_supported_five_smooth_boundary_selects_itself_and_its_successor() {
         let sizes = all_representable_five_smooth_sizes();
         for (index, &size) in sizes.iter().enumerate() {
-            assert_eq!(get_optimal_dft_size(size), size);
+            let expected = if size == LARGEST_REPRESENTABLE_SMOOTH_SIZE {
+                -1
+            } else {
+                size
+            };
+            assert_eq!(get_optimal_dft_size(size), expected);
             if let Some(&next) = sizes.get(index + 1)
                 && size < i32::MAX
             {
@@ -236,8 +243,9 @@ mod tests {
 
     #[test]
     fn values_beyond_the_largest_representable_five_smooth_size_return_negative_one() {
+        assert_eq!(get_optimal_dft_size(LARGEST_REPRESENTABLE_SMOOTH_SIZE), -1);
         assert_eq!(
-            get_optimal_dft_size(LARGEST_REPRESENTABLE_SMOOTH_SIZE),
+            get_optimal_dft_size(LARGEST_REPRESENTABLE_SMOOTH_SIZE - 1),
             LARGEST_REPRESENTABLE_SMOOTH_SIZE
         );
         assert_eq!(

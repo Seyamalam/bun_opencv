@@ -27,8 +27,8 @@ pub fn set_log_level(level: i32) -> Result<i32, JsError> {
 /// Returns the smallest integer at least as large as `vector_size` with only 2, 3, and 5 as
 /// prime factors.
 ///
-/// Non-positive inputs return 1. Inputs above the largest representable signed 32-bit 5-smooth
-/// number return -1, matching the documented `OpenCV` overflow sentinel.
+/// Negative inputs and values at or above the browser runtime's upper sentinel return -1. Zero and
+/// one return 1.
 #[wasm_bindgen(js_name = getOptimalDFTSize)]
 #[must_use]
 pub fn get_optimal_dft_size(vector_size: i32) -> i32 {
@@ -55,7 +55,7 @@ mod tests {
 
     #[test]
     fn wasm_dft_adapter_preserves_scalar_boundaries() {
-        assert_eq!(get_optimal_dft_size(-10), 1);
+        assert_eq!(get_optimal_dft_size(-10), -1);
         assert_eq!(get_optimal_dft_size(301), 320);
         assert_eq!(get_optimal_dft_size(i32::MAX), -1);
     }

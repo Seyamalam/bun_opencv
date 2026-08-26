@@ -849,7 +849,7 @@ export const PARITY_MANIFEST = {
       method: "getOptimalDFTSize",
       module: "core",
       notes:
-        "Signed 32-bit inputs, non-positive inputs returning 1, and 2-, 3-, and 5-smooth results through 2,125,764,000; representative browser differential fixtures pass, while broader edge-case audits remain.",
+        "Signed 32-bit inputs, negative inputs returning -1, zero returning 1, and the browser runtime's exclusive 2,125,764,000 upper sentinel; representative browser differential fixtures pass, while JavaScript numeric coercion audits remain.",
       patentReview: "required",
       sources: [CORE_SOURCE],
       status: "partial",

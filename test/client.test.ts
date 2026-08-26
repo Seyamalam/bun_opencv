@@ -885,6 +885,7 @@ class CopyingBackend implements OpenCvBackend {
   }
 
   getOptimalDFTSize(size: number): number {
+    if (size < 0 || size === 2_125_764_000) return -1;
     for (let candidate = Math.max(size, 1); candidate <= 2_125_764_000; candidate += 1) {
       let remainder = candidate;
       for (const factor of [2, 3, 5]) {
@@ -2082,6 +2083,9 @@ describe("OpenCv client", () => {
     expect(client.setLogLevel(initial)).toBe(5);
     expect(client.getOptimalDFTSize(7)).toBe(8);
     expect(client.getOptimalDFTSize(25)).toBe(25);
+    expect(client.getOptimalDFTSize(-1)).toBe(-1);
+    expect(client.getOptimalDFTSize(2_125_763_999)).toBe(2_125_764_000);
+    expect(client.getOptimalDFTSize(2_125_764_000)).toBe(-1);
     expect(() => client.getOptimalDFTSize(2 ** 31)).toThrow(OpenCvInputError);
   });
 
