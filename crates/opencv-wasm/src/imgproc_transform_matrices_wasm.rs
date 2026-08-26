@@ -71,10 +71,11 @@ impl From<MatError> for TransformMatrixWasmError {
 
 /// Allocates a 2x3 F64 matrix for rotation in degrees around a center point.
 ///
-/// This partial implementation accepts finite scalar arguments and always returns F64 output.
+/// Every IEEE-754 scalar value is accepted, including non-finite values and signed zero. The
+/// result always has F64 depth.
 ///
 /// # Errors
-/// Returns an error when an argument or computed coefficient is not finite.
+/// Returns an error when the output matrix cannot be allocated.
 #[wasm_bindgen(js_name = matGetRotationMatrix2D)]
 pub fn mat_get_rotation_matrix_2d(
     center_x: f64,
@@ -131,7 +132,7 @@ fn rotation_adapter(
     scale: f64,
 ) -> Result<Mat, TransformMatrixWasmError> {
     let result =
-        imgproc_transform_matrices::rotation_matrix_2d([center_x, center_y], angle_degrees, scale)?;
+        imgproc_transform_matrices::rotation_matrix_2d([center_x, center_y], angle_degrees, scale);
     f64_matrix(&result, 2, 3)
 }
 
@@ -288,6 +289,28 @@ mod tests {
             (2, 3, 1)
         );
         assert_close(&result, &[0.0, 2.0, -30.0, -2.0, 0.0, 40.0], 1.0e-12);
+    }
+
+    #[test]
+    fn rotation_adapter_allocates_non_finite_f64_results() {
+        let result = rotation_adapter(1.0, 2.0, f64::NAN, 2.0)
+            .expect("the pinned binding propagates non-finite coefficients");
+
+        assert_eq!(
+            (
+                result.rows(),
+                result.columns(),
+                result.channels(),
+                result.depth()
+            ),
+            (2, 3, 1, MatDepth::F64)
+        );
+        assert!(
+            decode_floating(&result)
+                .expect("F64 output")
+                .into_iter()
+                .all(f64::is_nan)
+        );
     }
 
     #[test]

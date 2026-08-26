@@ -449,9 +449,16 @@ class WasmOpenCv implements OpenCv {
   }
 
   getRotationMatrix2D(center: Point, angleDegrees: number, scale: number): Mat {
-    validateFinitePoint(center, "center");
-    validateFiniteNumbers({ angleDegrees, scale });
-    return new Mat(this.#backend.matGetRotationMatrix2D(center.x, center.y, angleDegrees, scale));
+    requireExactArity(arguments.length, 3, "getRotationMatrix2D");
+    const bindingCenter = point2fForBinding(center);
+    return new Mat(
+      this.#backend.matGetRotationMatrix2D(
+        bindingCenter.x,
+        bindingCenter.y,
+        toWasmF64(angleDegrees),
+        toWasmF64(scale),
+      ),
+    );
   }
 
   getStructuringElement(
@@ -1122,10 +1129,6 @@ function validateFiniteNumbers(values: Readonly<Record<string, number>>): void {
   for (const [name, value] of Object.entries(values)) {
     if (!Number.isFinite(value)) throw new OpenCvInputError(`${name} must be finite`);
   }
-}
-
-function validateFinitePoint(point: Point, name: string): void {
-  validateFiniteNumbers({ [`${name}.x`]: point.x, [`${name}.y`]: point.y });
 }
 
 function validateIntegerPoint(point: Point, name: string): void {

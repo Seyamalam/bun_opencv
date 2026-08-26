@@ -27,26 +27,22 @@ impl fmt::Display for TransformMatrixError {
 impl Error for TransformMatrixError {}
 
 /// Builds a 2-by-3 matrix that rotates around `center` in degrees and applies `scale`.
-pub(crate) fn rotation_matrix_2d(
-    center: [f64; 2],
-    angle_degrees: f64,
-    scale: f64,
-) -> Result<[f64; 6], TransformMatrixError> {
-    validate_finite(center.into_iter().chain([angle_degrees, scale]))?;
+///
+/// Every IEEE-754 input is accepted. Non-finite values and signed zero propagate through the
+/// coefficient calculation exactly as they do in the pinned browser binding.
+pub(crate) fn rotation_matrix_2d(center: [f64; 2], angle_degrees: f64, scale: f64) -> [f64; 6] {
     let angle_radians = angle_degrees.to_radians();
     let alpha = scale * angle_radians.cos();
     let beta = scale * angle_radians.sin();
     let [center_x, center_y] = center;
-    let matrix = [
+    [
         alpha,
         beta,
         (1.0 - alpha).mul_add(center_x, -beta * center_y),
         -beta,
         alpha,
         beta.mul_add(center_x, (1.0 - alpha) * center_y),
-    ];
-    validate_result(&matrix)?;
-    Ok(matrix)
+    ]
 }
 
 /// Finds the 2-by-3 affine map between three point correspondences.
@@ -262,8 +258,38 @@ mod tests {
 
     #[test]
     fn rotation_keeps_the_center_fixed_while_scaling() {
-        let matrix = rotation_matrix_2d([10.0, 20.0], 90.0, 2.0).expect("finite rotation");
+        let matrix = rotation_matrix_2d([10.0, 20.0], 90.0, 2.0);
         assert_close(&matrix, &[0.0, 2.0, -30.0, -2.0, 0.0, 40.0], 1.0e-12);
+    }
+
+    #[test]
+    fn rotation_matches_pinned_f64_coefficients() {
+        let matrix = rotation_matrix_2d([1.25, -2.5], 33.3, 0.75);
+
+        assert_eq!(
+            matrix.map(f64::to_bits),
+            [
+                0.626_855_521_026_202_7,
+                0.411_767_113_498_598_74,
+                1.495_848_382_463_743_4,
+                -0.411_767_113_498_598_74,
+                0.626_855_521_026_202_7,
+                -0.418_152_305_561_244_94,
+            ]
+            .map(f64::to_bits)
+        );
+    }
+
+    #[test]
+    fn rotation_preserves_signed_zero_and_non_finite_results() {
+        let signed_zero = rotation_matrix_2d([-0.0, -0.0], -0.0, -0.0);
+        assert_eq!(
+            signed_zero.map(f64::to_bits),
+            [-0.0, 0.0, 0.0, -0.0, -0.0, -0.0].map(f64::to_bits)
+        );
+
+        let non_finite = rotation_matrix_2d([1.0, 2.0], f64::INFINITY, 2.0);
+        assert!(non_finite.into_iter().all(f64::is_nan));
     }
 
     #[test]
@@ -300,10 +326,6 @@ mod tests {
 
     #[test]
     fn invalid_numeric_inputs_and_degenerate_geometry_are_rejected() {
-        assert_eq!(
-            rotation_matrix_2d([f64::NAN, 0.0], 0.0, 1.0),
-            Err(TransformMatrixError::NonFiniteInput)
-        );
         assert_eq!(
             invert_affine_transform(&[1.0, 2.0, 0.0, 2.0, 4.0, 0.0]),
             Err(TransformMatrixError::DegenerateGeometry)

@@ -18,6 +18,7 @@ import {
   OpenCvInputError,
 } from "../src/index.js";
 import type {
+  Mat,
   OpenCvBackend,
   WasmAgastFeatureDetectorFactory,
   WasmAgastFeatureDetectorHandle,
@@ -673,6 +674,12 @@ class CopyingBackend implements OpenCvBackend {
     readonly x: number;
     readonly y: number;
     readonly measureDistance: boolean;
+  }> = [];
+  readonly rotationMatrixInputs: Array<{
+    readonly centerX: number;
+    readonly centerY: number;
+    readonly angleDegrees: number;
+    readonly scale: number;
   }> = [];
   readonly polarToCartDegreeFlags: boolean[] = [];
 
@@ -1540,9 +1547,10 @@ class CopyingBackend implements OpenCvBackend {
     angleDegrees: number,
     scale: number,
   ): WasmMatHandle {
+    this.rotationMatrixInputs.push({ centerX, centerY, angleDegrees, scale });
     const radians = (angleDegrees * Math.PI) / 180;
-    const alpha = cleanTiny(scale * Math.cos(radians));
-    const beta = cleanTiny(scale * Math.sin(radians));
+    const alpha = scale * Math.cos(radians);
+    const beta = scale * Math.sin(radians);
     return f64Handle(2, 3, [
       alpha,
       beta,
@@ -2407,7 +2415,9 @@ describe("OpenCv client", () => {
 
   test("constructs affine and perspective matrices", () => {
     const rotation = client.getRotationMatrix2D({ x: 1, y: 2 }, 90, 1);
-    expect(Array.from(rotation.toFloat64Array())).toEqual([0, 1, -1, -1, 0, 3]);
+    expect(Array.from(rotation.toFloat64Array())).toEqual([
+      6.123_233_995_736_766e-17, 1, -1, -1, 6.123_233_995_736_766e-17, 3,
+    ]);
 
     const affineSource = client.matFromF64(3, 2, 1, new Float64Array([0, 0, 1, 0, 0, 1]));
     const affineDestination = client.matFromF64(3, 2, 1, new Float64Array([2, 3, 4, 3, 2, 6]));
@@ -2431,10 +2441,6 @@ describe("OpenCv client", () => {
     );
     const perspective = client.getPerspectiveTransform(perspectiveSource, perspectiveDestination);
     expect(Array.from(perspective.toFloat64Array())).toEqual([2, 0, 2, 0, 3, 3, 0, 0, 1]);
-    expect(() => client.getRotationMatrix2D({ x: 0, y: 0 }, Number.POSITIVE_INFINITY, 1)).toThrow(
-      OpenCvInputError,
-    );
-
     for (const matrix of [
       perspective,
       perspectiveDestination,
@@ -2447,6 +2453,96 @@ describe("OpenCv client", () => {
     ]) {
       matrix.dispose();
     }
+  });
+
+  test("matches getRotationMatrix2D binding contracts", () => {
+    type JavascriptBindingValue =
+      boolean | number | bigint | string | symbol | object | null | undefined;
+    const backend = new CopyingBackend();
+    const localClient = createOpenCv(backend);
+    // SAFETY: This widens only the plain-JavaScript call shapes exercised by the binding audit.
+    const javascriptClient = localClient as typeof localClient & {
+      getRotationMatrix2D(
+        center?: JavascriptBindingValue,
+        angleDegrees?: JavascriptBindingValue,
+        scale?: JavascriptBindingValue,
+        extra?: JavascriptBindingValue,
+      ): Mat;
+    };
+
+    expect(localClient.getRotationMatrix2D.length).toBe(3);
+    expect(() => javascriptClient.getRotationMatrix2D()).toThrow(
+      new BindingError("function getRotationMatrix2D called with 0 arguments, expected 3 args!"),
+    );
+    expect(() => javascriptClient.getRotationMatrix2D({ x: 1, y: 2 }, 30)).toThrow(
+      new BindingError("function getRotationMatrix2D called with 2 arguments, expected 3 args!"),
+    );
+    const arityReads: string[] = [];
+    const unreadCenter = {
+      get x(): never {
+        arityReads.push("x");
+        throw new Error("arity must be checked first");
+      },
+      y: 2,
+    };
+    expect(() => javascriptClient.getRotationMatrix2D(unreadCenter, 30, 2, 1)).toThrow(
+      new BindingError("function getRotationMatrix2D called with 4 arguments, expected 3 args!"),
+    );
+    expect(arityReads).toEqual([]);
+
+    const propertyReads: string[] = [];
+    const center = {
+      get x(): number {
+        propertyReads.push("x");
+        return 16_777_217;
+      },
+      get y(): boolean {
+        propertyReads.push("y");
+        return true;
+      },
+      get ignored(): never {
+        throw new Error("point extras must not be read");
+      },
+    };
+    const first = javascriptClient.getRotationMatrix2D(center, true, false);
+    expect(propertyReads).toEqual(["x", "y"]);
+    expect(backend.rotationMatrixInputs.at(-1)).toEqual({
+      centerX: Math.fround(16_777_217),
+      centerY: 1,
+      angleDegrees: 1,
+      scale: 0,
+    });
+    expect([first.rows, first.columns, first.channels, first.depth]).toEqual([2, 3, 1, "f64"]);
+
+    const second = javascriptClient.getRotationMatrix2D(
+      { x: Number.NaN, y: Number.POSITIVE_INFINITY },
+      Number.NEGATIVE_INFINITY,
+      Number.NaN,
+    );
+    const nonFinite = backend.rotationMatrixInputs.at(-1);
+    expect(nonFinite?.centerX).toBeNaN();
+    expect(nonFinite?.centerY).toBe(Number.POSITIVE_INFINITY);
+    expect(nonFinite?.angleDegrees).toBe(Number.NEGATIVE_INFINITY);
+    expect(nonFinite?.scale).toBeNaN();
+
+    const signedZero = javascriptClient.getRotationMatrix2D({ x: -0, y: -0 }, -0, -0);
+    const signedZeroInput = backend.rotationMatrixInputs.at(-1);
+    expect(Object.is(signedZeroInput?.centerX, -0)).toBeTrue();
+    expect(Object.is(signedZeroInput?.centerY, -0)).toBeTrue();
+    expect(Object.is(signedZeroInput?.angleDegrees, -0)).toBeTrue();
+    expect(Object.is(signedZeroInput?.scale, -0)).toBeTrue();
+
+    expect(() => javascriptClient.getRotationMatrix2D({ x: 1, y: 2 }, "30", 2)).toThrow(
+      new TypeError('Cannot convert "30" to double'),
+    );
+    expect(() => javascriptClient.getRotationMatrix2D({ x: "1", y: 2 }, 30, 2)).toThrow(
+      new TypeError('Cannot convert "1" to float'),
+    );
+    expect(() => javascriptClient.getRotationMatrix2D({ x: 1 }, 30, 2)).toThrow(BindingError);
+
+    first.dispose();
+    second.dispose();
+    signedZero.dispose();
   });
 
   test("computes determinants, inverses, and linear solves", () => {
