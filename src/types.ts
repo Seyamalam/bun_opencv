@@ -368,6 +368,9 @@ export interface OpenCv {
   readonly AgastFeatureDetector_DetectorType: AgastFeatureDetector_DetectorTypeNamespace;
   readonly FastFeatureDetector_DetectorType: FastFeatureDetector_DetectorTypeNamespace;
   readonly KAZE_DiffusivityType: KAZE_DiffusivityTypeNamespace;
+  readonly ROTATE_90_CLOCKWISE: 0;
+  readonly ROTATE_180: 1;
+  readonly ROTATE_90_COUNTERCLOCKWISE: 2;
   absdiff(left: Mat, right: Mat): Mat;
   add(left: Mat, right: Mat): Mat;
   addWeighted(a: Mat, alpha: number, b: Mat, beta: number, gamma: number): Mat;
@@ -474,8 +477,8 @@ export interface OpenCv {
   resizeNearest(image: RgbaImage, targetWidth: number, targetHeight: number): RgbaImage;
   repeat(source: Mat, rowRepeats: number, columnRepeats: number, destination: Mat): void;
   repeatAlloc(source: Mat, rowRepeats: number, columnRepeats: number): Mat;
-  rotate(source: Mat, rotateCode: 0 | 1 | 2): Mat;
-  rotate(source: Mat, destination: Mat, rotateCode: 0 | 1 | 2): void;
+  rotate(source: Mat, destination: Mat, rotateCode: number): void;
+  rotateAlloc(source: Mat, rotateCode: number): Mat;
   setIdentity(destination: Mat, value?: Scalar): void;
   setLogLevel(level: LogLevel): LogLevel;
   setRNGSeed(seed: number): void;

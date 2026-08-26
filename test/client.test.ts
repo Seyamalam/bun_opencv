@@ -2343,7 +2343,7 @@ describe("OpenCv client", () => {
     const source = client.matFromU8(2, 3, 1, new Uint8Array([1, 2, 3, 4, 5, 6]));
     const horizontal = client.flipAlloc(source, 1);
     const transposed = client.transposeAlloc(source);
-    const clockwise = client.rotate(source, 0);
+    const clockwise = client.rotateAlloc(source, 0);
     const repeated = client.repeatAlloc(source, 2, 1);
     const flippedDestination = client.zerosU8(2, 3, 1);
     const transposedDestination = client.zerosU8(3, 2, 1);
@@ -2528,6 +2528,37 @@ describe("OpenCv client", () => {
 
     booleanDestination.dispose();
     fractionalDestination.dispose();
+    destination.dispose();
+    source.dispose();
+  });
+
+  test("matches the exact three-argument rotate call contract", () => {
+    const source = client.matFromU8(2, 3, 1, new Uint8Array([1, 2, 3, 4, 5, 6]));
+    const destination = client.zerosU8(3, 2, 1);
+
+    expect(client.ROTATE_90_CLOCKWISE).toBe(0);
+    expect(client.ROTATE_180).toBe(1);
+    expect(client.ROTATE_90_COUNTERCLOCKWISE).toBe(2);
+    expect(client.rotate.length).toBe(3);
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing missing arguments from plain JavaScript.
+      client.rotate();
+    }).toThrow(new BindingError("function rotate called with 0 arguments, expected 3 args!"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing missing arguments from plain JavaScript.
+      client.rotate(source);
+    }).toThrow(new BindingError("function rotate called with 1 arguments, expected 3 args!"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing a missing code from plain JavaScript.
+      client.rotate(source, destination);
+    }).toThrow(new BindingError("function rotate called with 2 arguments, expected 3 args!"));
+    expect(() => {
+      // @ts-expect-error Runtime parity requires testing an extra argument from plain JavaScript.
+      client.rotate(source, destination, 0, 1);
+    }).toThrow(new BindingError("function rotate called with 4 arguments, expected 3 args!"));
+    expect(client.rotate(source, destination, 0.9)).toBeUndefined();
+    expect(destination.toUint8Array()).toEqual(new Uint8Array([4, 1, 5, 2, 6, 3]));
+
     destination.dispose();
     source.dispose();
   });

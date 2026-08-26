@@ -53,6 +53,9 @@ class WasmOpenCv implements OpenCv {
   readonly AgastFeatureDetector_DetectorType = AgastFeatureDetector_DetectorType;
   readonly FastFeatureDetector_DetectorType = FastFeatureDetector_DetectorType;
   readonly KAZE_DiffusivityType = KAZE_DiffusivityType;
+  readonly ROTATE_90_CLOCKWISE = 0 as const;
+  readonly ROTATE_180 = 1 as const;
+  readonly ROTATE_90_COUNTERCLOCKWISE = 2 as const;
   readonly #backend: OpenCvBackend;
 
   constructor(backend: OpenCvBackend) {
@@ -367,18 +370,17 @@ class WasmOpenCv implements OpenCv {
     return new Mat(this.#backend.matFlip(source.handleForBackend(), toWasmI32(flipCode)));
   }
 
-  rotate(source: Mat, rotateCode: 0 | 1 | 2): Mat;
-  rotate(source: Mat, destination: Mat, rotateCode: 0 | 1 | 2): void;
-  rotate(source: Mat, destinationOrCode: Mat | 0 | 1 | 2, rotateCode?: 0 | 1 | 2): Mat | void {
-    if (destinationOrCode instanceof Mat) {
-      this.#backend.matRotateInto(
-        source.handleForBackend(),
-        destinationOrCode.handleForBackend(),
-        requiredCode(rotateCode),
-      );
-      return;
-    }
-    return new Mat(this.#backend.matRotate(source.handleForBackend(), destinationOrCode));
+  rotate(source: Mat, destination: Mat, rotateCode: number): void {
+    requireExactArity(arguments.length, 3, "rotate");
+    this.#backend.matRotateInto(
+      matHandleForBinding(source),
+      matHandleForBinding(destination),
+      toWasmI32(rotateCode),
+    );
+  }
+
+  rotateAlloc(source: Mat, rotateCode: number): Mat {
+    return new Mat(this.#backend.matRotate(source.handleForBackend(), toWasmI32(rotateCode)));
   }
 
   grayscale(image: RgbaImage): RgbaImage {
@@ -1030,13 +1032,6 @@ function requiredInteger(values: Int32Array, index: number): number {
   const value = values[index];
   if (value === undefined) {
     throw new OpenCvInputError(`WASM integer result is missing lane ${index}`);
-  }
-  return value;
-}
-
-function requiredCode<T extends number>(value: T | undefined): T {
-  if (value === undefined) {
-    throw new OpenCvInputError("operation code is required when a destination is supplied");
   }
   return value;
 }

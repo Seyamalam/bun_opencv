@@ -72,7 +72,7 @@ Multi-input operations require identical rows, columns, and channels. These meth
 
 - `flipAlloc(source, code)` allocates a flipped matrix. Zero flips rows, positive signed 32-bit codes flip columns, and negative codes flip both axes.
 - `transposeAlloc(source)` swaps rows and columns and allocates a new matrix.
-- `rotate(source, code)` accepts `0`, `1`, or `2` for 90 degrees clockwise, 180 degrees, or 90 degrees counterclockwise.
+- `rotateAlloc(source, code)` accepts `0`, `1`, or `2` for 90 degrees clockwise, 180 degrees, or 90 degrees counterclockwise and allocates its output.
 - `repeatAlloc(source, rowRepeats, columnRepeats)` tiles a matrix and allocates its output.
 
 These operations preserve all seven scalar depths and every interleaved channel. They return new Rust-owned matrices and compact non-contiguous regions before rearranging pixels.
