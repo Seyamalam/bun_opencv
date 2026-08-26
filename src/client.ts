@@ -1,4 +1,9 @@
-import { AKAZE, validateAKAZEOptions } from "./akaze.js";
+import {
+  AKAZE,
+  AKAZE_DescriptorType,
+  KAZE_DiffusivityType,
+  validateAKAZEOptions,
+} from "./akaze.js";
 import type { AKAZEOptions } from "./akaze.js";
 import { KAZE, validateKAZEOptions } from "./kaze.js";
 import type { KAZEOptions } from "./kaze.js";
@@ -6,7 +11,9 @@ import { GFTTDetector, validateGFTTDetectorOptions } from "./gftt.js";
 import type { GFTTDetectorOptions } from "./gftt.js";
 import {
   AgastFeatureDetector,
+  AgastFeatureDetector_DetectorType,
   FastFeatureDetector,
+  FastFeatureDetector_DetectorType,
   validateAgastFeatureDetectorOptions,
   validateFastFeatureDetectorOptions,
 } from "./feature-detectors.js";
@@ -42,6 +49,10 @@ import type {
 } from "./types.js";
 
 class WasmOpenCv implements OpenCv {
+  readonly AKAZE_DescriptorType = AKAZE_DescriptorType;
+  readonly AgastFeatureDetector_DetectorType = AgastFeatureDetector_DetectorType;
+  readonly FastFeatureDetector_DetectorType = FastFeatureDetector_DetectorType;
+  readonly KAZE_DiffusivityType = KAZE_DiffusivityType;
   readonly #backend: OpenCvBackend;
 
   constructor(backend: OpenCvBackend) {

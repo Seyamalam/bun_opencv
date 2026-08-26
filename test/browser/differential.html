@@ -1419,34 +1419,34 @@
         }
         sameNumbers(
           [
-            packageAkaze.getDescriptorType(),
+            packageAkaze.getDescriptorType()?.value,
             packageAkaze.getDescriptorSize(),
             packageAkaze.getDescriptorChannels(),
             packageAkaze.getThreshold(),
             packageAkaze.getNOctaves(),
             packageAkaze.getNOctaveLayers(),
-            packageAkaze.getDiffusivity(),
+            packageAkaze.getDiffusivity()?.value,
           ],
           referenceOutputs.akazeDefaults,
           "AKAZE defaults",
           1e-9,
         );
-        packageAkaze.setDescriptorType(4);
+        packageAkaze.setDescriptorType(packageCv.AKAZE_DescriptorType.DESCRIPTOR_MLDB_UPRIGHT);
         packageAkaze.setDescriptorSize(96);
         packageAkaze.setDescriptorChannels(2);
         packageAkaze.setThreshold(0.05);
         packageAkaze.setNOctaves(5);
         packageAkaze.setNOctaveLayers(6);
-        packageAkaze.setDiffusivity(2);
+        packageAkaze.setDiffusivity(packageCv.KAZE_DiffusivityType.DIFF_WEICKERT);
         sameNumbers(
           [
-            packageAkaze.getDescriptorType(),
+            packageAkaze.getDescriptorType()?.value,
             packageAkaze.getDescriptorSize(),
             packageAkaze.getDescriptorChannels(),
             packageAkaze.getThreshold(),
             packageAkaze.getNOctaves(),
             packageAkaze.getNOctaveLayers(),
-            packageAkaze.getDiffusivity(),
+            packageAkaze.getDiffusivity()?.value,
           ],
           referenceOutputs.akazeMutated,
           "AKAZE mutations",
@@ -1474,7 +1474,7 @@
           [
             packageAgast.getNonmaxSuppression(),
             packageAgast.getThreshold(),
-            packageAgast.getType(),
+            packageAgast.getType()?.value,
           ],
           referenceOutputs.agastDefaults,
           "AGAST defaults",
@@ -1482,12 +1482,12 @@
         );
         packageAgast.setNonmaxSuppression(false);
         packageAgast.setThreshold(-1);
-        packageAgast.setType(0);
+        packageAgast.setType(packageCv.AgastFeatureDetector_DetectorType.AGAST_5_8);
         sameNumbers(
           [
             packageAgast.getNonmaxSuppression(),
             packageAgast.getThreshold(),
-            packageAgast.getType(),
+            packageAgast.getType()?.value,
           ],
           referenceOutputs.agastMutated,
           "AGAST mutations",
@@ -1502,16 +1502,24 @@
           );
         }
         sameNumbers(
-          [packageFast.getNonmaxSuppression(), packageFast.getThreshold(), packageFast.getType()],
+          [
+            packageFast.getNonmaxSuppression(),
+            packageFast.getThreshold(),
+            packageFast.getType()?.value,
+          ],
           referenceOutputs.fastDefaults,
           "FAST defaults",
           0,
         );
         packageFast.setNonmaxSuppression(false);
         packageFast.setThreshold(256);
-        packageFast.setType(0);
+        packageFast.setType(packageCv.FastFeatureDetector_DetectorType.TYPE_5_8);
         sameNumbers(
-          [packageFast.getNonmaxSuppression(), packageFast.getThreshold(), packageFast.getType()],
+          [
+            packageFast.getNonmaxSuppression(),
+            packageFast.getThreshold(),
+            packageFast.getType()?.value,
+          ],
           referenceOutputs.fastMutated,
           "FAST mutations",
           0,
@@ -1526,7 +1534,7 @@
         }
         sameNumbers(
           [
-            packageKaze.getDiffusivity(),
+            packageKaze.getDiffusivity()?.value,
             packageKaze.getExtended(),
             packageKaze.getNOctaveLayers(),
             packageKaze.getNOctaves(),
@@ -1537,7 +1545,7 @@
           "KAZE defaults",
           1e-9,
         );
-        packageKaze.setDiffusivity(2);
+        packageKaze.setDiffusivity(packageCv.KAZE_DiffusivityType.DIFF_WEICKERT);
         packageKaze.setExtended(true);
         packageKaze.setNOctaveLayers(6);
         packageKaze.setNOctaves(5);
@@ -1545,7 +1553,7 @@
         packageKaze.setUpright(true);
         sameNumbers(
           [
-            packageKaze.getDiffusivity(),
+            packageKaze.getDiffusivity()?.value,
             packageKaze.getExtended(),
             packageKaze.getNOctaveLayers(),
             packageKaze.getNOctaves(),

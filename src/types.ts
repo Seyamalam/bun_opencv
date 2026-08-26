@@ -1,10 +1,18 @@
-import type { AKAZE, AKAZEOptions, WasmAKAZEFactory } from "./akaze.js";
+import type {
+  AKAZE,
+  AKAZEOptions,
+  AKAZE_DescriptorTypeNamespace,
+  KAZE_DiffusivityTypeNamespace,
+  WasmAKAZEFactory,
+} from "./akaze.js";
 import type { KAZE, KAZEOptions, WasmKAZEFactory } from "./kaze.js";
 import type { GFTTDetector, GFTTDetectorOptions, WasmGFTTDetectorFactory } from "./gftt.js";
 import type {
   AgastFeatureDetector,
+  AgastFeatureDetector_DetectorTypeNamespace,
   AgastFeatureDetectorOptions,
   FastFeatureDetector,
+  FastFeatureDetector_DetectorTypeNamespace,
   FastFeatureDetectorOptions,
   WasmAgastFeatureDetectorFactory,
   WasmFastFeatureDetectorFactory,
@@ -355,6 +363,10 @@ export interface OpenCvBackend {
 
 /** Initialized image processing client. */
 export interface OpenCv {
+  readonly AKAZE_DescriptorType: AKAZE_DescriptorTypeNamespace;
+  readonly AgastFeatureDetector_DetectorType: AgastFeatureDetector_DetectorTypeNamespace;
+  readonly FastFeatureDetector_DetectorType: FastFeatureDetector_DetectorTypeNamespace;
+  readonly KAZE_DiffusivityType: KAZE_DiffusivityTypeNamespace;
   absdiff(left: Mat, right: Mat): Mat;
   add(left: Mat, right: Mat): Mat;
   addWeighted(a: Mat, alpha: number, b: Mat, beta: number, gamma: number): Mat;
