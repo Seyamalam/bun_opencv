@@ -97,6 +97,17 @@ const AUDITED_BINDING_FORMS: Readonly<Record<string, AuditedBindingForm>> = Obje
   "features2d.gfttdetector.set-max-features": { overloadCount: 1, runtimeArity: 1 },
   "features2d.gfttdetector.set-min-distance": { overloadCount: 1, runtimeArity: 1 },
   "features2d.gfttdetector.set-quality-level": { overloadCount: 1, runtimeArity: 1 },
+  "features2d.kaze.get-default-name": { overloadCount: 1, runtimeArity: 0 },
+  "features2d.kaze.get-extended": { overloadCount: 1, runtimeArity: 0 },
+  "features2d.kaze.get-noctave-layers": { overloadCount: 1, runtimeArity: 0 },
+  "features2d.kaze.get-noctaves": { overloadCount: 1, runtimeArity: 0 },
+  "features2d.kaze.get-threshold": { overloadCount: 1, runtimeArity: 0 },
+  "features2d.kaze.get-upright": { overloadCount: 1, runtimeArity: 0 },
+  "features2d.kaze.set-extended": { overloadCount: 1, runtimeArity: 1 },
+  "features2d.kaze.set-noctave-layers": { overloadCount: 1, runtimeArity: 1 },
+  "features2d.kaze.set-noctaves": { overloadCount: 1, runtimeArity: 1 },
+  "features2d.kaze.set-threshold": { overloadCount: 1, runtimeArity: 1 },
+  "features2d.kaze.set-upright": { overloadCount: 1, runtimeArity: 1 },
 });
 
 const MODULE_SURFACES = {
