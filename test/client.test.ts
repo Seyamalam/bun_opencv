@@ -2008,7 +2008,9 @@ describe("OpenCv client", () => {
     expect(region.toUint8Array()).toEqual(new Uint8Array([2, 3, 6, 7]));
 
     matrix.dispose();
-    expect(() => matrix.rows).toThrow(OpenCvInputError);
+    expect(() => matrix.rows).toThrow(
+      new BindingError("Cannot pass deleted object as a pointer of type Mat const*"),
+    );
     expect(region.toUint8Array()).toEqual(new Uint8Array([2, 3, 6, 7]));
     region.dispose();
   });
@@ -2026,7 +2028,9 @@ describe("OpenCv client", () => {
     expect(matrix.toUint8Array()).toEqual(new Uint8Array());
 
     matrix.dispose();
-    expect(() => matrix.rows).toThrow(OpenCvInputError);
+    expect(() => matrix.rows).toThrow(
+      new BindingError("Cannot pass deleted object as a pointer of type Mat const*"),
+    );
   });
 
   test("allocates zero-filled matrices", () => {
@@ -2365,6 +2369,29 @@ describe("OpenCv client", () => {
 
     destination.dispose();
     source.dispose();
+  });
+
+  test("matches transpose errors for deleted matrices", () => {
+    const deletedSource = client.matFromU8(1, 1, 1, new Uint8Array([7]));
+    const liveDestination = client.emptyMat();
+    deletedSource.dispose();
+
+    expect(() => client.transpose(deletedSource, liveDestination)).toThrow(
+      new BindingError("Cannot pass deleted object as a pointer of type Mat"),
+    );
+    expect(() => deletedSource.rows).toThrow(
+      new BindingError("Cannot pass deleted object as a pointer of type Mat const*"),
+    );
+
+    const liveSource = client.matFromU8(1, 1, 1, new Uint8Array([8]));
+    const deletedDestination = client.emptyMat();
+    deletedDestination.dispose();
+    expect(() => client.transpose(liveSource, deletedDestination)).toThrow(
+      new BindingError("Cannot pass deleted object as a pointer of type Mat"),
+    );
+
+    liveSource.dispose();
+    liveDestination.dispose();
   });
 
   test("exposes typed matrix reductions", () => {

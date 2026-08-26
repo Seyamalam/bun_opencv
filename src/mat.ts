@@ -1,4 +1,4 @@
-import { OpenCvInputError } from "./error.js";
+import { BindingError, OpenCvInputError } from "./error.js";
 
 const MAX_WASM_BYTE_LENGTH = 4_294_967_295;
 const MAX_CHANNELS = 512;
@@ -120,7 +120,11 @@ export class Mat {
 
   /** @internal Returns the live WASM handle for package adapters. */
   handleForBackend(): WasmMatHandle {
-    return this.#owned();
+    const handle = this.#handle;
+    if (handle === undefined) {
+      throw new BindingError("Cannot pass deleted object as a pointer of type Mat");
+    }
+    return handle;
   }
 
   /** Releases this WASM handle. Shared regions remain valid until separately disposed. */
@@ -136,7 +140,7 @@ export class Mat {
   #owned(): WasmMatHandle {
     const handle = this.#handle;
     if (handle === undefined) {
-      throw new OpenCvInputError("matrix has been disposed");
+      throw new BindingError("Cannot pass deleted object as a pointer of type Mat const*");
     }
     return handle;
   }
