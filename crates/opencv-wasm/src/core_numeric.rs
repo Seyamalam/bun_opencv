@@ -95,10 +95,10 @@ pub fn mat_convert_scale_abs_into(
 }
 
 fn matches(a: &Mat, b: &Mat) -> bool {
-    a.rows() == b.rows()
-        && a.columns() == b.columns()
-        && a.channels() == b.channels()
-        && a.depth() == b.depth()
+    same_geometry(a, b) && a.depth() == b.depth()
+}
+fn same_geometry(a: &Mat, b: &Mat) -> bool {
+    a.rows() == b.rows() && a.columns() == b.columns() && a.channels() == b.channels()
 }
 fn output_depth(input: MatDepth, dtype: i32) -> Result<MatDepth, NumericError> {
     if dtype < 0 {
@@ -128,6 +128,15 @@ fn binary_with_depth(
     if !matches(a, b) {
         return Err(NumericError::InputMetadata);
     }
+    binary_from_compatible(a, b, scale, depth, op)
+}
+fn binary_from_compatible(
+    a: &Mat,
+    b: &Mat,
+    scale: f64,
+    depth: MatDepth,
+    op: Binary,
+) -> Result<Mat, NumericError> {
     if (a.rows() == 0 || a.columns() == 0) && matches!(op, Binary::Divide) {
         return Ok(Mat::empty_output());
     }
@@ -145,7 +154,7 @@ fn binary_into(
     dtype: i32,
     op: Binary,
 ) -> Result<(), NumericError> {
-    if !matches(a, b) {
+    if !same_geometry(a, b) || (a.depth() != b.depth() && dtype < 0) {
         return Err(NumericError::InputMetadata);
     }
     let depth = output_depth(a.depth(), dtype)?;
@@ -168,7 +177,7 @@ fn binary_into(
     {
         return Ok(());
     }
-    let out = binary_with_depth(a, b, scale, depth, op)?;
+    let out = binary_from_compatible(a, b, scale, depth, op)?;
     write_result(dst, &out)
 }
 
@@ -193,6 +202,16 @@ fn weighted_with_depth(
     if !matches(a, b) {
         return Err(NumericError::InputMetadata);
     }
+    weighted_from_compatible(a, alpha, b, beta, gamma, depth)
+}
+fn weighted_from_compatible(
+    a: &Mat,
+    alpha: f64,
+    b: &Mat,
+    beta: f64,
+    gamma: f64,
+    depth: MatDepth,
+) -> Result<Mat, NumericError> {
     if a.rows() == 0 || a.columns() == 0 {
         return Ok(Mat::empty_output());
     }
@@ -211,7 +230,7 @@ fn weighted_into(
     destination: &Mat,
     dtype: i32,
 ) -> Result<(), NumericError> {
-    if !matches(a, b) {
+    if !same_geometry(a, b) || (a.depth() != b.depth() && dtype < 0) {
         return Err(NumericError::InputMetadata);
     }
     let depth = output_depth(a.depth(), dtype)?;
@@ -234,7 +253,7 @@ fn weighted_into(
     {
         return Ok(());
     }
-    let output = weighted_with_depth(a, alpha, b, beta, gamma, depth)?;
+    let output = weighted_from_compatible(a, alpha, b, beta, gamma, depth)?;
     write_result(destination, &output)
 }
 
@@ -523,6 +542,24 @@ mod tests {
         assert_eq!(
             (absolute.rows(), absolute.columns(), absolute.depth()),
             (0, 3, MatDepth::U8)
+        );
+    }
+    #[test]
+    fn explicit_dtype_allows_mixed_input_depths() {
+        let bytes = mat(&[2., 10., 250., 5.], MatDepth::U8, 1, 4);
+        let floats = mat(&[0.5, 4., -2., 0.25], MatDepth::F32, 1, 4);
+        let destination = Mat::empty_output();
+
+        assert!(binary_into(&bytes, &floats, &destination, 1., -1, Binary::Multiply,).is_err());
+        binary_into(&bytes, &floats, &destination, 1., 5, Binary::Multiply).unwrap();
+        assert_eq!(
+            decode(&destination.compact_bytes(), MatDepth::F32),
+            vec![1., 40., -500., 1.25]
+        );
+        weighted_into(&bytes, 0.5, &floats, 2., 1., &destination, 5).unwrap();
+        assert_eq!(
+            decode(&destination.compact_bytes(), MatDepth::F32),
+            vec![3., 14., 122., 4.]
         );
     }
 }
