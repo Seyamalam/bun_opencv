@@ -87,12 +87,12 @@ pub(crate) fn pow_f64(input: &[u8], exponent: f64) -> Result<Vec<u8>, FloatMathE
 
 /// Computes `sqrt(x*x + y*y)` for matching compact F32 inputs.
 pub(crate) fn magnitude_f32(x: &[u8], y: &[u8]) -> Result<Vec<u8>, FloatMathError> {
-    zip_f32(x, y, f32::hypot)
+    zip_f32(x, y, |x, y| (x * x + y * y).sqrt())
 }
 
 /// Computes `sqrt(x*x + y*y)` for matching compact F64 inputs.
 pub(crate) fn magnitude_f64(x: &[u8], y: &[u8]) -> Result<Vec<u8>, FloatMathError> {
-    zip_f64(x, y, f64::hypot)
+    zip_f64(x, y, |x, y| (x * x + y * y).sqrt())
 }
 
 /// Converts matching Cartesian F32 coordinates to magnitude and angle.
@@ -391,6 +391,23 @@ mod tests {
                 .unwrap(),
             [17.0, 25.0]
         );
+    }
+
+    #[test]
+    fn magnitude_preserves_direct_square_overflow_underflow_and_nan_ordering() {
+        let large = f32::MAX / 2.0;
+        let output = decode_f32(
+            &magnitude_f32(
+                &f32_bytes(&[large, f32::MIN_POSITIVE, f32::NAN]),
+                &f32_bytes(&[large, f32::MIN_POSITIVE, f32::INFINITY]),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        assert!(output[0].is_infinite() && output[0].is_sign_positive());
+        assert_eq!(output[1], 0.0);
+        assert!(output[2].is_nan());
     }
 
     #[test]
