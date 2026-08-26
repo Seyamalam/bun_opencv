@@ -87,6 +87,15 @@
         return { type: typeof value, value };
       }
 
+      function encodeFloat64(value) {
+        const bytes = new Uint8Array(8);
+        new DataView(bytes.buffer).setFloat64(0, value, false);
+        return {
+          encoded: encodeValue(value),
+          bits: Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(""),
+        };
+      }
+
       function captureCall(callback) {
         try {
           return { threw: false, returnValue: encodeValue(callback()) };
@@ -206,6 +215,235 @@
         } catch {
           /* The audit reads disposed matrices. */
         }
+      }
+
+      function summarizePackageRotationMatrix(matrix) {
+        const depth = PACKAGE_DEPTH_CODES[matrix.depth];
+        return {
+          rows: matrix.rows,
+          cols: matrix.columns,
+          channels: matrix.channels,
+          depth,
+          type: depth + ((matrix.channels - 1) << 3),
+          total: matrix.rows * matrix.columns,
+          continuous: matrix.isContinuous,
+          values: Array.from(matrix.toFloat64Array(), encodeFloat64),
+        };
+      }
+
+      function capturePackageRotationMatrix(callback) {
+        let matrix;
+        try {
+          matrix = callback();
+          return { threw: false, matrix: summarizePackageRotationMatrix(matrix) };
+        } catch (error) {
+          return {
+            threw: true,
+            error: {
+              name: error?.name,
+              constructor: error?.constructor?.name,
+              message: error?.message,
+              text: String(error),
+              instanceofError: error instanceof Error,
+            },
+          };
+        } finally {
+          disposePackageMat(matrix);
+        }
+      }
+
+      function capturePackageRotationRejection(callback) {
+        let matrix;
+        try {
+          matrix = callback();
+          return { threw: false };
+        } catch {
+          return { threw: true };
+        } finally {
+          disposePackageMat(matrix);
+        }
+      }
+
+      function auditPackageRotationFieldReads(packageCv, center, angle = 15, scale = 0.75) {
+        const reads = [];
+        const proxy = new Proxy(center, {
+          has(target, property) {
+            reads.push(`has:${String(property)}`);
+            return Reflect.has(target, property);
+          },
+          get(target, property) {
+            reads.push(`get:${String(property)}`);
+            return target[property];
+          },
+        });
+        return {
+          call: capturePackageRotationMatrix(() =>
+            packageCv.getRotationMatrix2D(proxy, angle, scale),
+          ),
+          reads,
+        };
+      }
+
+      function auditPackageRotationRejectedFields(packageCv, center, angle = 15, scale = 0.75) {
+        const reads = [];
+        const proxy =
+          center !== null && (typeof center === "object" || typeof center === "function")
+            ? new Proxy(center, {
+                has(target, property) {
+                  reads.push(`has:${String(property)}`);
+                  return Reflect.has(target, property);
+                },
+                get(target, property) {
+                  reads.push(`get:${String(property)}`);
+                  return target[property];
+                },
+              })
+            : center;
+        return {
+          call: capturePackageRotationRejection(() =>
+            packageCv.getRotationMatrix2D(proxy, angle, scale),
+          ),
+          reads,
+        };
+      }
+
+      function auditPackageRotationMatrix(packageCv) {
+        const inherited = Object.create({ x: 1.25, y: -2.5 });
+        const nullPrototype = Object.assign(Object.create(null), { x: 1.25, y: -2.5 });
+        const arrayWithFields = [];
+        arrayWithFields.x = 1.25;
+        arrayWithFields.y = -2.5;
+        const functionWithFields = () => packageCv;
+        functionWithFields.x = 1.25;
+        functionWithFields.y = -2.5;
+
+        const arityCenterReads = [];
+        const arityCenter = new Proxy(
+          { x: 1, y: 2 },
+          {
+            has(target, property) {
+              arityCenterReads.push(`has:${String(property)}`);
+              return Reflect.has(target, property);
+            },
+            get(target, property) {
+              arityCenterReads.push(`get:${String(property)}`);
+              return target[property];
+            },
+          },
+        );
+        const arity = {
+          length: packageCv.getRotationMatrix2D.length,
+          zero: captureCall(() => packageCv.getRotationMatrix2D()),
+          one: captureCall(() => packageCv.getRotationMatrix2D(arityCenter)),
+          two: captureCall(() => packageCv.getRotationMatrix2D(arityCenter, 30)),
+          exact: capturePackageRotationMatrix(() =>
+            packageCv.getRotationMatrix2D(arityCenter, 30, 1),
+          ),
+          four: captureCall(() => packageCv.getRotationMatrix2D(arityCenter, 30, 1, 0)),
+          centerReads: arityCenterReads,
+        };
+
+        const invalidX = {
+          get x() {
+            return "1";
+          },
+          get y() {
+            throw new Error("y must not be read after invalid x");
+          },
+        };
+        const scalarRejections = [
+          ["string", "30"],
+          ["null", null],
+          ["undefined", undefined],
+          ["boxed", new Number(30)],
+          ["object", { valueOf: () => 30 }],
+          ["bigint", 30n],
+          ["symbol", Symbol("30")],
+        ];
+        const call = (center, angle, scale) =>
+          capturePackageRotationMatrix(() => packageCv.getRotationMatrix2D(center, angle, scale));
+
+        const first = packageCv.getRotationMatrix2D({ x: 1, y: 2 }, 90, 1);
+        const second = packageCv.getRotationMatrix2D({ x: 1, y: 2 }, 90, 1);
+        const ownership = {
+          distinctWrappers: first !== second,
+          firstBefore: summarizePackageRotationMatrix(first),
+          secondBefore: summarizePackageRotationMatrix(second),
+        };
+        const mutatedValues = first.toFloat64Array();
+        mutatedValues[0] = 99;
+        first.copyFromBytes(new Uint8Array(mutatedValues.buffer));
+        ownership.firstAfterMutation = summarizePackageRotationMatrix(first);
+        ownership.secondAfterFirstMutation = summarizePackageRotationMatrix(second);
+        ownership.firstRelease = captureCall(() => first.dispose());
+        ownership.firstAfterRelease = capturePackageRotationRejection(() =>
+          summarizePackageRotationMatrix(first),
+        );
+        ownership.secondAfterFirstRelease = summarizePackageRotationMatrix(second);
+        ownership.secondRelease = captureCall(() => second.dispose());
+
+        return {
+          arity,
+          structural: {
+            plain: call({ x: 1.25, y: -2.5 }, 33.3, 0.75),
+            inherited: call(inherited, 33.3, 0.75),
+            nullPrototype: call(nullPrototype, 33.3, 0.75),
+            arrayWithFields: call(arrayWithFields, 33.3, 0.75),
+            functionWithFields: call(functionWithFields, 33.3, 0.75),
+            fieldOrder: auditPackageRotationFieldReads(packageCv, { x: 1.25, y: -2.5 }),
+          },
+          rejectedStructural: {
+            missingX: auditPackageRotationRejectedFields(packageCv, { y: 2 }),
+            missingY: auditPackageRotationRejectedFields(packageCv, { x: 1 }),
+            bareArray: auditPackageRotationRejectedFields(packageCv, [1, 2]),
+            null: auditPackageRotationRejectedFields(packageCv, null),
+            undefined: auditPackageRotationRejectedFields(packageCv, undefined),
+            number: auditPackageRotationRejectedFields(packageCv, 1),
+            invalidX: auditPackageRotationRejectedFields(packageCv, invalidX),
+          },
+          conversions: {
+            centerFloat32Narrowing: call({ x: 1.00000001, y: 16_777_217 }, 30, 2),
+            centerBooleans: call({ x: true, y: false }, 30, 2),
+            angleTrue: call({ x: 1, y: 2 }, true, 1),
+            angleFalse: call({ x: 1, y: 2 }, false, 1),
+            scaleTrue: call({ x: 1, y: 2 }, 30, true),
+            scaleFalse: call({ x: 1, y: 2 }, 30, false),
+            angleRejected: scalarRejections.map(([label, value]) => ({
+              label,
+              call: capturePackageRotationRejection(() =>
+                packageCv.getRotationMatrix2D({ x: 1, y: 2 }, value, 1),
+              ),
+            })),
+            scaleRejected: scalarRejections.map(([label, value]) => ({
+              label,
+              call: capturePackageRotationRejection(() =>
+                packageCv.getRotationMatrix2D({ x: 1, y: 2 }, 30, value),
+              ),
+            })),
+          },
+          fixtures: [
+            { label: "quarter turn", call: call({ x: 1, y: 2 }, 90, 1) },
+            { label: "negative quarter turn", call: call({ x: 1, y: 2 }, -90, 1) },
+            { label: "fractional", call: call({ x: 1.25, y: -2.5 }, 33.3, 0.75) },
+          ],
+          signedZero: [
+            { label: "negative center", call: call({ x: -0, y: -0 }, 0, 1) },
+            { label: "negative angle", call: call({ x: 1, y: 2 }, -0, 1) },
+            { label: "positive zero scale", call: call({ x: 1, y: 2 }, 30, 0) },
+            { label: "negative zero scale", call: call({ x: 1, y: 2 }, 30, -0) },
+            { label: "all negative zero", call: call({ x: -0, y: -0 }, -0, -0) },
+          ],
+          nonFinite: [
+            { label: "NaN angle", call: call({ x: 1, y: 2 }, Number.NaN, 1) },
+            { label: "positive infinite angle", call: call({ x: 1, y: 2 }, Infinity, 1) },
+            { label: "negative infinite angle", call: call({ x: 1, y: 2 }, -Infinity, 1) },
+            { label: "NaN scale", call: call({ x: 1, y: 2 }, 30, Number.NaN) },
+            { label: "positive infinite scale", call: call({ x: 1, y: 2 }, 30, Infinity) },
+            { label: "negative infinite scale", call: call({ x: 1, y: 2 }, 30, -Infinity) },
+            { label: "NaN center x", call: call({ x: Number.NaN, y: 2 }, 30, 1) },
+          ],
+          ownership,
+        };
       }
 
       function auditPackageTransposeCall(callback, matrices) {
@@ -5320,7 +5558,9 @@
                     ? "contour-contracts"
                     : searchParameters.has("reference-polygons")
                       ? "polygon-contracts"
-                      : undefined;
+                      : searchParameters.has("reference-rotation-matrix")
+                        ? "rotation-matrix-contracts"
+                        : undefined;
         const referenceOutputs = await runReference(input, referenceRequest);
         if (searchParameters.has("reference-transpose")) {
           packageSource.dispose();
@@ -5371,6 +5611,13 @@
           result.textContent = JSON.stringify(referenceOutputs.polygonAudit, null, 2);
           break differential;
         }
+        if (searchParameters.has("reference-rotation-matrix")) {
+          packageSource.dispose();
+          globalThis.rotationMatrixReferenceAudit = referenceOutputs.rotationMatrixAudit;
+          result.style.whiteSpace = "pre-wrap";
+          result.textContent = JSON.stringify(referenceOutputs.rotationMatrixAudit, null, 2);
+          break differential;
+        }
         const packageFloatMathAudit = auditPackageFloatMath(packageCv);
         const floatMathDifference = findDifference(
           normalizeFloatMathAudit(packageFloatMathAudit),
@@ -5415,6 +5662,15 @@
         );
         if (polygonDifference !== undefined) {
           throw new Error(polygonDifference);
+        }
+        const packageRotationMatrixAudit = auditPackageRotationMatrix(packageCv);
+        const rotationMatrixDifference = findDifference(
+          packageRotationMatrixAudit,
+          referenceOutputs.rotationMatrixAudit,
+          "getRotationMatrix2D audit",
+        );
+        if (rotationMatrixDifference !== undefined) {
+          throw new Error(rotationMatrixDifference);
         }
         const packageFlipAudit = auditPackageFlip(packageCv);
         const flipDifference = findDifference(
@@ -5831,7 +6087,7 @@
 
         packageSource.dispose();
         result.value =
-          "PASS OpenCV.js 4.13.0 coordinate conversion, float math, layout, geometry, helper, DFT, AKAZE, AGAST, FAST, KAZE, and GFTT differential";
+          "PASS OpenCV.js 4.13.0 coordinate conversion, float math, layout, geometry, transform matrix, helper, DFT, AKAZE, AGAST, FAST, KAZE, and GFTT differential";
         document.body.dataset.status = "passed";
       } catch (error) {
         result.value = `FAIL ${String(error)}`;

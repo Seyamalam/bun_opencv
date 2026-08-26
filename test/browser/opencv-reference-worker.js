@@ -3163,6 +3163,233 @@ function capturePrimitive(callback) {
   }
 }
 
+function encodeFloat64(value) {
+  const bytes = new Uint8Array(8);
+  new DataView(bytes.buffer).setFloat64(0, value, false);
+  return {
+    encoded: encodeValue(value),
+    bits: Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(""),
+  };
+}
+
+function summarizeRotationMatrix(matrix) {
+  return {
+    rows: matrix.rows,
+    cols: matrix.cols,
+    channels: matrix.channels(),
+    depth: matrix.depth(),
+    type: matrix.type(),
+    total: matrix.total(),
+    continuous: matrix.isContinuous(),
+    values: Array.from(matrix.data64F, encodeFloat64),
+  };
+}
+
+function captureRotationMatrix(callback) {
+  let matrix;
+  try {
+    matrix = callback();
+    return { threw: false, matrix: summarizeRotationMatrix(matrix) };
+  } catch (error) {
+    return {
+      threw: true,
+      error: {
+        name: error?.name,
+        constructor: error?.constructor?.name,
+        message: error?.message,
+        text: String(error),
+        instanceofError: error instanceof Error,
+      },
+    };
+  } finally {
+    safeDelete(matrix);
+  }
+}
+
+function captureRotationRejection(callback) {
+  let matrix;
+  try {
+    matrix = callback();
+    return { threw: false };
+  } catch {
+    return { threw: true };
+  } finally {
+    safeDelete(matrix);
+  }
+}
+
+function auditRotationFieldReads(reference, center, angle = 15, scale = 0.75) {
+  const reads = [];
+  const proxy = new Proxy(center, {
+    has(target, property) {
+      reads.push(`has:${String(property)}`);
+      return Reflect.has(target, property);
+    },
+    get(target, property) {
+      reads.push(`get:${String(property)}`);
+      return target[property];
+    },
+  });
+  return {
+    call: captureRotationMatrix(() => reference.getRotationMatrix2D(proxy, angle, scale)),
+    reads,
+  };
+}
+
+function auditRotationRejectedFields(reference, center, angle = 15, scale = 0.75) {
+  const reads = [];
+  const proxy =
+    center !== null && (typeof center === "object" || typeof center === "function")
+      ? new Proxy(center, {
+          has(target, property) {
+            reads.push(`has:${String(property)}`);
+            return Reflect.has(target, property);
+          },
+          get(target, property) {
+            reads.push(`get:${String(property)}`);
+            return target[property];
+          },
+        })
+      : center;
+  return {
+    call: captureRotationRejection(() => reference.getRotationMatrix2D(proxy, angle, scale)),
+    reads,
+  };
+}
+
+function auditRotationMatrix(reference) {
+  const inherited = Object.create({ x: 1.25, y: -2.5 });
+  const nullPrototype = Object.assign(Object.create(null), { x: 1.25, y: -2.5 });
+  const arrayWithFields = [];
+  arrayWithFields.x = 1.25;
+  arrayWithFields.y = -2.5;
+  const functionWithFields = () => reference;
+  functionWithFields.x = 1.25;
+  functionWithFields.y = -2.5;
+
+  const arityCenterReads = [];
+  const arityCenter = new Proxy(
+    { x: 1, y: 2 },
+    {
+      has(target, property) {
+        arityCenterReads.push(`has:${String(property)}`);
+        return Reflect.has(target, property);
+      },
+      get(target, property) {
+        arityCenterReads.push(`get:${String(property)}`);
+        return target[property];
+      },
+    },
+  );
+  const arity = {
+    length: reference.getRotationMatrix2D.length,
+    zero: captureCall(() => reference.getRotationMatrix2D()),
+    one: captureCall(() => reference.getRotationMatrix2D(arityCenter)),
+    two: captureCall(() => reference.getRotationMatrix2D(arityCenter, 30)),
+    exact: captureRotationMatrix(() => reference.getRotationMatrix2D(arityCenter, 30, 1)),
+    four: captureCall(() => reference.getRotationMatrix2D(arityCenter, 30, 1, 0)),
+    centerReads: arityCenterReads,
+  };
+
+  const invalidX = {
+    get x() {
+      return "1";
+    },
+    get y() {
+      throw new Error("y must not be read after invalid x");
+    },
+  };
+  const scalarRejections = [
+    ["string", "30"],
+    ["null", null],
+    ["undefined", undefined],
+    ["boxed", new Number(30)],
+    ["object", { valueOf: () => 30 }],
+    ["bigint", 30n],
+    ["symbol", Symbol("30")],
+  ];
+  const call = (center, angle, scale) =>
+    captureRotationMatrix(() => reference.getRotationMatrix2D(center, angle, scale));
+
+  const first = reference.getRotationMatrix2D({ x: 1, y: 2 }, 90, 1);
+  const second = reference.getRotationMatrix2D({ x: 1, y: 2 }, 90, 1);
+  const ownership = {
+    distinctWrappers: first !== second,
+    firstBefore: summarizeRotationMatrix(first),
+    secondBefore: summarizeRotationMatrix(second),
+  };
+  first.data64F[0] = 99;
+  ownership.firstAfterMutation = summarizeRotationMatrix(first);
+  ownership.secondAfterFirstMutation = summarizeRotationMatrix(second);
+  ownership.firstRelease = captureCall(() => first.delete());
+  ownership.firstAfterRelease = captureRotationRejection(() => summarizeRotationMatrix(first));
+  ownership.secondAfterFirstRelease = summarizeRotationMatrix(second);
+  ownership.secondRelease = captureCall(() => second.delete());
+
+  return {
+    arity,
+    structural: {
+      plain: call({ x: 1.25, y: -2.5 }, 33.3, 0.75),
+      inherited: call(inherited, 33.3, 0.75),
+      nullPrototype: call(nullPrototype, 33.3, 0.75),
+      arrayWithFields: call(arrayWithFields, 33.3, 0.75),
+      functionWithFields: call(functionWithFields, 33.3, 0.75),
+      fieldOrder: auditRotationFieldReads(reference, { x: 1.25, y: -2.5 }),
+    },
+    rejectedStructural: {
+      missingX: auditRotationRejectedFields(reference, { y: 2 }),
+      missingY: auditRotationRejectedFields(reference, { x: 1 }),
+      bareArray: auditRotationRejectedFields(reference, [1, 2]),
+      null: auditRotationRejectedFields(reference, null),
+      undefined: auditRotationRejectedFields(reference, undefined),
+      number: auditRotationRejectedFields(reference, 1),
+      invalidX: auditRotationRejectedFields(reference, invalidX),
+    },
+    conversions: {
+      centerFloat32Narrowing: call({ x: 1.00000001, y: 16_777_217 }, 30, 2),
+      centerBooleans: call({ x: true, y: false }, 30, 2),
+      angleTrue: call({ x: 1, y: 2 }, true, 1),
+      angleFalse: call({ x: 1, y: 2 }, false, 1),
+      scaleTrue: call({ x: 1, y: 2 }, 30, true),
+      scaleFalse: call({ x: 1, y: 2 }, 30, false),
+      angleRejected: scalarRejections.map(([label, value]) => ({
+        label,
+        call: captureRotationRejection(() =>
+          reference.getRotationMatrix2D({ x: 1, y: 2 }, value, 1),
+        ),
+      })),
+      scaleRejected: scalarRejections.map(([label, value]) => ({
+        label,
+        call: captureRotationRejection(() =>
+          reference.getRotationMatrix2D({ x: 1, y: 2 }, 30, value),
+        ),
+      })),
+    },
+    fixtures: [
+      { label: "quarter turn", call: call({ x: 1, y: 2 }, 90, 1) },
+      { label: "negative quarter turn", call: call({ x: 1, y: 2 }, -90, 1) },
+      { label: "fractional", call: call({ x: 1.25, y: -2.5 }, 33.3, 0.75) },
+    ],
+    signedZero: [
+      { label: "negative center", call: call({ x: -0, y: -0 }, 0, 1) },
+      { label: "negative angle", call: call({ x: 1, y: 2 }, -0, 1) },
+      { label: "positive zero scale", call: call({ x: 1, y: 2 }, 30, 0) },
+      { label: "negative zero scale", call: call({ x: 1, y: 2 }, 30, -0) },
+      { label: "all negative zero", call: call({ x: -0, y: -0 }, -0, -0) },
+    ],
+    nonFinite: [
+      { label: "NaN angle", call: call({ x: 1, y: 2 }, Number.NaN, 1) },
+      { label: "positive infinite angle", call: call({ x: 1, y: 2 }, Infinity, 1) },
+      { label: "negative infinite angle", call: call({ x: 1, y: 2 }, -Infinity, 1) },
+      { label: "NaN scale", call: call({ x: 1, y: 2 }, 30, Number.NaN) },
+      { label: "positive infinite scale", call: call({ x: 1, y: 2 }, 30, Infinity) },
+      { label: "negative infinite scale", call: call({ x: 1, y: 2 }, 30, -Infinity) },
+      { label: "NaN center x", call: call({ x: Number.NaN, y: 2 }, 30, 1) },
+    ],
+    ownership,
+  };
+}
+
 function propertyDescriptorSummary(owner, property) {
   const descriptor = Object.getOwnPropertyDescriptor(owner, property);
   if (descriptor === undefined) return { present: false };
@@ -4891,6 +5118,10 @@ self.addEventListener("message", async ({ data: input }) => {
       self.postMessage({ outputs: { polygonAudit: auditPolygonContracts(reference) } });
       return;
     }
+    if (request === "rotation-matrix-contracts") {
+      self.postMessage({ outputs: { rotationMatrixAudit: auditRotationMatrix(reference) } });
+      return;
+    }
     const source = reference.matFromArray(2, 3, reference.CV_8UC1, sourceInput);
     const outputs = {};
     const operations = [
@@ -4932,6 +5163,7 @@ self.addEventListener("message", async ({ data: input }) => {
     const rotation = reference.getRotationMatrix2D(new reference.Point(1, 2), 90, 1);
     outputs.getRotationMatrix2D = copyF64(rotation);
     rotation.delete();
+    outputs.rotationMatrixAudit = auditRotationMatrix(reference);
 
     outputs.optimalDftSizes = [
       reference.getOptimalDFTSize(7),
