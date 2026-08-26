@@ -85,6 +85,8 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | core    | `cartToPolar`             | `cv.cartToPolar`             | Partial | F32/F64 with mutable outputs           |
 | core    | `exp`                     | `cv.exp`                     | Partial | F32/F64 element-wise output            |
 | core    | `flip`                    | `cv.flip`                    | Partial | All depths and destination mutation    |
+| core    | `getLogLevel`             | `cv.getLogLevel`             | Partial | Package-owned log level 0 through 6    |
+| core    | `getOptimalDFTSize`       | `cv.getOptimalDFTSize`       | Partial | Signed 32-bit 5-smooth size planning   |
 | core    | `hconcat`                 | `cv.hconcat`                 | Partial | All depths, two through four inputs    |
 | core    | `inRange`                 | `cv.inRange`                 | Partial | U8 matrix bounds                       |
 | core    | `invert`                  | `cv.invert`                  | Partial | Square matrices and three methods      |
@@ -110,6 +112,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | core    | `reduce`                  | `cv.reduce`                  | Partial | Both axes, four modes, all depths      |
 | core    | `rotate`                  | `cv.rotate`                  | Partial | All depths and rotation codes          |
 | core    | `setIdentity`             | `cv.setIdentity`             | Partial | All depths and in-place output         |
+| core    | `setLogLevel`             | `cv.setLogLevel`             | Partial | Previous-level return and state update |
 | core    | `setRNGSeed`              | `cv.setRNGSeed`              | Partial | Deterministic package-owned RNG        |
 | core    | `solve`                   | `cv.solve`                   | Partial | LU, Cholesky, and QR methods           |
 | core    | `subtract`                | `cv.subtract`                | Partial | Saturating U8 matrix operands          |
@@ -140,7 +143,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc | `findContours`            | `cv.findContours`            | Planned | Not started                            |
 | imgproc | `warpPerspective`         | `cv.warpPerspective`         | Planned | Not started                            |
 
-Current full parity is **0 of 488 (0%)**. There are **66 partial families** with working Rust/WASM slices. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+Current full parity is **0 of 488 (0%)**. There are **69 partial families** with working Rust/WASM slices. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
 
 Read [the inventory](docs/INVENTORY.md) and [complete parity contract](docs/PARITY.md) for the denominator, exclusions, and definition of done.
 

@@ -4,6 +4,42 @@
   "entries": [
     {
       "implementationOrigin": "original",
+      "method": "getLogLevel",
+      "module": "core",
+      "notes": "Package-owned WebAssembly-instance log state with levels 0 through 6; the official OpenCV.js 4.13.0 docs artifact does not expose this config-listed binding, so runtime differential verification remains unavailable.",
+      "patentReview": "required",
+      "sources": ["https://docs.opencv.org/4.13.0/d0/de1/group__core.html"],
+      "status": "partial",
+      "upstream": "cv.getLogLevel",
+      "upstreamId": "core.function.get-log-level",
+      "wasmExport": "getLogLevel"
+    },
+    {
+      "implementationOrigin": "original",
+      "method": "setLogLevel",
+      "module": "core",
+      "notes": "Accepts levels 0 through 6, updates package-owned WebAssembly-instance state, and returns the previous level; the official OpenCV.js 4.13.0 docs artifact does not expose this config-listed binding, so runtime differential verification remains unavailable.",
+      "patentReview": "required",
+      "sources": ["https://docs.opencv.org/4.13.0/d0/de1/group__core.html"],
+      "status": "partial",
+      "upstream": "cv.setLogLevel",
+      "upstreamId": "core.function.set-log-level",
+      "wasmExport": "setLogLevel"
+    },
+    {
+      "implementationOrigin": "original",
+      "method": "getOptimalDFTSize",
+      "module": "core",
+      "notes": "Signed 32-bit inputs, non-positive inputs returning 1, and 2-, 3-, and 5-smooth results through 2,125,764,000; representative browser differential fixtures pass, while broader edge-case audits remain.",
+      "patentReview": "required",
+      "sources": ["https://docs.opencv.org/4.13.0/d0/de1/group__core.html"],
+      "status": "partial",
+      "upstream": "cv.getOptimalDFTSize",
+      "upstreamId": "core.function.get-optimal-dftsize",
+      "wasmExport": "getOptimalDFTSize"
+    },
+    {
+      "implementationOrigin": "original",
       "method": "setIdentity",
       "module": "core",
       "notes": "All scalar depths, strided regions, one through four channels, default or per-channel scaling, and in-place output; differential fixtures remain.",

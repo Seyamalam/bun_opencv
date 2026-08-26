@@ -137,6 +137,18 @@ These methods mutate existing matrices and support all seven scalar depths, stri
 
 The random functions use an independently authored SplitMix64 stream and Box-Muller normal sampler. Resetting a seed reproduces package results. It does not reproduce OpenCV's random sequence, so these families remain partial.
 
+### Core runtime utilities
+
+- `getLogLevel()` returns the package-owned log severity for the current WebAssembly instance.
+- `setLogLevel(level)` updates that severity and returns the previous level.
+- `getOptimalDFTSize(size)` returns the smallest integer at least as large as `size` whose only prime factors are 2, 3, and 5.
+
+`LogLevel` is the integer union `0 | 1 | 2 | 3 | 4 | 5 | 6`, representing silent, fatal, error, warning, informational, debug, and verbose logging. The initial level is warning (`3`). Invalid levels throw `OpenCvInputError`. Logging state belongs to this package and one WebAssembly instance; it does not configure an installed OpenCV runtime.
+
+OpenCV's 4.13.0 JavaScript binding configuration lists `getLogLevel` and `setLogLevel`, but the official documentation artifact used by the browser differential harness does not expose them at runtime. Their package behavior is covered by Rust and TypeScript tests; direct upstream runtime comparison is therefore unavailable for that pinned artifact.
+
+`getOptimalDFTSize` accepts signed 32-bit integers. It returns `1` for zero, negative values, and `1`. The largest representable result is `2,125,764,000`; inputs above it return `-1`. Inputs outside the signed 32-bit range throw `OpenCvInputError` at the TypeScript boundary.
+
 ### Per-element transforms
 
 `transform(source, coefficients)` allocates a result. `transform(source, coefficients, destination)` writes into an exact destination. The source may use any scalar depth and one through four channels. Coefficients must be a single-channel F32 or F64 matrix with one row per output channel. It may contain one column per input channel for a linear transform or one extra column for an affine bias. The output keeps the source depth and may have a different channel count.

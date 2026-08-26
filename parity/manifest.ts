@@ -25,6 +25,7 @@ export interface ParityManifest {
 }
 
 const CORE_ARRAY_SOURCE = "https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html";
+const CORE_SOURCE = "https://docs.opencv.org/4.13.0/d0/de1/group__core.html";
 const IMGPROC_COLOR_SOURCE =
   "https://docs.opencv.org/4.13.0/d8/d01/group__imgproc__color__conversions.html";
 const IMGPROC_TRANSFORM_SOURCE =
@@ -36,6 +37,45 @@ export const PARITY_MANIFEST = {
   baseline: "OpenCV.js 4.13.0 public browser bindings",
   baselineSource: "https://github.com/opencv/opencv/blob/4.13.0/platforms/js/opencv_js.config.py",
   entries: [
+    {
+      implementationOrigin: "original",
+      method: "getLogLevel",
+      module: "core",
+      notes:
+        "Package-owned WebAssembly-instance log state with levels 0 through 6; the official OpenCV.js 4.13.0 docs artifact does not expose this config-listed binding, so runtime differential verification remains unavailable.",
+      patentReview: "required",
+      sources: [CORE_SOURCE],
+      status: "partial",
+      upstream: "cv.getLogLevel",
+      upstreamId: "core.function.get-log-level",
+      wasmExport: "getLogLevel",
+    },
+    {
+      implementationOrigin: "original",
+      method: "setLogLevel",
+      module: "core",
+      notes:
+        "Accepts levels 0 through 6, updates package-owned WebAssembly-instance state, and returns the previous level; the official OpenCV.js 4.13.0 docs artifact does not expose this config-listed binding, so runtime differential verification remains unavailable.",
+      patentReview: "required",
+      sources: [CORE_SOURCE],
+      status: "partial",
+      upstream: "cv.setLogLevel",
+      upstreamId: "core.function.set-log-level",
+      wasmExport: "setLogLevel",
+    },
+    {
+      implementationOrigin: "original",
+      method: "getOptimalDFTSize",
+      module: "core",
+      notes:
+        "Signed 32-bit inputs, non-positive inputs returning 1, and 2-, 3-, and 5-smooth results through 2,125,764,000; representative browser differential fixtures pass, while broader edge-case audits remain.",
+      patentReview: "required",
+      sources: [CORE_SOURCE],
+      status: "partial",
+      upstream: "cv.getOptimalDFTSize",
+      upstreamId: "core.function.get-optimal-dftsize",
+      wasmExport: "getOptimalDFTSize",
+    },
     {
       implementationOrigin: "original",
       method: "setIdentity",

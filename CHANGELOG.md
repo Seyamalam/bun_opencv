@@ -12,6 +12,7 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - All-depth matrix flip, transpose, rotation, and repeat operations with strided-region handling.
 - All-depth count, sum, mean, extrema-location, and trace reductions with explicit NaN rules.
 - All-depth identity, uniform random, and normal random matrix fills with reproducible package-owned seed control.
+- Package-owned log-level state and 2-, 3-, and 5-smooth DFT size planning utilities.
 - Per-element linear, affine, and perspective transforms with allocating and mutable destination forms.
 - Dense determinant, inverse, and linear-system solvers with LU, Cholesky, and QR methods.
 - Contour measurement, bounds, convexity, and signed point-to-polygon queries for I32, F32, and F64 point matrices.
