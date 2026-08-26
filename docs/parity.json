@@ -1194,10 +1194,10 @@
       "implementationOrigin": "original",
       "method": "flip",
       "module": "core",
-      "notes": "All scalar depths, channels, flip codes, allocating results, and mutable destinations; the U8 browser differential passes, while empty-matrix and all-depth differential audits remain.",
+      "notes": "Exact three-argument browser contract across all scalar depths, signed flip codes, empty and deleted matrices, destination reallocation, in-place operation, and shared or detached regions.",
       "patentReview": "required",
       "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
-      "status": "partial",
+      "status": "implemented",
       "upstream": "cv.flip",
       "upstreamId": "core.function.flip",
       "wasmExport": "matFlip"

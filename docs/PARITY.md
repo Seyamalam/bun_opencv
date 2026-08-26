@@ -25,7 +25,7 @@ Desktop modules that the official OpenCV.js build disables are outside this pari
 
 ## Fully implemented families
 
-Fifty-seven families meet the full-family definition. Current full parity is 57 of 488, or 11.68%.
+Fifty-eight families meet the full-family definition. Current full parity is 58 of 488, or 11.89%.
 
 | Package methods                                                                                                   | OpenCV.js families                              | Verified contract                                                          |
 | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------- |
@@ -57,17 +57,18 @@ Fifty-seven families meet the full-family definition. Current full parity is 57 
 | `FastFeatureDetector.getType`, `FastFeatureDetector.setType`                                                      | Matching enum-backed `cv.FastFeatureDetector`   | Canonical identity, structural conversion, raw i32 state, and lifecycle    |
 | `getOptimalDFTSize`                                                                                               | `cv.getOptimalDFTSize`                          | Exact arity, i32 coercion, smooth results, errors, and sentinel            |
 | `transpose`                                                                                                       | `cv.transpose`                                  | Exact all-depth OutputArray, aliasing, empty, arity, and lifetime behavior |
+| `flip`                                                                                                            | `cv.flip`                                       | Exact all-depth OutputArray, signed codes, aliasing, errors, and lifetime  |
 
 ## Working partial families
 
-Seventy-two families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 129 families in total.
+Seventy-one families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 129 families in total.
 
 | Package methods                                        | OpenCV.js families                                                    | Current limit                                            |
 | ------------------------------------------------------ | --------------------------------------------------------------------- | -------------------------------------------------------- |
 | `add`, `subtract`, `absdiff`, `min`, `max`             | `cv.add`, `cv.subtract`, `cv.absdiff`, `cv.min`, `cv.max`             | Matching U8 matrix operands                              |
 | `bitwiseAnd`, `bitwiseOr`, `bitwiseXor`, `bitwiseNot`  | `cv.bitwise_and`, `cv.bitwise_or`, `cv.bitwise_xor`, `cv.bitwise_not` | U8 matrices without scalar or mask forms                 |
 | `compareEqual`, `inRange`, `countNonZero`              | `cv.compare`, `cv.inRange`, `cv.countNonZero`                         | Selected U8 forms                                        |
-| `flip`, `repeat`, `rotate`                             | `cv.flip`, `cv.repeat`, `cv.rotate`                                   | All depths and mutable destinations                      |
+| `repeat`, `rotate`                                     | `cv.repeat`, `cv.rotate`                                              | All depths and mutable destinations                      |
 | `split`, `merge`                                       | `cv.split`, `cv.merge`                                                | All depths; selected array call forms                    |
 | `hconcat`, `vconcat`                                   | `cv.hconcat`, `cv.vconcat`                                            | All depths; two through four inputs                      |
 | `exp`, `log`, `sqrt`, `pow`, `magnitude`               | Matching `cv` floating-point families                                 | F32/F64; selected return forms                           |

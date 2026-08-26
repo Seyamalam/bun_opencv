@@ -71,16 +71,16 @@ Multi-input operations require identical rows, columns, and channels. These meth
 
 ### Matrix layout operations
 
-- `flip(source, code)` accepts `-1`, `0`, or `1` for both axes, rows, or columns.
+- `flipAlloc(source, code)` allocates a flipped matrix. Zero flips rows, positive signed 32-bit codes flip columns, and negative codes flip both axes.
 - `transposeAlloc(source)` swaps rows and columns and allocates a new matrix.
 - `rotate(source, code)` accepts `0`, `1`, or `2` for 90 degrees clockwise, 180 degrees, or 90 degrees counterclockwise.
 - `repeat(source, rowRepeats, columnRepeats)` tiles a matrix by positive integer counts.
 
 These operations preserve all seven scalar depths and every interleaved channel. They return new Rust-owned matrices and compact non-contiguous regions before rearranging pixels.
 
-Each layout operation also accepts an OpenCV-style destination form: `flip(source, destination, code)`, `transpose(source, destination)`, `rotate(source, destination, code)`, and `repeat(source, rows, columns, destination)`. Transpose has the exact two-argument OpenCV.js contract. It reuses compatible destinations, reallocates incompatible ordinary matrices, and detaches incompatible regions. Compatible regions write through to shared parent storage.
+Each layout operation also accepts an OpenCV-style destination form: `flip(source, destination, code)`, `transpose(source, destination)`, `rotate(source, destination, code)`, and `repeat(source, rows, columns, destination)`. Flip and transpose use the exact OpenCV.js argument counts. They reuse compatible destinations, reallocate incompatible ordinary matrices, and detach incompatible regions. Compatible regions write through to shared parent storage.
 
-The browser differential harness passes pinned OpenCV.js 4.13.0 U8 fixtures for all four layout operations. Transpose additionally passes all supported depths, empty and deleted matrices, destination replacement, exact in-place calls, detached incompatible regions, and live overlapping aliases.
+The browser differential harness passes pinned OpenCV.js 4.13.0 U8 fixtures for all four layout operations. Flip and transpose additionally pass all supported depths, empty and deleted matrices, destination replacement, exact in-place calls, detached incompatible regions, and live overlapping aliases.
 
 ### Matrix channels
 
