@@ -11,6 +11,8 @@ mod core_float_math_wasm;
 mod core_layout;
 mod core_layout_wasm;
 mod core_lut_wasm;
+mod core_norm;
+mod core_norm_wasm;
 mod core_numeric;
 mod core_ops;
 mod core_reductions;
