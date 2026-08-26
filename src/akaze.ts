@@ -33,6 +33,7 @@ export interface AKAZE_DescriptorTypeNamespace extends Function {
   DESCRIPTOR_MLDB_UPRIGHT: AKAZE_DescriptorTypeValue;
   DESCRIPTOR_MLDB: AKAZE_DescriptorTypeValue;
   readonly prototype: AKAZE_DescriptorTypeValue;
+  readonly values: Readonly<Record<number, AKAZE_DescriptorTypeValue>>;
 }
 
 /** OpenCV.js-compatible descriptor-type enum namespace. */
@@ -55,6 +56,7 @@ export interface KAZE_DiffusivityTypeNamespace extends Function {
   DIFF_WEICKERT: KAZE_DiffusivityTypeValue;
   DIFF_CHARBONNIER: KAZE_DiffusivityTypeValue;
   readonly prototype: KAZE_DiffusivityTypeValue;
+  readonly values: Readonly<Record<number, KAZE_DiffusivityTypeValue>>;
 }
 
 /** OpenCV.js-compatible nonlinear-diffusion enum namespace. */

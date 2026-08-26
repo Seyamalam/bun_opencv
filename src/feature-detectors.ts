@@ -31,6 +31,7 @@ export interface AgastFeatureDetector_DetectorTypeNamespace extends Function {
   AGAST_7_12s: AgastFeatureDetector_DetectorTypeValue;
   OAST_9_16: AgastFeatureDetector_DetectorTypeValue;
   readonly prototype: AgastFeatureDetector_DetectorTypeValue;
+  readonly values: Readonly<Record<number, AgastFeatureDetector_DetectorTypeValue>>;
 }
 
 /** OpenCV.js-compatible AGAST detector-type enum namespace. */
@@ -52,6 +53,7 @@ export interface FastFeatureDetector_DetectorTypeNamespace extends Function {
   TYPE_7_12: FastFeatureDetector_DetectorTypeValue;
   TYPE_9_16: FastFeatureDetector_DetectorTypeValue;
   readonly prototype: FastFeatureDetector_DetectorTypeValue;
+  readonly values: Readonly<Record<number, FastFeatureDetector_DetectorTypeValue>>;
 }
 
 /** OpenCV.js-compatible FAST detector-type enum namespace. */

@@ -46,7 +46,13 @@ test("detector enum namespaces expose Embind singleton objects", () => {
   for (const [namespaceName, namespace, constantNames, values] of namespaceCases) {
     expect(typeof namespace).toBe("function");
     expect(namespace.name).toBe(namespaceName);
-    expect(new Set(Object.keys(namespace))).toEqual(new Set(constantNames));
+    expect(new Set(Object.keys(namespace))).toEqual(new Set([...constantNames, "values"]));
+    const valueLookup = (
+      namespace as unknown as Function & {
+        readonly values: Readonly<Record<number, EmbindEnumValue>>;
+      }
+    ).values;
+    expect(Object.keys(valueLookup)).toEqual(values.map(String));
 
     for (const [index, constantName] of constantNames.entries()) {
       const constant = (namespace as unknown as Function & Record<string, EmbindEnumValue>)[
@@ -79,6 +85,7 @@ test("detector enum namespaces expose Embind singleton objects", () => {
       expect(String(constant)).toBe("[object Object]");
       expect(Number(constant)).toBeNaN();
       expect(JSON.stringify(constant)).toBe("{}");
+      expect(valueLookup[values[index]!]).toBe(constant);
     }
   }
 });
