@@ -551,7 +551,8 @@ class WasmOpenCv implements OpenCv {
   }
 
   isContourConvex(contour: Mat): boolean {
-    return this.#backend.matIsContourConvex(contour.handleForBackend());
+    requireExactArity(arguments.length, 1, "isContourConvex");
+    return this.#backend.matIsContourConvex(matHandleForBinding(contour));
   }
 
   log(source: Mat, destination: Mat): void {
@@ -752,12 +753,14 @@ class WasmOpenCv implements OpenCv {
   }
 
   pointPolygonTest(contour: Mat, point: Point, measureDistance: boolean): number {
-    validateFinitePoint(point, "point");
+    requireExactArity(arguments.length, 3, "pointPolygonTest");
+    const contourHandle = matHandleForBinding(contour);
+    const bindingPoint = point2fForBinding(point);
     return this.#backend.matPointPolygonTest(
-      contour.handleForBackend(),
-      point.x,
-      point.y,
-      measureDistance,
+      contourHandle,
+      bindingPoint.x,
+      bindingPoint.y,
+      coerceBoolean(measureDistance),
     );
   }
 
@@ -1140,7 +1143,13 @@ interface EmbindObjectInput {
   toString(): string;
 }
 
+interface EmbindPointObject extends EmbindObjectInput {
+  readonly x?: EmbindPointInput;
+  readonly y?: EmbindPointInput;
+}
+
 type EmbindScalarInput = boolean | number | EmbindObjectInput | string | null | undefined;
+type EmbindPointInput = EmbindScalarInput | bigint | symbol;
 
 function toWasmI32(value: EmbindScalarInput): number {
   if (value === true) return 1;
@@ -1178,6 +1187,36 @@ function matHandleForBinding(value: Mat): ReturnType<Mat["handleForBackend"]> {
     throw new BindingError(`Cannot pass "${String(value)}" as a Mat`);
   }
   return value.handleForBackend();
+}
+
+function point2fForBinding(value: EmbindPointInput): Point {
+  if (!isEmbindPointObject(value)) {
+    throw new BindingError(`Cannot convert "${String(value)}" to Point2f`);
+  }
+  if (!("x" in value)) {
+    throw new BindingError("Point2f is missing field x");
+  }
+  if (!("y" in value)) {
+    throw new BindingError("Point2f is missing field y");
+  }
+  const x = toWasmF32(value.x);
+  const y = toWasmF32(value.y);
+  return { x, y };
+}
+
+function isEmbindPointObject(value: EmbindPointInput): value is EmbindPointObject {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- This is the JS-to-Embind Point2f parser boundary.
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function toWasmF32(value: EmbindPointInput): number {
+  if (value === true) return 1;
+  if (value === false) return 0;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- This is the JS-to-Embind scalar parser boundary.
+  if (typeof value !== "number") {
+    throw new TypeError(`Cannot convert "${String(value)}" to float`);
+  }
+  return Math.fround(value);
 }
 
 function coerceBoolean(

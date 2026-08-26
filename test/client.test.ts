@@ -669,6 +669,11 @@ class CopyingBackend implements OpenCvBackend {
     readonly dtype: number;
   }> = [];
   readonly optimalDftSizeInputs: number[] = [];
+  readonly pointPolygonTestInputs: Array<{
+    readonly x: number;
+    readonly y: number;
+    readonly measureDistance: boolean;
+  }> = [];
   readonly polarToCartDegreeFlags: boolean[] = [];
 
   readonly AKAZE: WasmAKAZEFactory = {
@@ -1614,6 +1619,7 @@ class CopyingBackend implements OpenCvBackend {
     y: number,
     measureDistance: boolean,
   ): number {
+    this.pointPolygonTestInputs.push({ x, y, measureDistance });
     const points = contourPoints(contour);
     let inside = false;
     let nearest = Number.POSITIVE_INFINITY;
@@ -2231,9 +2237,6 @@ describe("OpenCv client", () => {
     expect(client.boundingRect(contour)).toEqual({ x: 0, y: 0, width: 5, height: 4 });
     expect(client.isContourConvex(contour)).toBeTrue();
     expect(client.pointPolygonTest(contour, { x: 2, y: 1 }, true)).toBe(1);
-    expect(() => client.pointPolygonTest(contour, { x: Number.NaN, y: 1 }, false)).toThrow(
-      OpenCvInputError,
-    );
 
     contour.dispose();
   });
@@ -2252,6 +2255,120 @@ describe("OpenCv client", () => {
     expect(() => client.arcLength(contour)).toThrow(BindingError);
     // @ts-expect-error Runtime parity rejects extra arguments.
     expect(() => client.boundingRect(contour, 1)).toThrow(BindingError);
+
+    contour.dispose();
+  });
+
+  test("matches polygon query call contracts", () => {
+    type JavascriptBindingValue =
+      boolean | number | bigint | string | symbol | object | null | undefined;
+    const backend = new CopyingBackend();
+    const localClient = createOpenCv(backend);
+    const contour = localClient.matFromI32(4, 1, 2, new Int32Array([0, 0, 4, 0, 4, 3, 0, 3]));
+    // SAFETY: This widens only the plain-JavaScript call shapes exercised by the binding audit.
+    const javascriptClient = localClient as typeof localClient & {
+      isContourConvex(contour?: JavascriptBindingValue, extra?: JavascriptBindingValue): boolean;
+      pointPolygonTest(
+        contour?: JavascriptBindingValue,
+        point?: JavascriptBindingValue,
+        measureDistance?: JavascriptBindingValue,
+        extra?: JavascriptBindingValue,
+      ): number;
+    };
+
+    expect(localClient.isContourConvex.length).toBe(1);
+    expect(localClient.pointPolygonTest.length).toBe(3);
+    expect(() => javascriptClient.isContourConvex()).toThrow(BindingError);
+    expect(() => javascriptClient.isContourConvex(contour, 1)).toThrow(BindingError);
+    expect(() => javascriptClient.isContourConvex(null)).toThrow(BindingError);
+    expect(() => javascriptClient.pointPolygonTest()).toThrow(BindingError);
+    expect(() => javascriptClient.pointPolygonTest(contour)).toThrow(BindingError);
+    expect(() => javascriptClient.pointPolygonTest(contour, { x: 1, y: 1 })).toThrow(BindingError);
+    expect(() => javascriptClient.pointPolygonTest(contour, { x: 1, y: 1 }, false, 1)).toThrow(
+      BindingError,
+    );
+    expect(() => javascriptClient.pointPolygonTest(null, { x: 1, y: 1 }, false)).toThrow(
+      BindingError,
+    );
+
+    const propertyReads: string[] = [];
+    const point = {
+      get x(): number {
+        propertyReads.push("x");
+        return 16_777_217;
+      },
+      get y(): boolean {
+        propertyReads.push("y");
+        return true;
+      },
+      get ignored(): never {
+        throw new Error("point extras must not be read");
+      },
+    };
+    expect(javascriptClient.pointPolygonTest(contour, point, "distance")).toBeLessThan(0);
+    expect(propertyReads).toEqual(["x", "y"]);
+    expect(backend.pointPolygonTestInputs.at(-1)).toEqual({
+      x: Math.fround(16_777_217),
+      y: 1,
+      measureDistance: true,
+    });
+
+    const missingFieldReads: string[] = [];
+    const missingY = {
+      get x(): number {
+        missingFieldReads.push("x");
+        return 1;
+      },
+    };
+    expect(() => javascriptClient.pointPolygonTest(contour, missingY, false)).toThrow(BindingError);
+    expect(missingFieldReads).toEqual([]);
+
+    expect(
+      javascriptClient.pointPolygonTest(
+        contour,
+        { x: Number.NaN, y: Number.POSITIVE_INFINITY },
+        0n,
+      ),
+    ).toBe(-1);
+    const nonFiniteInput = backend.pointPolygonTestInputs.at(-1);
+    expect(nonFiniteInput?.x).toBeNaN();
+    expect(nonFiniteInput?.y).toBe(Number.POSITIVE_INFINITY);
+    expect(nonFiniteInput?.measureDistance).toBeFalse();
+
+    const boxedNumber: object = Object(1);
+    const arrayPoint = Object.assign([], { x: 1, y: 1 });
+    const rejectedPoints: JavascriptBindingValue[] = [
+      "point",
+      null,
+      undefined,
+      boxedNumber,
+      1n,
+      arrayPoint,
+      {},
+      { x: 1 },
+      { y: 1 },
+    ];
+    const rejectedComponents: JavascriptBindingValue[] = [
+      "1",
+      null,
+      undefined,
+      boxedNumber,
+      1n,
+      [],
+    ];
+    const callCountBeforeRejections = backend.pointPolygonTestInputs.length;
+    for (const rejectedPoint of rejectedPoints) {
+      expect(() => javascriptClient.pointPolygonTest(contour, rejectedPoint, false)).toThrow();
+    }
+    for (const rejectedComponent of rejectedComponents) {
+      expect(() =>
+        javascriptClient.pointPolygonTest(contour, { x: rejectedComponent, y: 1 }, false),
+      ).toThrow();
+      expect(() =>
+        javascriptClient.pointPolygonTest(contour, { x: 1, y: rejectedComponent }, false),
+      ).toThrow();
+    }
+    expect(backend.pointPolygonTestInputs).toHaveLength(callCountBeforeRejections);
 
     contour.dispose();
   });
