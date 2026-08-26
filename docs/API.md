@@ -65,7 +65,6 @@ The following methods accept Rust-owned U8 `Mat` values and return a new Rust-ow
 - `bitwiseAnd(left, right)`, `bitwiseOr(left, right)`, `bitwiseXor(left, right)`, and `bitwiseNot(source)` operate on every byte.
 - `compareEqual(left, right)` returns 255 for equal elements and 0 otherwise.
 - `inRange(source, lowerBound, upperBound)` applies inclusive per-channel bounds and returns a one-channel 255/0 mask.
-- `countNonZero(source)` returns the number of non-zero elements and requires one channel.
 
 Multi-input operations require identical rows, columns, and channels. These methods are working U8 slices, not yet complete OpenCV.js families; masks, scalar operands, optional destinations, and other depth forms remain tracked by the parity ledger.
 
@@ -251,7 +250,7 @@ The decomposition method defaults to `0` for LU. Method `3` selects Cholesky and
 - `minMaxLoc(source)` returns minimum and maximum values with their first row-major coordinates and requires one channel.
 - `trace(source)` returns the channel-zero diagonal sum.
 
-Reducers compact non-contiguous regions before decoding values. Floating-point sums, means, and traces propagate NaN. `minMaxLoc` skips NaN and throws when every value is NaN.
+Reducers compact non-contiguous regions before decoding values. `countNonZero` returns zero for an empty matrix, excludes both signs of zero, and counts NaN, infinities, and subnormal values as non-zero. Floating-point sums, means, and traces propagate NaN. `minMaxLoc` skips NaN and throws when every value is NaN.
 
 ### AKAZE configuration
 

@@ -25,7 +25,7 @@ Desktop modules that the official OpenCV.js build disables are outside this pari
 
 ## Fully implemented families
 
-Fifty-eight families meet the full-family definition. Current full parity is 58 of 488, or 11.89%.
+Fifty-nine families meet the full-family definition. Current full parity is 59 of 488, or 12.09%.
 
 | Package methods                                                                                                   | OpenCV.js families                              | Verified contract                                                          |
 | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------- |
@@ -58,16 +58,17 @@ Fifty-eight families meet the full-family definition. Current full parity is 58 
 | `getOptimalDFTSize`                                                                                               | `cv.getOptimalDFTSize`                          | Exact arity, i32 coercion, smooth results, errors, and sentinel            |
 | `transpose`                                                                                                       | `cv.transpose`                                  | Exact all-depth OutputArray, aliasing, empty, arity, and lifetime behavior |
 | `flip`                                                                                                            | `cv.flip`                                       | Exact all-depth OutputArray, signed codes, aliasing, errors, and lifetime  |
+| `countNonZero`                                                                                                    | `cv.countNonZero`                               | Exact all-depth scalar reduction, empty, ROI, errors, and lifetime         |
 
 ## Working partial families
 
-Seventy-one families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 129 families in total.
+Seventy families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 129 families in total.
 
 | Package methods                                        | OpenCV.js families                                                    | Current limit                                            |
 | ------------------------------------------------------ | --------------------------------------------------------------------- | -------------------------------------------------------- |
 | `add`, `subtract`, `absdiff`, `min`, `max`             | `cv.add`, `cv.subtract`, `cv.absdiff`, `cv.min`, `cv.max`             | Matching U8 matrix operands                              |
 | `bitwiseAnd`, `bitwiseOr`, `bitwiseXor`, `bitwiseNot`  | `cv.bitwise_and`, `cv.bitwise_or`, `cv.bitwise_xor`, `cv.bitwise_not` | U8 matrices without scalar or mask forms                 |
-| `compareEqual`, `inRange`, `countNonZero`              | `cv.compare`, `cv.inRange`, `cv.countNonZero`                         | Selected U8 forms                                        |
+| `compareEqual`, `inRange`                              | `cv.compare`, `cv.inRange`                                            | Selected U8 forms                                        |
 | `repeat`, `rotate`                                     | `cv.repeat`, `cv.rotate`                                              | All depths and mutable destinations                      |
 | `split`, `merge`                                       | `cv.split`, `cv.merge`                                                | All depths; selected array call forms                    |
 | `hconcat`, `vconcat`                                   | `cv.hconcat`, `cv.vconcat`                                            | All depths; two through four inputs                      |

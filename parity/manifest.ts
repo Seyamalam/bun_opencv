@@ -1300,10 +1300,10 @@ export const PARITY_MANIFEST = {
       method: "countNonZero",
       module: "core",
       notes:
-        "All scalar depths and non-contiguous single-channel regions; differential fixtures remain.",
+        "Exact one-argument browser contract across every available scalar depth, signed zero, NaN, infinities, subnormal values, empty and deleted matrices, non-contiguous regions, invalid Mat inputs, and semantic multi-channel rejection.",
       patentReview: "required",
       sources: [CORE_ARRAY_SOURCE],
-      status: "partial",
+      status: "implemented",
       upstream: "cv.countNonZero",
       upstreamId: "core.function.count-non-zero",
       wasmExport: "matCountNonZero",

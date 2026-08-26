@@ -77,7 +77,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | core       | `bitwiseOr`                                 | `cv.bitwise_or`                                | Partial | U8 matrix operands, no mask              |
 | core       | `bitwiseXor`                                | `cv.bitwise_xor`                               | Partial | U8 matrix operands, no mask              |
 | core       | `compareEqual`                              | `cv.compare`                                   | Partial | U8 equality mode                         |
-| core       | `countNonZero`                              | `cv.countNonZero`                              | Partial | All single-channel scalar depths         |
+| core       | `countNonZero`                              | `cv.countNonZero`                              | Full    | Exact all-depth single-channel reduction |
 | core       | `convertScaleAbs`                           | `cv.convertScaleAbs`                           | Partial | All input depths to saturated U8         |
 | core       | `copyMakeBorder`                            | `cv.copyMakeBorder`                            | Partial | All depths and five border modes         |
 | core       | `determinant`                               | `cv.determinant`                               | Partial | Square single-channel matrices           |
@@ -203,7 +203,9 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `findContours`                              | `cv.findContours`                              | Planned | Not started                              |
 | imgproc    | `warpPerspective`                           | `cv.warpPerspective`                           | Planned | Not started                              |
 
-Current full parity is **58 of 488 (11.89%)**. There are **71 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+Current full parity is **59 of 488 (12.09%)**. There are **70 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+
+The fixture passes the complete pinned browser contract for `countNonZero`, including exact arity and Mat conversion errors, all seven scalar depths available in the artifact, signed zero, NaN, infinities, subnormal values, fresh empty matrices, deleted handles, and non-contiguous regions. Multi-channel rejection is compared semantically because the official build throws a transient numeric native-exception pointer; this package preserves a stable Rust error instead.
 
 The fixture passes the complete pinned browser contract for `getOptimalDFTSize`, including exact arity, Embind signed i32 coercion and errors, negative and zero inputs, every smooth-size boundary exercised by Rust tests, and the exclusive `2,125,764,000` upper sentinel. This family counts as full parity.
 

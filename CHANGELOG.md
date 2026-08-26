@@ -33,6 +33,7 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - Ten fully implemented enum-backed detector methods across AKAZE, KAZE, AGAST, and FAST. Their browser contract covers enum namespace descriptors, canonical and shared singleton identity, structural setter coercion, unknown signed i32 wire values, exact arity, and lifetime errors. The totals are now 73 partial, 56 implemented, and 129 supported families; detector factories remain partial.
 - A fully implemented `transpose` family with exact two-argument calls, all scalar depths, OutputArray reallocation, empty and deleted matrices, in-place shapes, detached incompatible regions, and OpenCV-compatible overlapping aliases. The totals are now 72 partial, 57 implemented, and 129 supported families.
 - A fully implemented `flip` family with exact three-argument calls, Embind signed-int conversion, all scalar depths, empty and deleted matrices, OutputArray reallocation, and live shared-region alias behavior. The totals are now 71 partial, 58 implemented, and 129 supported families.
+- A fully implemented `countNonZero` family with exact one-argument calls, all seven scalar depths, empty matrices, non-contiguous regions, floating-point edge values, invalid inputs, and deleted-handle behavior. The totals are now 70 partial, 59 implemented, and 129 supported families.
 - Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
 
 ### Planned
