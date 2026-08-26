@@ -17,7 +17,6 @@ pub(crate) enum MatError {
         expected: MatDepth,
         actual: MatDepth,
     },
-    IncompatibleRegionOutput,
     RegionOutOfBounds,
 }
 
@@ -42,9 +41,6 @@ impl fmt::Display for MatError {
                     formatter,
                     "matrix depth is {actual:?}; expected {expected:?}"
                 )
-            }
-            Self::IncompatibleRegionOutput => {
-                formatter.write_str("an ROI destination cannot be rebound to different metadata")
             }
             Self::RegionOutOfBounds => {
                 formatter.write_str("matrix region extends outside its parent")
@@ -147,7 +143,6 @@ struct MatHeader {
     columns: u32,
     channels: u16,
     depth: MatDepth,
-    is_region: bool,
 }
 
 impl Mat {
@@ -207,7 +202,6 @@ impl Mat {
                 columns,
                 channels,
                 depth,
-                is_region: false,
             }),
         })
     }
@@ -239,7 +233,6 @@ impl Mat {
                 columns,
                 channels,
                 depth,
-                is_region: false,
             }),
         })
     }
@@ -252,7 +245,6 @@ impl Mat {
                 columns: 0,
                 channels: 1,
                 depth: MatDepth::U8,
-                is_region: false,
             }),
         }
     }
@@ -314,9 +306,6 @@ impl Mat {
                         .as_slice(),
                 )
                 .map_err(MatError::from);
-        }
-        if current.is_region {
-            return Err(MatError::IncompatibleRegionOutput);
         }
         drop(current);
         self.header.replace(replacement_header);
@@ -384,7 +373,6 @@ impl Mat {
                 columns,
                 channels: header.channels,
                 depth: header.depth,
-                is_region: true,
             }),
         })
     }
@@ -808,21 +796,27 @@ mod tests {
     }
 
     #[test]
-    fn output_writes_through_compatible_roi_and_rejects_incompatible_roi_atomically() {
+    fn output_writes_through_compatible_roi_and_detaches_incompatible_roi() {
         let parent = Mat::from_u8_slice(&[1, 2, 3, 4, 5, 6], 2, 3, 1).expect("valid parent");
         let roi = parent.region(0, 1, 2, 2).expect("valid ROI");
+        let old_alias = parent.region(0, 1, 2, 2).expect("valid old alias");
 
         roi.write_output(vec![9, 8, 7, 6], 2, 2, 1, MatDepth::U8)
             .expect("compatible ROI writes through");
         assert_eq!(parent.to_u8_array(), [1, 9, 8, 4, 7, 6]);
 
         let before = parent.to_u8_array();
-        let error = roi
-            .write_output(vec![5, 4, 3], 1, 3, 1, MatDepth::U8)
-            .expect_err("incompatible ROI cannot detach");
-        assert_eq!(error, MatError::IncompatibleRegionOutput);
+        roi.write_output(vec![5, 4, 3], 1, 3, 1, MatDepth::U8)
+            .expect("incompatible ROI detaches");
         assert_eq!(parent.to_u8_array(), before);
-        assert_eq!((roi.rows(), roi.columns()), (2, 2));
+        assert_eq!((roi.rows(), roi.columns()), (1, 3));
+        assert_eq!(roi.to_u8_array(), [5, 4, 3]);
+
+        old_alias
+            .write_compact_bytes(&[20, 30, 40, 50])
+            .expect("old allocation remains writable");
+        assert_eq!(parent.to_u8_array(), [1, 20, 30, 4, 40, 50]);
+        assert_eq!(roi.to_u8_array(), [5, 4, 3]);
     }
 
     #[test]

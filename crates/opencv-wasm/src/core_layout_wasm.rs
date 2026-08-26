@@ -86,7 +86,7 @@ pub fn mat_flip(source: &Mat, flip_code: i32) -> Result<Mat, JsError> {
 ///
 /// # Errors
 ///
-/// Returns an error for an invalid flip code or an incompatible ROI destination.
+/// Returns an error for an invalid flip code or output allocation failure.
 #[wasm_bindgen(js_name = matFlipInto)]
 pub fn mat_flip_into(source: &Mat, destination: &Mat, flip_code: i32) -> Result<(), JsError> {
     apply_layout_into(source, destination, |matrix| flip_bytes(matrix, flip_code))
@@ -107,7 +107,7 @@ pub fn mat_transpose(source: &Mat) -> Result<Mat, JsError> {
 ///
 /// # Errors
 ///
-/// Returns an error when an ROI destination does not match the transposed output.
+/// Returns an error when the output cannot be allocated.
 #[wasm_bindgen(js_name = matTransposeInto)]
 pub fn mat_transpose_into(source: &Mat, destination: &Mat) -> Result<(), JsError> {
     apply_layout_into(source, destination, transpose_bytes).map_err(JsError::from)
@@ -130,7 +130,7 @@ pub fn mat_rotate(source: &Mat, rotate_code: i32) -> Result<Mat, JsError> {
 ///
 /// # Errors
 ///
-/// Returns an error for an invalid rotation code or an incompatible ROI destination.
+/// Returns an error for an invalid rotation code or output allocation failure.
 #[wasm_bindgen(js_name = matRotateInto)]
 pub fn mat_rotate_into(source: &Mat, destination: &Mat, rotate_code: i32) -> Result<(), JsError> {
     apply_layout_into(source, destination, |matrix| {
@@ -157,7 +157,7 @@ pub fn mat_repeat(source: &Mat, row_repeats: i32, column_repeats: i32) -> Result
 ///
 /// # Errors
 ///
-/// Returns an error for invalid repeat counts or an incompatible ROI destination.
+/// Returns an error for invalid repeat counts or output allocation failure.
 #[wasm_bindgen(js_name = matRepeatInto)]
 pub fn mat_repeat_into(
     source: &Mat,
@@ -498,18 +498,17 @@ mod tests {
     }
 
     #[test]
-    fn into_rejects_incompatible_roi_without_changing_parent_or_header() {
+    fn into_detaches_incompatible_roi_without_changing_parent() {
         let source = u8_matrix(vec![1, 2, 3, 4, 5, 6], 2, 3, 1);
         let parent = u8_matrix(vec![9; 12], 3, 4, 1);
         let destination = parent.roi(0, 0, 2, 3).expect("valid ROI");
         let before = parent.to_u8_array();
 
-        assert!(matches!(
-            apply_layout_into(&source, &destination, transpose_bytes),
-            Err(LayoutWasmError::Matrix(MatError::IncompatibleRegionOutput))
-        ));
+        apply_layout_into(&source, &destination, transpose_bytes)
+            .expect("incompatible ROI header detaches");
         assert_eq!(parent.to_u8_array(), before);
-        assert_eq!((destination.rows(), destination.columns()), (2, 3));
+        assert_eq!((destination.rows(), destination.columns()), (3, 2));
+        assert_eq!(destination.to_u8_array(), [1, 4, 2, 5, 3, 6]);
     }
 
     #[test]
