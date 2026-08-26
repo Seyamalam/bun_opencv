@@ -183,11 +183,11 @@ isContourConvex(contour: Mat): boolean;
 pointPolygonTest(contour: Mat, point: Point, measureDistance: boolean): number;
 ```
 
-These methods accept I32, F32, and F64 contours stored as `Nx1C2`, `1xNC2`, or `Nx2C1`. They read strided regions through their logical bytes. Other curve containers and points with more than two dimensions are not supported.
+`arcLength`, `contourArea`, and `boundingRect` accept I32 and F32 contours stored as `Nx1C2`, `1xNC2`, or `Nx2C1`. They reject F64, U8, invalid shapes, deleted inputs, non-finite coordinates, and numeric overflow. They read strided regions through their logical bytes. Other curve containers and points with more than two dimensions are not supported.
 
-`arcLength` measures an open or closed perimeter. `contourArea` returns unsigned area by default and signed, oriented area when `oriented` is true. Fewer than three points have zero area. `boundingRect` floors fractional coordinates and returns inclusive integer bounds, so one integer point produces a 1-by-1 rectangle. Empty contours are rejected by perimeter and bounds operations.
+`arcLength` accepts exactly two arguments. `contourArea` has a JavaScript runtime length of zero and accepts one or two arguments. `boundingRect` accepts exactly one argument. The optional flags use JavaScript truthiness. `arcLength` measures an open or closed perimeter. `contourArea` returns unsigned area by default and signed, oriented area when `oriented` is truthy. Fewer than three points have zero area. `boundingRect` floors fractional coordinates and returns inclusive integer bounds, so one integer point produces a 1-by-1 rectangle. A canonical empty `Mat` has zero bounds. The package rejects typed empty contours before entering upstream paths that do not return a safe JavaScript error.
 
-`isContourConvex` accepts collinear points along an otherwise convex boundary. It returns false for fewer than three points or an entirely collinear contour, and it does not separately diagnose self-intersection. `pointPolygonTest` requires at least three points. It returns positive inside, negative outside, and zero on an edge. Without distance measurement, nonzero results are exactly `1` or `-1`. With distance measurement, the magnitude is the nearest-boundary distance. All five methods reject non-finite coordinates and numeric overflow.
+`isContourConvex` and `pointPolygonTest` remain partial. They accept I32 and F32 contours in the same layouts. Their F64 support is a package extension and does not count toward OpenCV.js parity. `isContourConvex` accepts collinear points along an otherwise convex boundary. It returns false for fewer than three points or an entirely collinear contour, and it does not separately diagnose self-intersection. `pointPolygonTest` requires at least three points. It returns positive inside, negative outside, and zero on an edge. Without distance measurement, nonzero results are exactly `1` or `-1`. With distance measurement, the magnitude is the nearest-boundary distance.
 
 ### Image-processing helpers
 
@@ -235,7 +235,7 @@ getPerspectiveTransform(source: Mat, destination: Mat): Mat;
 
 All four constructors allocate their results. Mutable destination forms and browser differential fixtures remain before these families can move beyond partial status.
 
-The pinned OpenCV.js 4.13.0 browser harness passes worked fixtures for `arcLength`, `contourArea`, `boundingRect`, `isContourConvex`, `pointPolygonTest`, `getStructuringElement`, and `getRotationMatrix2D`. The remaining layouts, modes, invalid inputs, and numeric boundary cases still require differential audit before full-family credit.
+The pinned OpenCV.js 4.13.0 browser harness passes the complete audited contracts for `arcLength`, `contourArea`, and `boundingRect`. It also passes worked fixtures for `isContourConvex`, `pointPolygonTest`, `getStructuringElement`, and `getRotationMatrix2D`. Those remaining families still need layout, mode, invalid-input, and numeric-boundary audits before full-family credit.
 
 ### Dense matrix algebra
 

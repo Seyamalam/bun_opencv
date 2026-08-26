@@ -182,10 +182,10 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | features2d | `GFTTDetector.setMaxFeatures`               | `cv.GFTTDetector.setMaxFeatures`               | Full    | Exact i32 coercion and call contract     |
 | features2d | `GFTTDetector.setMinDistance`               | `cv.GFTTDetector.setMinDistance`               | Full    | Exact number coercion and call contract  |
 | features2d | `GFTTDetector.setQualityLevel`              | `cv.GFTTDetector.setQualityLevel`              | Full    | Exact number coercion and call contract  |
-| imgproc    | `arcLength`                                 | `cv.arcLength`                                 | Partial | I32/F32/F64 2D contour layouts           |
-| imgproc    | `boundingRect`                              | `cv.boundingRect`                              | Partial | Inclusive bounds for 2D contours         |
+| imgproc    | `arcLength`                                 | `cv.arcLength`                                 | Full    | Exact I32/F32 contour contract           |
+| imgproc    | `boundingRect`                              | `cv.boundingRect`                              | Full    | Exact I32/F32 contour bounds             |
 | imgproc    | `clipLine`                                  | `cv.clipLine`                                  | Partial | Integer rectangle and segment form       |
-| imgproc    | `contourArea`                               | `cv.contourArea`                               | Partial | Unsigned or oriented 2D contour area     |
+| imgproc    | `contourArea`                               | `cv.contourArea`                               | Full    | Exact I32/F32 contour area               |
 | imgproc    | `createHanningWindow`                       | `cv.createHanningWindow`                       | Partial | F32/F64 two-dimensional windows          |
 | imgproc    | `ellipse2Poly`                              | `cv.ellipse2Poly`                              | Partial | Ordered integer ellipse arcs             |
 | imgproc    | `getAffineTransform`                        | `cv.getAffineTransform`                        | Partial | Three F32/F64 point pairs to F64         |
@@ -194,8 +194,8 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `getStructuringElement`                     | `cv.getStructuringElement`                     | Partial | U8 rectangle, cross, or ellipse kernel   |
 | imgproc    | `grayscale`                                 | `cv.cvtColor`                                  | Partial | RGBA-to-gray specialization              |
 | imgproc    | `invertAffineTransform`                     | `cv.invertAffineTransform`                     | Partial | F32/F64 2x3 input to F64 inverse         |
-| imgproc    | `isContourConvex`                           | `cv.isContourConvex`                           | Partial | Convexity for supported 2D contours      |
-| imgproc    | `pointPolygonTest`                          | `cv.pointPolygonTest`                          | Partial | Classification or signed distance        |
+| imgproc    | `isContourConvex`                           | `cv.isContourConvex`                           | Partial | I32/F32 parity; F64 package extension    |
+| imgproc    | `pointPolygonTest`                          | `cv.pointPolygonTest`                          | Partial | I32/F32 parity; F64 package extension    |
 | imgproc    | `resizeNearest`                             | `cv.resize`                                    | Partial | RGBA nearest-neighbor specialization     |
 | imgproc    | `threshold`                                 | `cv.threshold`                                 | Partial | Luma-derived U8 binary specialization    |
 | imgproc    | `gaussianBlur`                              | `cv.GaussianBlur`                              | Planned | Not started                              |
@@ -203,13 +203,15 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `findContours`                              | `cv.findContours`                              | Planned | Not started                              |
 | imgproc    | `warpPerspective`                           | `cv.warpPerspective`                           | Planned | Not started                              |
 
-Current full parity is **72 of 488 (14.75%)**. There are **57 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+Current full parity is **75 of 488 (15.37%)**. There are **54 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
 
 The fixture passes the complete pinned browser contract for `exp`, `log`, `sqrt`, `pow`, and `magnitude`. It checks exact arity and Mat conversion, Embind F64 power conversion, typed and canonical empty matrices, destination replacement, detached and shared regions, live overlapping traversal, all valid scalar depths, integer saturation and wrapping, and floating-point bit patterns. The package rejects native calls that expose unsafe uninitialized output while preserving the observable rejection and unchanged-state contract.
 
 The fixture also passes the pinned `cartToPolar` and `polarToCart` contracts. It covers both overloads, JavaScript truthiness, F32/F64 multichannel matrices, paired destination replacement, typed empty layouts, full-rotation angles, live overlapping regions, shared-output rejection, and the reference runtime's F32 precision path for both accepted depths.
 
 The fixture passes the complete pinned contracts for `multiply`, `divide`, `addWeighted`, and `convertScaleAbs`. It covers exact overload dispatch, Embind scalar coercion, all seven depths, explicit mixed-depth conversion, OutputArray replacement, live shared regions, typed empty layouts, floating-point edges, and the reference runtime's non-saturating CV_32S overflow paths.
+
+The fixture passes the complete pinned contracts for `arcLength`, `contourArea`, and `boundingRect`. It covers exact arity and runtime length, JavaScript truthiness, I32 and F32 contours in `Nx1C2`, `1xNC2`, and `Nx2C1` layouts, deleted inputs, canonical empty bounds, and rejection of F64, U8, and invalid shapes. The package rejects typed empty contours before entering upstream paths that do not return a safe JavaScript error.
 
 The fixture passes the complete pinned browser contract for `rotate`, including exact arity and constants, Embind signed i32 conversion, all scalar depths, empty and deleted matrices, OutputArray replacement, in-place operation, detached regions, and live shared-region composition. Invalid native codes preserve the observable no-throw contract without exposing the official build's unsafe output state.
 

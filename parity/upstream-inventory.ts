@@ -146,6 +146,9 @@ const AUDITED_BINDING_FORMS: Readonly<Record<string, AuditedBindingForm>> = Obje
   "features2d.kaze.set-noctaves": { overloadCount: 1, runtimeArity: 1 },
   "features2d.kaze.set-threshold": { overloadCount: 1, runtimeArity: 1 },
   "features2d.kaze.set-upright": { overloadCount: 1, runtimeArity: 1 },
+  "imgproc.function.arc-length": { overloadCount: 1, runtimeArity: 2 },
+  "imgproc.function.bounding-rect": { overloadCount: 1, runtimeArity: 1 },
+  "imgproc.function.contour-area": { overloadCount: 2, runtimeArity: 0 },
 });
 
 const MODULE_SURFACES = {
