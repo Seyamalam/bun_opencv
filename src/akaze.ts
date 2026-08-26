@@ -1,4 +1,10 @@
-import { OpenCvInputError } from "./error.js";
+import { BindingError, OpenCvInputError } from "./error.js";
+
+interface EmbindObjectInput {
+  toString(): string;
+}
+
+type EmbindScalarInput = boolean | number | EmbindObjectInput | string | null | undefined;
 
 /** OpenCV AKAZE descriptor representation. */
 export enum AKAZEDescriptorType {
@@ -84,15 +90,18 @@ export class AKAZE {
   }
 
   getDefaultName(): string {
+    requireExactArity(arguments.length, 0, "AKAZE.getDefaultName");
     return this.#owned().getDefaultName();
   }
 
-  getDescriptorChannels(): 1 | 2 | 3 {
-    return descriptorChannelsFromNumber(this.#owned().getDescriptorChannels());
+  getDescriptorChannels(): number {
+    requireExactArity(arguments.length, 0, "AKAZE.getDescriptorChannels");
+    return this.#ownedConst().getDescriptorChannels();
   }
 
   getDescriptorSize(): number {
-    return this.#owned().getDescriptorSize();
+    requireExactArity(arguments.length, 0, "AKAZE.getDescriptorSize");
+    return this.#ownedConst().getDescriptorSize();
   }
 
   getDescriptorType(): AKAZEDescriptorType {
@@ -104,25 +113,28 @@ export class AKAZE {
   }
 
   getNOctaveLayers(): number {
-    return this.#owned().getNOctaveLayers();
+    requireExactArity(arguments.length, 0, "AKAZE.getNOctaveLayers");
+    return this.#ownedConst().getNOctaveLayers();
   }
 
   getNOctaves(): number {
-    return this.#owned().getNOctaves();
+    requireExactArity(arguments.length, 0, "AKAZE.getNOctaves");
+    return this.#ownedConst().getNOctaves();
   }
 
   getThreshold(): number {
-    return this.#owned().getThreshold();
+    requireExactArity(arguments.length, 0, "AKAZE.getThreshold");
+    return this.#ownedConst().getThreshold();
   }
 
-  setDescriptorChannels(value: 1 | 2 | 3): void {
-    validateDescriptorChannels(value);
-    this.#owned().setDescriptorChannels(value);
+  setDescriptorChannels(value: number): void {
+    requireExactArity(arguments.length, 1, "AKAZE.setDescriptorChannels");
+    this.#owned().setDescriptorChannels(toWasmI32(value));
   }
 
   setDescriptorSize(value: number): void {
-    validateNonNegativeI32(value, "AKAZE descriptor size");
-    this.#owned().setDescriptorSize(value);
+    requireExactArity(arguments.length, 1, "AKAZE.setDescriptorSize");
+    this.#owned().setDescriptorSize(toWasmI32(value));
   }
 
   setDescriptorType(value: AKAZEDescriptorType): void {
@@ -136,18 +148,26 @@ export class AKAZE {
   }
 
   setNOctaveLayers(value: number): void {
-    validatePositiveI32(value, "AKAZE octave layer count");
-    this.#owned().setNOctaveLayers(value);
+    requireExactArity(arguments.length, 1, "AKAZE.setNOctaveLayers");
+    this.#owned().setNOctaveLayers(toWasmI32(value));
   }
 
   setNOctaves(value: number): void {
-    validatePositiveI32(value, "AKAZE octave count");
-    this.#owned().setNOctaves(value);
+    requireExactArity(arguments.length, 1, "AKAZE.setNOctaves");
+    this.#owned().setNOctaves(toWasmI32(value));
   }
 
   setThreshold(value: number): void {
-    validateThreshold(value);
-    this.#owned().setThreshold(value);
+    requireExactArity(arguments.length, 1, "AKAZE.setThreshold");
+    this.#owned().setThreshold(toWasmF64(value));
+  }
+
+  /** Releases the WASM handle with OpenCV.js-compatible repeated-delete behavior. */
+  delete(): void {
+    if (this.#handle === undefined) {
+      throw new BindingError("AKAZE instance already deleted");
+    }
+    this.dispose();
   }
 
   /** Releases the WASM handle. Repeated calls do nothing. */
@@ -163,7 +183,15 @@ export class AKAZE {
   #owned(): WasmAKAZEHandle {
     const handle = this.#handle;
     if (handle === undefined) {
-      throw new OpenCvInputError("AKAZE has been disposed");
+      throw new BindingError("Cannot pass deleted object as a pointer of type AKAZE");
+    }
+    return handle;
+  }
+
+  #ownedConst(): WasmAKAZEHandle {
+    const handle = this.#handle;
+    if (handle === undefined) {
+      throw new BindingError("Cannot pass deleted object as a pointer of type AKAZE const*");
     }
     return handle;
   }
@@ -224,17 +252,6 @@ function validateDiffusivity(value: KAZEDiffusivity): void {
   }
 }
 
-function descriptorChannelsFromNumber(value: number): 1 | 2 | 3 {
-  switch (value) {
-    case 1:
-    case 2:
-    case 3:
-      return value;
-    default:
-      throw new OpenCvInputError(`unsupported AKAZE descriptor channel count ${value}`);
-  }
-}
-
 function descriptorTypeFromNumber(value: number): AKAZEDescriptorType {
   switch (value) {
     case 2:
@@ -282,5 +299,38 @@ function validatePositiveI32(value: number, name: string): void {
 function validateI32(value: number, name: string): void {
   if (!Number.isSafeInteger(value) || value < -2_147_483_648 || value > 2_147_483_647) {
     throw new OpenCvInputError(`${name} must be a signed 32-bit integer`);
+  }
+}
+
+function toWasmI32(value: EmbindScalarInput): number {
+  if (value === true) return 1;
+  if (value === false) return 0;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- This is the JS-to-Embind scalar parser boundary.
+  if (typeof value !== "number") {
+    throw new TypeError(`Cannot convert "${String(value)}" to int`);
+  }
+  if (value < -2_147_483_648 || value > 2_147_483_647) {
+    throw new TypeError(
+      `Passing a number "${String(value)}" from JS side to C/C++ side to an argument of type "int", which is outside the valid range [-2147483648, 2147483647]!`,
+    );
+  }
+  return value | 0;
+}
+
+function toWasmF64(value: EmbindScalarInput): number {
+  if (value === true) return 1;
+  if (value === false) return 0;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- This is the JS-to-Embind scalar parser boundary.
+  if (typeof value !== "number") {
+    throw new TypeError(`Cannot convert "${String(value)}" to double`);
+  }
+  return value;
+}
+
+function requireExactArity(actual: number, expected: number, method: string): void {
+  if (actual !== expected) {
+    throw new BindingError(
+      `function ${method} called with ${actual} arguments, expected ${expected} args!`,
+    );
   }
 }

@@ -165,16 +165,10 @@ class CopyingAKAZEHandle implements WasmAKAZEHandle {
   }
 
   setDescriptorChannels(value: number): void {
-    if (!Number.isInteger(value) || value < 1 || value > 3) {
-      throw new OpenCvInputError("invalid AKAZE descriptor channels");
-    }
     this.#descriptorChannels = value;
   }
 
   setDescriptorSize(value: number): void {
-    if (!Number.isInteger(value) || value < 0) {
-      throw new OpenCvInputError("invalid AKAZE descriptor size");
-    }
     this.#descriptorSize = value;
   }
 
@@ -193,23 +187,14 @@ class CopyingAKAZEHandle implements WasmAKAZEHandle {
   }
 
   setNOctaveLayers(value: number): void {
-    if (!Number.isInteger(value) || value <= 0) {
-      throw new OpenCvInputError("invalid AKAZE octave layer count");
-    }
     this.#octaveLayers = value;
   }
 
   setNOctaves(value: number): void {
-    if (!Number.isInteger(value) || value <= 0) {
-      throw new OpenCvInputError("invalid AKAZE octave count");
-    }
     this.#octaves = value;
   }
 
   setThreshold(value: number): void {
-    if (!Number.isFinite(value) || value < 0) {
-      throw new OpenCvInputError("invalid AKAZE threshold");
-    }
     this.#threshold = value;
   }
 }
@@ -2498,7 +2483,7 @@ describe("OpenCv client", () => {
     expect(backend.akazeFreeCount).toBe(1);
     akaze.dispose();
     expect(backend.akazeFreeCount).toBe(1);
-    expect(() => akaze.getThreshold()).toThrow(OpenCvInputError);
+    expect(() => akaze.getThreshold()).toThrow(BindingError);
   });
 
   test("owns an AgastFeatureDetector configuration with OpenCV defaults", () => {
@@ -2619,10 +2604,10 @@ describe("OpenCv client", () => {
     expect(akaze.getNOctaveLayers()).toBe(8);
     expect(akaze.getDiffusivity()).toBe(KAZEDiffusivity.CHARBONNIER);
 
-    expect(() => akaze.setDescriptorSize(-1)).toThrow(OpenCvInputError);
-    expect(akaze.getDescriptorSize()).toBe(128);
+    expect(akaze.setDescriptorSize(-1)).toBeUndefined();
+    expect(akaze.getDescriptorSize()).toBe(-1);
     akaze.dispose();
-    expect(() => akaze.setThreshold(0.2)).toThrow(OpenCvInputError);
+    expect(() => akaze.setThreshold(0.2)).toThrow(BindingError);
     expect(() => localClient.createAKAZE({ descriptorSize: -1 })).toThrow(OpenCvInputError);
   });
 
