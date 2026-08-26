@@ -5,6 +5,7 @@ import {
   AgastFeatureDetectorType,
   AKAZE_DEFAULTS,
   AKAZEDescriptorType,
+  BindingError,
   createOpenCv,
   createRgbaImage,
   FAST_FEATURE_DETECTOR_DEFAULTS,
@@ -2650,8 +2651,8 @@ describe("OpenCv client", () => {
     detector.dispose();
     detector.dispose();
     expect(backend.gfttDetectorFreeCount).toBe(1);
-    expect(() => detector.getMaxFeatures()).toThrow(OpenCvInputError);
-    expect(() => detector.setHarrisDetector(true)).toThrow(OpenCvInputError);
+    expect(() => detector.getMaxFeatures()).toThrow(BindingError);
+    expect(() => detector.setHarrisDetector(true)).toThrow(BindingError);
   });
 
   test("creates and mutates the full GFTTDetector configuration", () => {

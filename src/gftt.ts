@@ -1,4 +1,4 @@
-import { OpenCvInputError } from "./error.js";
+import { BindingError, OpenCvInputError } from "./error.js";
 
 /** Optional configuration accepted by `OpenCv.createGFTTDetector`. */
 export interface GFTTDetectorOptions {
@@ -61,7 +61,7 @@ export class GFTTDetector {
 
   getBlockSize(): number {
     requireExactArity(arguments.length, 0, "GFTTDetector.getBlockSize");
-    return this.#owned().getBlockSize();
+    return this.#ownedConst().getBlockSize();
   }
 
   getDefaultName(): string {
@@ -71,27 +71,27 @@ export class GFTTDetector {
 
   getHarrisDetector(): boolean {
     requireExactArity(arguments.length, 0, "GFTTDetector.getHarrisDetector");
-    return this.#owned().getHarrisDetector();
+    return this.#ownedConst().getHarrisDetector();
   }
 
   getK(): number {
     requireExactArity(arguments.length, 0, "GFTTDetector.getK");
-    return this.#owned().getK();
+    return this.#ownedConst().getK();
   }
 
   getMaxFeatures(): number {
     requireExactArity(arguments.length, 0, "GFTTDetector.getMaxFeatures");
-    return this.#owned().getMaxFeatures();
+    return this.#ownedConst().getMaxFeatures();
   }
 
   getMinDistance(): number {
     requireExactArity(arguments.length, 0, "GFTTDetector.getMinDistance");
-    return this.#owned().getMinDistance();
+    return this.#ownedConst().getMinDistance();
   }
 
   getQualityLevel(): number {
     requireExactArity(arguments.length, 0, "GFTTDetector.getQualityLevel");
-    return this.#owned().getQualityLevel();
+    return this.#ownedConst().getQualityLevel();
   }
 
   setBlockSize(value: number): void {
@@ -126,8 +126,9 @@ export class GFTTDetector {
 
   /** Releases the WASM handle with OpenCV.js-compatible repeated-delete behavior. */
   delete(): void {
-    requireExactArity(arguments.length, 0, "GFTTDetector.delete");
-    this.#owned();
+    if (this.#handle === undefined) {
+      throw new BindingError("GFTTDetector instance already deleted");
+    }
     this.dispose();
   }
 
@@ -144,7 +145,15 @@ export class GFTTDetector {
   #owned(): WasmGFTTDetectorHandle {
     const handle = this.#handle;
     if (handle === undefined) {
-      throw new OpenCvInputError("GFTTDetector has been disposed");
+      throw new BindingError("Cannot pass deleted object as a pointer of type GFTTDetector");
+    }
+    return handle;
+  }
+
+  #ownedConst(): WasmGFTTDetectorHandle {
+    const handle = this.#handle;
+    if (handle === undefined) {
+      throw new BindingError("Cannot pass deleted object as a pointer of type GFTTDetector const*");
     }
     return handle;
   }
@@ -177,7 +186,8 @@ function toWasmI32(value: number | boolean): number {
 
 function requireExactArity(actual: number, expected: number, method: string): void {
   if (actual !== expected) {
-    const noun = expected === 1 ? "argument" : "arguments";
-    throw new OpenCvInputError(`${method} expects exactly ${expected} ${noun}`);
+    throw new BindingError(
+      `function ${method} called with ${actual} arguments, expected ${expected} args!`,
+    );
   }
 }

@@ -12,7 +12,7 @@ export type {
   WasmGFTTDetectorFactory,
   WasmGFTTDetectorHandle,
 } from "./gftt.js";
-export { OpenCvInputError } from "./error.js";
+export { BindingError, OpenCvInputError } from "./error.js";
 export {
   AGAST_FEATURE_DETECTOR_DEFAULTS,
   AgastFeatureDetector,
