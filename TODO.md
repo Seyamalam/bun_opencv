@@ -20,7 +20,7 @@ The roadmap gives release order. This file lists concrete work that can be picke
 - [x] Add deterministic TypeScript disposal for WASM matrix handles.
 - [x] Add signed integer and floating-point matrix depths.
 - [ ] Add reusable output buffers and in-WASM operation pipelines.
-- [ ] Expand differential fixtures to cover all 115 partial operation families.
+- [ ] Expand differential fixtures to cover all 129 partial operation families.
 - [ ] Pin the exact OpenCV reference version used to create fixtures.
 - [ ] Decide whether grayscale should match OpenCV's integer rounding byte for byte.
 - [ ] Add fuzz or property tests for dimensions, buffer lengths, and resize mappings.

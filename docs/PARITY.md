@@ -25,7 +25,7 @@ Desktop modules that the official OpenCV.js build disables are outside this pari
 
 ## Working partial families
 
-One hundred fifteen families have useful original Rust/WASM slices. None yet satisfies the full-family definition, so full parity remains 0 of 488.
+One hundred twenty-nine families have useful original Rust/WASM slices. None yet satisfies the full-family definition, so full parity remains 0 of 488.
 
 | Package methods                                                                                                  | OpenCV.js families                                                    | Current limit                                            |
 | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------- |
@@ -70,6 +70,11 @@ One hundred fifteen families have useful original Rust/WASM slices. None yet sat
 | `createFastFeatureDetector`, `FastFeatureDetector.getDefaultName`                                                | Matching `cv.FastFeatureDetector` factory and name families           | Owned configuration only; detection remains              |
 | `FastFeatureDetector.getNonmaxSuppression`, `FastFeatureDetector.getThreshold`, `FastFeatureDetector.getType`    | Matching `cv.FastFeatureDetector` getters                             | Rust-owned configuration state only                      |
 | `FastFeatureDetector.setNonmaxSuppression`, `FastFeatureDetector.setThreshold`, `FastFeatureDetector.setType`    | Matching `cv.FastFeatureDetector` setters                             | Validated configuration mutation only                    |
+| `createGFTTDetector`, `GFTTDetector.getDefaultName`                                                              | Matching `cv.GFTTDetector` factory and name families                  | Owned configuration only; detection remains              |
+| `GFTTDetector.getBlockSize`, `GFTTDetector.getHarrisDetector`, `GFTTDetector.getK`                               | Matching `cv.GFTTDetector` configuration getters                      | Rust-owned configuration state only                      |
+| `GFTTDetector.getMaxFeatures`, `GFTTDetector.getMinDistance`, `GFTTDetector.getQualityLevel`                     | Matching `cv.GFTTDetector` detector getters                           | Signed and non-finite values preserved                   |
+| `GFTTDetector.setBlockSize`, `GFTTDetector.setHarrisDetector`, `GFTTDetector.setK`                               | Matching `cv.GFTTDetector` configuration setters                      | Configuration mutation only                              |
+| `GFTTDetector.setMaxFeatures`, `GFTTDetector.setMinDistance`, `GFTTDetector.setQualityLevel`                     | Matching `cv.GFTTDetector` detector setters                           | Signed and non-finite values preserved                   |
 | `grayscale`, `resizeNearest`, `threshold`                                                                        | `cv.cvtColor`, `cv.resize`, `cv.threshold`                            | One RGBA or luma-derived specialization each             |
 
 The pinned OpenCV.js 4.13.0 browser fixture passes the AKAZE defaults and state mutations for all 15 instance members. Its `AKAZE` class is directly constructible, but the artifact omits the static `AKAZE.create` binding listed by the browser configuration. That blocks a direct runtime comparison for `createAKAZE` without changing the 488-family inventory.
@@ -77,6 +82,8 @@ The pinned OpenCV.js 4.13.0 browser fixture passes the AKAZE defaults and state 
 The fixture also exposes the direct `KAZE` constructor and all 13 instance methods. Defaults and mutations pass, including the finite threshold `-1` and each typed diffusivity value. The artifact omits the config-listed static `KAZE.create` binding, so `createKAZE` has no direct static-factory comparison.
 
 The same fixture passes defaults and mutations for all seven AGAST and all seven FAST instance methods. The threshold checks include signed values outside the usual detector range: AGAST preserves `-1`, and FAST preserves `256`. The official artifact exposes both direct constructors but omits the config-listed static `create` method on each class. That leaves both package factories without a direct static-factory comparison.
+
+The fixture exposes the direct `GFTTDetector` constructor and all 13 instance methods. Its exact defaults pass, and every numeric setter preserves `-1`. The floating-point setters also preserve `NaN`, positive infinity, and negative infinity. The artifact omits the config-listed static `GFTTDetector.create` method. The package factory currently covers one six-argument shape and does not cover the `gradientSize` overload.
 
 ## Tracked planned sample
 

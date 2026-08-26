@@ -368,6 +368,35 @@ Each handle also exposes `getNonmaxSuppression()`, `getThreshold()`, `getType()`
 
 The pinned OpenCV.js 4.13.0 artifact exposes direct `AgastFeatureDetector` and `FastFeatureDetector` constructors and all seven instance methods on both. It omits the config-listed static `create` method on each class, so the package factories have no direct static-factory comparator for that artifact.
 
+### GFTT detector configuration
+
+`cv.createGFTTDetector(options)` allocates a Rust-owned good-features-to-track detector configuration. This slice stores settings only. It does not accept images or detect keypoints.
+
+```ts
+const detector = cv.createGFTTDetector({
+  blockSize: 3,
+  k: 0.04,
+  maxFeatures: 1_000,
+  minDistance: 1,
+  qualityLevel: 0.01,
+  useHarrisDetector: false,
+});
+
+try {
+  detector.setMaxFeatures(-1);
+  detector.setQualityLevel(Number.POSITIVE_INFINITY);
+  console.log(detector.getMaxFeatures(), detector.getQualityLevel());
+} finally {
+  detector.dispose();
+}
+```
+
+Omitting options uses the exact OpenCV 4.13 defaults shown above. `maxFeatures` and `blockSize` accept the signed 32-bit range. TypeScript rejects fractional, unsafe, and out-of-range integer values. `qualityLevel`, `minDistance`, and `k` preserve every JavaScript number, including negative values, `NaN`, positive infinity, and negative infinity. `useHarrisDetector` is boolean.
+
+The handle exposes `getDefaultName()`, getters and setters for all six options, and `dispose()`. The Harris flag uses `getHarrisDetector()` and `setHarrisDetector()`. `getDefaultName()` returns `"Feature2D.GFTTDetector"`. Repeated disposal does nothing. Every getter or setter throws `OpenCvInputError` after disposal.
+
+The pinned OpenCV.js 4.13.0 fixture exposes the direct `GFTTDetector` constructor and all 13 instance methods. It passes the exact defaults, preserves `-1` through every numeric setter, and preserves `NaN`, positive infinity, and negative infinity through the F64 fields. The artifact omits the config-listed static `GFTTDetector.create` method. The package factory supports one six-argument shape; the overload with `gradientSize` remains.
+
 ## Errors
 
 The TypeScript boundary throws `OpenCvInputError` for invalid dimensions, byte lengths, and thresholds. Rust rejects the same invalid dimensions and byte lengths if a caller bypasses the TypeScript client.

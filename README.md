@@ -168,6 +168,20 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | features2d | `FastFeatureDetector.setNonmaxSuppression`  | `cv.FastFeatureDetector.setNonmaxSuppression`  | Partial | Configuration mutation                  |
 | features2d | `FastFeatureDetector.setThreshold`          | `cv.FastFeatureDetector.setThreshold`          | Partial | Signed 32-bit mutation                  |
 | features2d | `FastFeatureDetector.setType`               | `cv.FastFeatureDetector.setType`               | Partial | Validated configuration mutation        |
+| features2d | `createGFTTDetector`                        | `cv.GFTTDetector.create`                       | Partial | Selected six-argument configuration     |
+| features2d | `GFTTDetector.getBlockSize`                 | `cv.GFTTDetector.getBlockSize`                 | Partial | Signed 32-bit block-size state          |
+| features2d | `GFTTDetector.getDefaultName`               | `cv.GFTTDetector.getDefaultName`               | Partial | Package-owned configuration name        |
+| features2d | `GFTTDetector.getHarrisDetector`            | `cv.GFTTDetector.getHarrisDetector`            | Partial | Boolean configuration state             |
+| features2d | `GFTTDetector.getK`                         | `cv.GFTTDetector.getK`                         | Partial | F64 Harris coefficient state            |
+| features2d | `GFTTDetector.getMaxFeatures`               | `cv.GFTTDetector.getMaxFeatures`               | Partial | Signed 32-bit feature-count state       |
+| features2d | `GFTTDetector.getMinDistance`               | `cv.GFTTDetector.getMinDistance`               | Partial | F64 minimum-distance state              |
+| features2d | `GFTTDetector.getQualityLevel`              | `cv.GFTTDetector.getQualityLevel`              | Partial | F64 quality-level state                 |
+| features2d | `GFTTDetector.setBlockSize`                 | `cv.GFTTDetector.setBlockSize`                 | Partial | Signed 32-bit mutation                  |
+| features2d | `GFTTDetector.setHarrisDetector`            | `cv.GFTTDetector.setHarrisDetector`            | Partial | Configuration mutation                  |
+| features2d | `GFTTDetector.setK`                         | `cv.GFTTDetector.setK`                         | Partial | Signed and non-finite mutation          |
+| features2d | `GFTTDetector.setMaxFeatures`               | `cv.GFTTDetector.setMaxFeatures`               | Partial | Signed 32-bit mutation                  |
+| features2d | `GFTTDetector.setMinDistance`               | `cv.GFTTDetector.setMinDistance`               | Partial | Signed and non-finite mutation          |
+| features2d | `GFTTDetector.setQualityLevel`              | `cv.GFTTDetector.setQualityLevel`              | Partial | Signed and non-finite mutation          |
 | imgproc    | `arcLength`                                 | `cv.arcLength`                                 | Partial | I32/F32/F64 2D contour layouts          |
 | imgproc    | `boundingRect`                              | `cv.boundingRect`                              | Partial | Inclusive bounds for 2D contours        |
 | imgproc    | `clipLine`                                  | `cv.clipLine`                                  | Partial | Integer rectangle and segment form      |
@@ -189,13 +203,15 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `findContours`                              | `cv.findContours`                              | Planned | Not started                             |
 | imgproc    | `warpPerspective`                           | `cv.warpPerspective`                           | Planned | Not started                             |
 
-Current full parity is **0 of 488 (0%)**. There are **115 partial families** with working Rust/WASM slices. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+Current full parity is **0 of 488 (0%)**. There are **129 partial families** with working Rust/WASM slices. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
 
 The pinned OpenCV.js 4.13.0 browser fixture passes AKAZE defaults and mutations for all 15 instance members. The same artifact exposes `AKAZE` as a directly constructible class but omits the config-listed static `AKAZE.create`, so the `createAKAZE` factory cannot receive direct runtime credit from that artifact.
 
 The fixture passes KAZE defaults and mutations for all 13 instance methods, including threshold `-1` and typed diffusivity changes. The artifact exposes a direct `KAZE` constructor but omits the config-listed static `KAZE.create` method.
 
 The fixture also passes AGAST and FAST defaults and mutations for all seven instance methods on each class. It preserves the signed AGAST threshold `-1` and the FAST threshold `256`. Both classes are directly constructible in the official artifact, but neither exposes the config-listed static `create` method.
+
+The fixture passes the exact GFTT defaults and mutations for all 13 instance methods, including `-1` through every numeric setter and non-finite F64 values. The official artifact exposes the direct constructor but omits the config-listed static `GFTTDetector.create` method. The package factory covers one six-argument shape; the `gradientSize` overload remains.
 
 Read [the inventory](docs/INVENTORY.md) and [complete parity contract](docs/PARITY.md) for the denominator, exclusions, and definition of done.
 
