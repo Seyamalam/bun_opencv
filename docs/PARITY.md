@@ -25,7 +25,7 @@ Desktop modules that the official OpenCV.js build disables are outside this pari
 
 ## Working partial families
 
-Thirty-eight families have useful original Rust/WASM slices. None yet satisfies the full-family definition, so full parity remains 0 of 488.
+Thirty-nine families have useful original Rust/WASM slices. None yet satisfies the full-family definition, so full parity remains 0 of 488.
 
 | Package methods                                        | OpenCV.js families                                                    | Current limit                                |
 | ------------------------------------------------------ | --------------------------------------------------------------------- | -------------------------------------------- |
@@ -39,6 +39,7 @@ Thirty-eight families have useful original Rust/WASM slices. None yet satisfies 
 | `cartToPolar`, `polarToCart`                           | `cv.cartToPolar`, `cv.polarToCart`                                    | F32/F64 with mutable paired outputs          |
 | `multiply`, `divide`, `addWeighted`, `convertScaleAbs` | Matching `cv` numeric families                                        | All depths; selected matrix forms            |
 | `copyMakeBorder`                                       | `cv.copyMakeBorder`                                                   | All depths and five border modes             |
+| `lut`                                                  | `cv.LUT`                                                              | Byte sources and every table depth           |
 | `mean`, `minMaxLoc`, `trace`                           | `cv.mean`, `cv.minMaxLoc`, `cv.trace`                                 | Masks or multi-channel trace remain          |
 | `grayscale`, `resizeNearest`, `threshold`              | `cv.cvtColor`, `cv.resize`, `cv.threshold`                            | One RGBA or luma-derived specialization each |
 

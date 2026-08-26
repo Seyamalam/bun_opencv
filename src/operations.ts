@@ -19,6 +19,7 @@ export const OPENCV_OPERATIONS = [
   { method: "hconcat", wasmExport: "matHconcat2" },
   { method: "inRange", wasmExport: "matInRangeU8" },
   { method: "log", wasmExport: "matLog" },
+  { method: "lut", wasmExport: "matLut" },
   { method: "magnitude", wasmExport: "matMagnitude" },
   { method: "max", wasmExport: "matMaxU8" },
   { method: "mean", wasmExport: "matMean" },

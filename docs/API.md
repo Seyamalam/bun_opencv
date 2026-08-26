@@ -111,6 +111,10 @@ Integer outputs use nearest-even rounding and saturation. Integer division by ze
 
 `copyMakeBorder(source, top, bottom, left, right, borderType, constant)` supports constant, replicate, reflect, wrap, and reflect-101 modes, with the optional isolated bit. It preserves every scalar depth and channel layout. Constant values use nearest-even rounding and saturation for integer destinations.
 
+### Lookup tables
+
+`lut(source, table)` returns a transformed matrix. `lut(source, table, destination)` writes into an exact destination. Sources may use U8 or I8 elements. The table contains exactly 256 pixels with one channel or the same channel count as the source. Tables and outputs may use any scalar depth.
+
 ### Matrix reductions
 
 - `countNonZero(source)` supports every scalar depth and requires one channel.

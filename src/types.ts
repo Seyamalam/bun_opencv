@@ -73,6 +73,8 @@ export interface OpenCvBackend {
   ): WasmMatHandle;
   matExtractChannel(source: WasmMatHandle, channel: number): WasmMatHandle;
   matInsertChannel(source: WasmMatHandle, destination: WasmMatHandle, channel: number): void;
+  matLut(source: WasmMatHandle, table: WasmMatHandle): WasmMatHandle;
+  matLutInto(source: WasmMatHandle, table: WasmMatHandle, destination: WasmMatHandle): void;
   matHconcat2(first: WasmMatHandle, second: WasmMatHandle): WasmMatHandle;
   matHconcat3(first: WasmMatHandle, second: WasmMatHandle, third: WasmMatHandle): WasmMatHandle;
   matHconcat4(
@@ -234,6 +236,8 @@ export interface OpenCv {
   inRange(source: Mat, lowerBound: Mat, upperBound: Mat): Mat;
   insertChannel(source: Mat, destination: Mat, channel: number): void;
   log(source: Mat): Mat;
+  lut(source: Mat, table: Mat): Mat;
+  lut(source: Mat, table: Mat, destination: Mat): void;
   magnitude(x: Mat, y: Mat): Mat;
   max(left: Mat, right: Mat): Mat;
   mean(source: Mat): Scalar;

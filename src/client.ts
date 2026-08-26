@@ -282,6 +282,20 @@ class WasmOpenCv implements OpenCv {
     return new Mat(this.#backend.matLog(source.handleForBackend()));
   }
 
+  lut(source: Mat, table: Mat): Mat;
+  lut(source: Mat, table: Mat, destination: Mat): void;
+  lut(source: Mat, table: Mat, destination?: Mat): Mat | void {
+    if (destination !== undefined) {
+      this.#backend.matLutInto(
+        source.handleForBackend(),
+        table.handleForBackend(),
+        destination.handleForBackend(),
+      );
+      return;
+    }
+    return new Mat(this.#backend.matLut(source.handleForBackend(), table.handleForBackend()));
+  }
+
   magnitude(x: Mat, y: Mat): Mat {
     return new Mat(this.#backend.matMagnitude(x.handleForBackend(), y.handleForBackend()));
   }

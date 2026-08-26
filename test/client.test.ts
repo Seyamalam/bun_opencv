@@ -305,6 +305,21 @@ class CopyingBackend implements OpenCvBackend {
     destination.copyFromBytes(output);
   }
 
+  matLut(source: WasmMatHandle, table: WasmMatHandle): WasmMatHandle {
+    const input = source.toUint8Array();
+    const lookup = table.toUint8Array();
+    const output = Uint8Array.from(input, (value, index) => {
+      const channel = index % source.channels;
+      const tableChannel = table.channels === 1 ? 0 : channel;
+      return lookup[value * table.channels + tableChannel] ?? 0;
+    });
+    return new CopyingMatHandle(source.rows, source.columns, source.channels, output, table.depth);
+  }
+
+  matLutInto(source: WasmMatHandle, table: WasmMatHandle, destination: WasmMatHandle): void {
+    destination.copyFromBytes(this.matLut(source, table).toUint8Array());
+  }
+
   matHconcat2(first: WasmMatHandle, second: WasmMatHandle): WasmMatHandle {
     return concatHandles([first, second], "horizontal");
   }
@@ -1085,5 +1100,21 @@ describe("OpenCv client", () => {
     expect(bordered.toUint8Array()).toEqual(new Uint8Array([9, 9, 9, 9, 9, 7, 8, 9, 9, 9, 9, 9]));
     bordered.dispose();
     source.dispose();
+  });
+
+  test("applies a typed lookup table", () => {
+    const values = Uint8Array.from({ length: 256 }, (_, value) => value);
+    values[1] = 99;
+    const table = client.matFromU8(256, 1, 1, values);
+    const source = client.matFromU8(1, 3, 1, new Uint8Array([0, 1, 255]));
+    const result = client.lut(source, table);
+    expect(result.toUint8Array()).toEqual(new Uint8Array([0, 99, 255]));
+    const destination = client.zerosU8(1, 3, 1);
+    client.lut(source, table, destination);
+    expect(destination.toUint8Array()).toEqual(result.toUint8Array());
+    destination.dispose();
+    result.dispose();
+    source.dispose();
+    table.dispose();
   });
 });

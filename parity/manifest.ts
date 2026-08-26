@@ -37,6 +37,19 @@ export const PARITY_MANIFEST = {
   entries: [
     {
       implementationOrigin: "original",
+      method: "lut",
+      module: "core",
+      notes:
+        "U8/I8 sources, one or matching table channels, every output depth, strided regions, and mutable destinations; differential fixtures remain.",
+      patentReview: "required",
+      sources: [CORE_ARRAY_SOURCE],
+      status: "partial",
+      upstream: "cv.LUT",
+      upstreamId: "core.function.lut",
+      wasmExport: "matLut",
+    },
+    {
+      implementationOrigin: "original",
       method: "copyMakeBorder",
       module: "core",
       notes:
