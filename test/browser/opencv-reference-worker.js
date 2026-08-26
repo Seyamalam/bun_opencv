@@ -1024,6 +1024,391 @@ function auditRepeat(reference) {
   };
 }
 
+function auditRotateCode(reference, label, value, nativeInvalid = false) {
+  const source = makeSeedMat(reference, 2, 3, reference.CV_8UC1, [1, 2, 3, 4, 5, 6]);
+  const destination = makeSeedMat(reference, 3, 2, reference.CV_8UC1, [7, 8, 9, 10, 11, 12]);
+  const matrices = [
+    ["source", source],
+    ["destination", destination],
+  ];
+  const before = Object.fromEntries(
+    matrices.map(([name, matrix]) => [name, capturePrimitive(() => summarizeMat(matrix))]),
+  );
+  const call = captureCall(() => reference.rotate(source, destination, value));
+  const result = {
+    label,
+    input: encodeValue(value),
+    nativeInvalid,
+    audit: nativeInvalid
+      ? { before, call }
+      : {
+          before,
+          call,
+          after: Object.fromEntries(
+            matrices.map(([name, matrix]) => [name, capturePrimitive(() => summarizeMat(matrix))]),
+          ),
+        },
+  };
+  safeDelete(destination);
+  safeDelete(source);
+  return result;
+}
+
+function auditRotateDestination(reference, name, code, createDestination) {
+  const source = makeSeedMat(reference, 2, 3, reference.CV_8UC1, [1, 2, 3, 4, 5, 6]);
+  const destination = createDestination();
+  const result = {
+    name,
+    code,
+    audit: auditTransposeCall(
+      () => reference.rotate(source, destination, code),
+      [
+        ["source", source],
+        ["destination", destination],
+      ],
+    ),
+  };
+  safeDelete(destination);
+  safeDelete(source);
+  return result;
+}
+
+function auditRotateInPlace(reference, code) {
+  const matrix = makeSeedMat(reference, 2, 3, reference.CV_8UC1, [1, 2, 3, 4, 5, 6]);
+  const result = {
+    code,
+    audit: auditTransposeCall(() => reference.rotate(matrix, matrix, code), [["matrix", matrix]]),
+  };
+  safeDelete(matrix);
+  return result;
+}
+
+function auditRotateRoi(reference, name, sourceRect, destinationRect, sameParent, code) {
+  const sourceParent = makeSeedMat(
+    reference,
+    6,
+    7,
+    reference.CV_8UC1,
+    Array.from({ length: 42 }, (_, index) => index + 1),
+  );
+  const destinationParent = sameParent
+    ? sourceParent
+    : makeSeedMat(reference, 6, 7, reference.CV_8UC1, new Uint8Array(42).fill(99));
+  const source = sourceParent.roi(new reference.Rect(...sourceRect));
+  const destination = destinationParent.roi(new reference.Rect(...destinationRect));
+  const result = {
+    name,
+    sameParent,
+    code,
+    audit: auditTransposeCall(
+      () => reference.rotate(source, destination, code),
+      [
+        ["source", source],
+        ["destination", destination],
+        ["sourceParent", sourceParent],
+        ["destinationParent", destinationParent],
+      ],
+    ),
+  };
+  safeDelete(destination);
+  safeDelete(source);
+  if (!sameParent) safeDelete(destinationParent);
+  safeDelete(sourceParent);
+  return result;
+}
+
+function auditRotateTypeRoi(reference) {
+  const sourceParent = makeSeedMat(
+    reference,
+    4,
+    5,
+    reference.CV_8UC1,
+    Array.from({ length: 20 }, (_, index) => index + 1),
+  );
+  const destinationParent = makeSeedMat(
+    reference,
+    5,
+    5,
+    reference.CV_32FC2,
+    new Float32Array(50).fill(99),
+  );
+  const source = sourceParent.roi(new reference.Rect(1, 1, 3, 2));
+  const destination = destinationParent.roi(new reference.Rect(1, 1, 2, 3));
+  const result = {
+    name: "incompatible-type-separate",
+    sameParent: false,
+    code: 0,
+    audit: auditTransposeCall(
+      () => reference.rotate(source, destination, 0),
+      [
+        ["source", source],
+        ["destination", destination],
+        ["sourceParent", sourceParent],
+        ["destinationParent", destinationParent],
+      ],
+    ),
+  };
+  safeDelete(destination);
+  safeDelete(source);
+  safeDelete(destinationParent);
+  safeDelete(sourceParent);
+  return result;
+}
+
+function auditRotateType(reference, name, type, values) {
+  if (typeof type !== "number") return { name, available: false };
+  let source;
+  let destination;
+  try {
+    source = makeSeedMat(reference, 2, 3, type, values);
+    destination = new reference.Mat();
+    return {
+      name,
+      available: true,
+      audit: auditTypedMatCall(
+        () => reference.rotate(source, destination, 2),
+        [
+          ["source", source],
+          ["destination", destination],
+        ],
+      ),
+    };
+  } catch (error) {
+    return {
+      name,
+      available: true,
+      setup: captureCall(() => {
+        throw error;
+      }),
+    };
+  } finally {
+    safeDelete(destination);
+    safeDelete(source);
+  }
+}
+
+function auditRotate(reference) {
+  const aritySource = makeSeedMat(reference, 2, 3, reference.CV_8UC1, [1, 2, 3, 4, 5, 6]);
+  const arityDestination = new reference.Mat();
+  const arity = {
+    functionLength: capturePrimitive(() => reference.rotate.length),
+    zero: captureCall(() => reference.rotate()),
+    one: captureCall(() => reference.rotate(aritySource)),
+    two: captureCall(() => reference.rotate(aritySource, arityDestination)),
+    three: captureCall(() => reference.rotate(aritySource, arityDestination, 0)),
+    four: captureCall(() => reference.rotate(aritySource, arityDestination, 0, 1)),
+    destinationAfter: capturePrimitive(() => summarizeMat(arityDestination)),
+  };
+  safeDelete(arityDestination);
+  safeDelete(aritySource);
+
+  const codes = [
+    ["negative two", -2, true],
+    ["negative one", -1, true],
+    ["negative fraction", -1.9, true],
+    ["negative subunit fraction", -0.9],
+    ["negative zero", -0],
+    ["zero", 0],
+    ["positive subunit fraction", 0.9],
+    ["one", 1],
+    ["positive fraction", 1.9],
+    ["two", 2],
+    ["two fraction", 2.9],
+    ["three", 3, true],
+    ["i32 maximum", 2_147_483_647, true],
+    ["i32 maximum plus one", 2_147_483_648],
+    ["i32 minimum", -2_147_483_648, true],
+    ["i32 minimum minus one", -2_147_483_649],
+    ["NaN", Number.NaN],
+    ["positive infinity", Number.POSITIVE_INFINITY],
+    ["negative infinity", Number.NEGATIVE_INFINITY],
+    ["true", true],
+    ["false", false],
+    ["null", null],
+    ["numeric string", "1"],
+    ["explicit undefined", undefined],
+  ].map(([label, value, nativeInvalid = false]) =>
+    auditRotateCode(reference, label, value, nativeInvalid),
+  );
+
+  const argumentSource = makeSeedMat(reference, 1, 1, reference.CV_8UC1, [1]);
+  const argumentDestination = new reference.Mat();
+  const argumentTypes = {
+    nullSource: captureCall(() => reference.rotate(null, argumentDestination, 0)),
+    undefinedSource: captureCall(() => reference.rotate(undefined, argumentDestination, 0)),
+    objectSource: captureCall(() => reference.rotate({}, argumentDestination, 0)),
+    nullDestination: captureCall(() => reference.rotate(argumentSource, null, 0)),
+    undefinedDestination: captureCall(() => reference.rotate(argumentSource, undefined, 0)),
+    objectDestination: captureCall(() => reference.rotate(argumentSource, {}, 0)),
+  };
+  safeDelete(argumentDestination);
+  safeDelete(argumentSource);
+
+  const empty = [0, 1, 2].map((code) => {
+    const source = new reference.Mat();
+    const destination = new reference.Mat();
+    const audit = auditTransposeCall(
+      () => reference.rotate(source, destination, code),
+      [
+        ["source", source],
+        ["destination", destination],
+      ],
+    );
+    safeDelete(destination);
+    safeDelete(source);
+    return { code, audit };
+  });
+  const emptySource = new reference.Mat();
+  const populatedDestination = makeSeedMat(reference, 2, 3, reference.CV_8UC1, [1, 2, 3, 4, 5, 6]);
+  const emptyIntoFull = auditTransposeCall(
+    () => reference.rotate(emptySource, populatedDestination, 1),
+    [
+      ["source", emptySource],
+      ["destination", populatedDestination],
+    ],
+  );
+  safeDelete(populatedDestination);
+  safeDelete(emptySource);
+
+  const deletedSource = makeSeedMat(reference, 1, 1, reference.CV_8UC1, [7]);
+  const liveDestination = new reference.Mat();
+  deletedSource.delete();
+  const deletedSourceAudit = auditTransposeCall(
+    () => reference.rotate(deletedSource, liveDestination, 0),
+    [
+      ["source", deletedSource],
+      ["destination", liveDestination],
+    ],
+  );
+  safeDelete(liveDestination);
+
+  const liveSource = makeSeedMat(reference, 1, 1, reference.CV_8UC1, [8]);
+  const deletedDestination = new reference.Mat();
+  deletedDestination.delete();
+  const deletedDestinationAudit = auditTransposeCall(
+    () => reference.rotate(liveSource, deletedDestination, 0),
+    [
+      ["source", liveSource],
+      ["destination", deletedDestination],
+    ],
+  );
+  safeDelete(liveSource);
+
+  const stridedParent = makeSeedMat(
+    reference,
+    4,
+    5,
+    reference.CV_8UC1,
+    Array.from({ length: 20 }, (_, index) => index + 1),
+  );
+  const stridedSource = stridedParent.roi(new reference.Rect(1, 1, 3, 2));
+  const stridedDestination = new reference.Mat();
+  const strided = auditTransposeCall(
+    () => reference.rotate(stridedSource, stridedDestination, 2),
+    [
+      ["source", stridedSource],
+      ["destination", stridedDestination],
+      ["sourceParent", stridedParent],
+    ],
+  );
+  safeDelete(stridedDestination);
+  safeDelete(stridedSource);
+  safeDelete(stridedParent);
+
+  const types = [
+    ["CV_8UC1", reference.CV_8UC1, [1, 2, 3, 4, 5, 6]],
+    ["CV_8UC3", reference.CV_8UC3, Array.from({ length: 18 }, (_, index) => index + 1)],
+    ["CV_8SC2", reference.CV_8SC2, [-1, 2, -3, 4, -5, 6, -7, 8, -9, 10, -11, 12]],
+    ["CV_16UC1", reference.CV_16UC1, [1, 256, 513, 1024, 4096, 65_535]],
+    [
+      "CV_16SC2",
+      reference.CV_16SC2,
+      [-1, 2, -300, 400, -500, 600, -700, 800, -900, 1000, -1100, 1200],
+    ],
+    ["CV_32SC1", reference.CV_32SC1, [-1, 2, -300_000, 400_000, -500_000, 600_000]],
+    [
+      "CV_32FC2",
+      reference.CV_32FC2,
+      [-1.5, 2.25, -3.5, 4.75, -5.5, 6.25, -7.5, 8.75, -9.5, 10.25, -11.5, 12.75],
+    ],
+    ["CV_64FC1", reference.CV_64FC1, [-1.5, 2.25, -3.5, 4.75, -5.5, 6.25]],
+    ["CV_16FC1", reference.CV_16FC1, [1, 2, 3, 4, 5, 6]],
+  ].map(([name, type, values]) => auditRotateType(reference, name, type, values));
+
+  return {
+    constants: {
+      ROTATE_90_CLOCKWISE: capturePrimitive(() => reference.ROTATE_90_CLOCKWISE),
+      ROTATE_180: capturePrimitive(() => reference.ROTATE_180),
+      ROTATE_90_COUNTERCLOCKWISE: capturePrimitive(() => reference.ROTATE_90_COUNTERCLOCKWISE),
+    },
+    arity,
+    argumentTypes,
+    codes,
+    destinationReplacement: [
+      auditRotateDestination(reference, "empty", 0, () => new reference.Mat()),
+      auditRotateDestination(reference, "correct-metadata-clockwise", 0, () =>
+        makeSeedMat(reference, 3, 2, reference.CV_8UC1, new Uint8Array(6).fill(99)),
+      ),
+      auditRotateDestination(reference, "correct-metadata-half-turn", 1, () =>
+        makeSeedMat(reference, 2, 3, reference.CV_8UC1, new Uint8Array(6).fill(99)),
+      ),
+      auditRotateDestination(reference, "wrong-shape", 2, () =>
+        makeSeedMat(reference, 2, 3, reference.CV_8UC1, new Uint8Array(6).fill(99)),
+      ),
+      auditRotateDestination(reference, "wrong-type-and-channels", 0, () =>
+        makeSeedMat(reference, 3, 2, reference.CV_32FC2, new Float32Array(12).fill(99)),
+      ),
+    ],
+    inPlace: [0, 1, 2].map((code) => auditRotateInPlace(reference, code)),
+    roi: [
+      auditRotateRoi(reference, "compatible-separate", [1, 1, 3, 2], [1, 1, 2, 3], false, 0),
+      auditRotateRoi(
+        reference,
+        "incompatible-shape-separate",
+        [1, 1, 3, 2],
+        [1, 1, 3, 2],
+        false,
+        0,
+      ),
+      auditRotateTypeRoi(reference),
+      auditRotateRoi(reference, "same-parent-non-overlap", [0, 0, 2, 2], [4, 3, 2, 2], true, 0),
+      auditRotateRoi(
+        reference,
+        "same-parent-overlap-clockwise",
+        [0, 0, 3, 2],
+        [1, 0, 2, 3],
+        true,
+        0,
+      ),
+      auditRotateRoi(
+        reference,
+        "same-parent-overlap-half-turn",
+        [0, 0, 3, 2],
+        [1, 0, 3, 2],
+        true,
+        1,
+      ),
+      auditRotateRoi(
+        reference,
+        "same-parent-overlap-counterclockwise",
+        [0, 0, 3, 2],
+        [1, 1, 2, 3],
+        true,
+        2,
+      ),
+    ],
+    empty,
+    emptyIntoFull,
+    deleted: { source: deletedSourceAudit, destination: deletedDestinationAudit },
+    strided,
+    types,
+    halfFloatConstants: {
+      CV_16F: encodeValue(reference.CV_16F),
+      CV_16FC1: encodeValue(reference.CV_16FC1),
+    },
+  };
+}
+
 function auditCountNonZeroType(reference, name, type, values) {
   if (typeof type !== "number") return { name, available: false };
   let source;
@@ -2297,6 +2682,10 @@ self.addEventListener("message", async ({ data: input }) => {
       self.postMessage({ outputs: { repeatAudit: auditRepeat(reference) } });
       return;
     }
+    if (request === "rotate") {
+      self.postMessage({ outputs: { rotateAudit: auditRotate(reference) } });
+      return;
+    }
     if (request === "count-non-zero") {
       self.postMessage({ outputs: { countNonZeroAudit: auditCountNonZero(reference) } });
       return;
@@ -2473,6 +2862,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.fastPrimitiveAudit = auditThresholdDetector(() => new reference.FastFeatureDetector());
     outputs.flipAudit = auditFlip(reference);
     outputs.repeatAudit = auditRepeat(reference);
+    outputs.rotateAudit = auditRotate(reference);
     outputs.transposeAudit = auditTranspose(reference);
     outputs.countNonZeroAudit = auditCountNonZero(reference);
     self.postMessage({ outputs });
