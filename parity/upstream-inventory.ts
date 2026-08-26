@@ -59,6 +59,7 @@ const AUDITED_BINDING_FORMS: Readonly<Record<string, AuditedBindingForm>> = Obje
   "core.function.count-non-zero": { overloadCount: 1, runtimeArity: 1 },
   "core.function.flip": { overloadCount: 1, runtimeArity: 3 },
   "core.function.get-optimal-dftsize": { overloadCount: 1, runtimeArity: 1 },
+  "core.function.repeat": { overloadCount: 1, runtimeArity: 4 },
   "core.function.transpose": { overloadCount: 1, runtimeArity: 2 },
   "features2d.akaze.get-default-name": { overloadCount: 1, runtimeArity: 0 },
   "features2d.akaze.get-descriptor-channels": { overloadCount: 1, runtimeArity: 0 },

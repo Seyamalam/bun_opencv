@@ -1579,10 +1579,10 @@ export const PARITY_MANIFEST = {
       method: "repeat",
       module: "core",
       notes:
-        "All scalar depths and channels with positive repeat counts, allocating results, and mutable destinations; the U8 browser differential passes, while empty-matrix and all-depth differential audits remain.",
+        "Exact four-argument browser contract across all scalar depths, Embind signed repeat-count conversion, empty and deleted matrices, destination replacement, detached incompatible regions, exact in-place rejection, and live overlapping shared regions.",
       patentReview: "required",
       sources: [CORE_ARRAY_SOURCE],
-      status: "partial",
+      status: "implemented",
       upstream: "cv.repeat",
       upstreamId: "core.function.repeat",
       wasmExport: "matRepeat",

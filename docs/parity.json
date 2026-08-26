@@ -1446,10 +1446,10 @@
       "implementationOrigin": "original",
       "method": "repeat",
       "module": "core",
-      "notes": "All scalar depths and channels with positive repeat counts, allocating results, and mutable destinations; the U8 browser differential passes, while empty-matrix and all-depth differential audits remain.",
+      "notes": "Exact four-argument browser contract across all scalar depths, Embind signed repeat-count conversion, empty and deleted matrices, destination replacement, detached incompatible regions, exact in-place rejection, and live overlapping shared regions.",
       "patentReview": "required",
       "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
-      "status": "partial",
+      "status": "implemented",
       "upstream": "cv.repeat",
       "upstreamId": "core.function.repeat",
       "wasmExport": "matRepeat"

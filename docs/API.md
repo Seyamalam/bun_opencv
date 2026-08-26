@@ -77,9 +77,9 @@ Multi-input operations require identical rows, columns, and channels. These meth
 
 These operations preserve all seven scalar depths and every interleaved channel. They return new Rust-owned matrices and compact non-contiguous regions before rearranging pixels.
 
-Each layout operation also accepts an OpenCV-style destination form: `flip(source, destination, code)`, `transpose(source, destination)`, `rotate(source, destination, code)`, and `repeat(source, rows, columns, destination)`. Flip and transpose use the exact OpenCV.js argument counts. They reuse compatible destinations, reallocate incompatible ordinary matrices, and detach incompatible regions. Compatible regions write through to shared parent storage.
+Each layout operation also accepts an OpenCV-style destination form: `flip(source, destination, code)`, `transpose(source, destination)`, `rotate(source, destination, code)`, and `repeat(source, rows, columns, destination)`. Flip, transpose, and repeat use the exact OpenCV.js argument counts. They reuse compatible destinations, reallocate incompatible ordinary matrices, and detach incompatible regions. Compatible regions write through to shared parent storage.
 
-The browser differential harness passes pinned OpenCV.js 4.13.0 U8 fixtures for all four layout operations. Flip and transpose additionally pass all supported depths, empty and deleted matrices, destination replacement, exact in-place calls, detached incompatible regions, and live overlapping aliases.
+The browser differential harness passes pinned OpenCV.js 4.13.0 U8 fixtures for all four layout operations. Flip, transpose, and repeat additionally pass all supported depths, empty and deleted matrices, destination replacement, detached incompatible regions, and live overlapping aliases. Repeat matches the upstream exact in-place rejection contract.
 
 ### Matrix channels
 
