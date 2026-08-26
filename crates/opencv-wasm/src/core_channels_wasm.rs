@@ -5,7 +5,10 @@ use std::{error::Error, fmt};
 use wasm_bindgen::prelude::*;
 
 use crate::{
-    core_channels::{ChannelError, ChannelMatrix, extract_channel, insert_channel, merge, split},
+    core_channels::{
+        ChannelError, ChannelMapping, ChannelMatrix, extract_channel, insert_channel, merge,
+        mix_channels, split,
+    },
     mat::{Mat, MatDepth, MatError},
 };
 
@@ -18,6 +21,7 @@ enum ChannelWasmError {
     },
     Kernel(ChannelError),
     Matrix(MatError),
+    OddMappingLength(usize),
 }
 
 impl fmt::Display for ChannelWasmError {
@@ -37,6 +41,10 @@ impl fmt::Display for ChannelWasmError {
             }
             Self::Kernel(error) => error.fmt(formatter),
             Self::Matrix(error) => error.fmt(formatter),
+            Self::OddMappingLength(length) => write!(
+                formatter,
+                "mixChannels mapping has {length} values; expected source/destination channel pairs"
+            ),
         }
     }
 }
@@ -46,7 +54,9 @@ impl Error for ChannelWasmError {
         match self {
             Self::Kernel(error) => Some(error),
             Self::Matrix(error) => Some(error),
-            Self::ElementWidthOverflow(_) | Self::IncompatibleDepth { .. } => None,
+            Self::ElementWidthOverflow(_)
+            | Self::IncompatibleDepth { .. }
+            | Self::OddMappingLength(_) => None,
         }
     }
 }
@@ -137,6 +147,21 @@ pub fn mat_insert_channel(
     insert_channel_mat(source, destination, destination_channel).map_err(JsError::from)
 }
 
+/// Routes selected channels from one matrix into an existing destination matrix.
+///
+/// `from_to` contains flattened source/destination channel pairs. The adapter implements the
+/// single-source, single-destination form and preserves every destination channel not named by a
+/// mapping. Source and destination may alias because both are snapshotted before the write.
+///
+/// # Errors
+///
+/// Returns an error for an odd mapping length, incompatible matrix metadata, or an out-of-range
+/// channel. Validation completes before destination bytes change.
+#[wasm_bindgen(js_name = matMixChannels)]
+pub fn mat_mix_channels(source: &Mat, destination: &Mat, from_to: &[u16]) -> Result<(), JsError> {
+    mix_channels_mat(source, destination, from_to).map_err(JsError::from)
+}
+
 fn channel_matrix(source: &Mat) -> Result<ChannelMatrix, ChannelWasmError> {
     let width = u8::try_from(source.depth().byte_width())
         .map_err(|_| ChannelWasmError::ElementWidthOverflow(source.depth().byte_width()))?;
@@ -205,6 +230,36 @@ fn insert_channel_mat(
         destination_channel,
     )?;
     destination.write_compact_bytes(output.bytes())?;
+    Ok(())
+}
+
+fn mix_channels_mat(
+    source: &Mat,
+    destination: &Mat,
+    from_to: &[u16],
+) -> Result<(), ChannelWasmError> {
+    if from_to.len() % 2 != 0 {
+        return Err(ChannelWasmError::OddMappingLength(from_to.len()));
+    }
+    if source.depth() != destination.depth() {
+        return Err(ChannelWasmError::IncompatibleDepth {
+            expected: destination.depth(),
+            actual: source.depth(),
+        });
+    }
+    let source_kernel = channel_matrix(source)?;
+    let mut destinations = [channel_matrix(destination)?];
+    let mappings = from_to
+        .chunks_exact(2)
+        .map(|pair| ChannelMapping {
+            source_index: 0,
+            source_channel: pair[0],
+            destination_index: 0,
+            destination_channel: pair[1],
+        })
+        .collect::<Vec<_>>();
+    mix_channels(&[source_kernel], &mut destinations, &mappings)?;
+    destination.write_compact_bytes(destinations[0].bytes())?;
     Ok(())
 }
 
@@ -318,5 +373,30 @@ mod tests {
             merge_mats(&[&unsigned, &signed]),
             Err(ChannelWasmError::IncompatibleDepth { .. })
         ));
+    }
+
+    #[test]
+    fn mix_channels_routes_selected_lanes_and_preserves_others() {
+        let source = matrix(vec![1, 10, 100, 2, 20, 200], 1, 2, 3, MatDepth::U8);
+        let destination = matrix(vec![7, 8, 9, 70, 80, 90], 1, 2, 3, MatDepth::U8);
+
+        mix_channels_mat(&source, &destination, &[2, 0, 0, 2]).expect("valid routing");
+
+        assert_eq!(destination.to_u8_array(), [100, 8, 1, 200, 80, 2]);
+    }
+
+    #[test]
+    fn mix_channels_supports_aliasing_and_rejects_invalid_maps_atomically() {
+        let matrix = matrix(vec![1, 10, 100, 2, 20, 200], 1, 2, 3, MatDepth::U8);
+
+        mix_channels_mat(&matrix, &matrix, &[0, 2, 2, 0]).expect("aliased routing");
+        assert_eq!(matrix.to_u8_array(), [100, 10, 1, 200, 20, 2]);
+
+        let before = matrix.to_u8_array();
+        assert!(matches!(
+            mix_channels_mat(&matrix, &matrix, &[0, 1, 2]),
+            Err(ChannelWasmError::OddMappingLength(3))
+        ));
+        assert_eq!(matrix.to_u8_array(), before);
     }
 }

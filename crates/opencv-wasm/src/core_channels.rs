@@ -278,10 +278,6 @@ pub fn insert_channel(
 /// # Errors
 ///
 /// Returns an error for empty slices, incompatible layouts, or any invalid matrix or channel index.
-#[allow(
-    dead_code,
-    reason = "reserved for the upcoming mixChannels WASM adapter"
-)]
 pub fn mix_channels(
     sources: &[ChannelMatrix],
     destinations: &mut [ChannelMatrix],
