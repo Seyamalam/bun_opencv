@@ -1,7 +1,8 @@
 //! WebAssembly matrix adapters for two-dimensional contour geometry.
 //!
-//! This partial binding accepts I32, F32, and F64 contours stored as `Nx1C2`, `1xNC2`, or
-//! `Nx2C1`. Other curve containers and higher-dimensional points are not supported.
+//! Browser-matched contour measurements accept I32 and F32 contours stored as `Nx1C2`, `1xNC2`,
+//! or `Nx2C1`. The convexity and point-polygon extensions also accept F64 contours. Other curve
+//! containers and higher-dimensional points are not supported.
 
 use std::{error::Error, fmt};
 
@@ -30,10 +31,12 @@ impl fmt::Display for GeometryWasmError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Kernel(error) => error.fmt(formatter),
-            Self::UnsupportedDepth(depth) => write!(
-                formatter,
-                "contour depth {depth:?} is unsupported; expected I32, F32, or F64"
-            ),
+            Self::UnsupportedDepth(depth) => {
+                write!(
+                    formatter,
+                    "contour depth {depth:?} is unsupported by this operation"
+                )
+            }
             Self::InvalidContourLayout {
                 rows,
                 columns,
@@ -63,8 +66,8 @@ impl From<GeometryError> for GeometryWasmError {
 
 /// Computes an open or closed contour perimeter.
 ///
-/// Accepted contour layouts are `Nx1C2`, `1xNC2`, and `Nx2C1` at I32, F32, or F64 depth. Strided
-/// regions are read through their logical bytes.
+/// Accepted contour layouts are `Nx1C2`, `1xNC2`, and `Nx2C1` at I32 or F32 depth. Strided regions
+/// are read through their logical bytes.
 ///
 /// # Errors
 /// Returns an error for unsupported layout or depth, non-finite coordinates, or numeric overflow.
@@ -76,7 +79,7 @@ pub fn mat_arc_length(contour: &Mat, closed: bool) -> Result<f64, JsError> {
 /// Computes unsigned or oriented polygon area.
 ///
 /// Fewer than three points have zero area. Positive oriented area denotes counter-clockwise order
-/// in Cartesian coordinates.
+/// in Cartesian coordinates. Accepted contours use I32 or F32 depth.
 ///
 /// # Errors
 /// Returns an error for unsupported layout or depth, non-finite coordinates, or numeric overflow.
@@ -87,7 +90,8 @@ pub fn mat_contour_area(contour: &Mat, oriented: bool) -> Result<f64, JsError> {
 
 /// Returns `[x, y, width, height]` for the inclusive integer contour bounds.
 ///
-/// Fractional coordinates are floored. A single integer point produces a 1-by-1 rectangle.
+/// Fractional coordinates are floored. A single integer point produces a 1-by-1 rectangle. Accepted
+/// nonempty contours use I32 or F32 depth. The canonical empty matrix returns a zero rectangle.
 ///
 /// # Errors
 /// Returns an error for unsupported input, non-finite points, or an I32-unrepresentable rectangle.
@@ -129,17 +133,30 @@ pub fn mat_point_polygon_test(
 }
 
 fn arc_length_adapter(contour: &Mat, closed: bool) -> Result<f64, GeometryWasmError> {
-    let points = decode_contour(contour)?;
+    let points = decode_browser_contour(contour)?;
     arc_length(&points, closed).map_err(GeometryWasmError::from)
 }
 
 fn contour_area_adapter(contour: &Mat, oriented: bool) -> Result<f64, GeometryWasmError> {
-    let points = decode_contour(contour)?;
+    let points = decode_browser_contour(contour)?;
     contour_area(&points, oriented).map_err(GeometryWasmError::from)
 }
 
 fn bounding_rect_adapter(contour: &Mat) -> Result<BoundingRect, GeometryWasmError> {
-    let points = decode_contour(contour)?;
+    if contour.rows() == 0
+        && contour.columns() == 0
+        && contour.channels() == 1
+        && contour.depth() == MatDepth::U8
+        && !contour.is_continuous()
+    {
+        return Ok(BoundingRect {
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
+        });
+    }
+    let points = decode_browser_contour(contour)?;
     bounding_rect(&points).map_err(GeometryWasmError::from)
 }
 
@@ -155,6 +172,13 @@ fn point_polygon_test_adapter(
 ) -> Result<f64, GeometryWasmError> {
     let points = decode_contour(contour)?;
     point_polygon_test(&points, query, measure_distance).map_err(GeometryWasmError::from)
+}
+
+fn decode_browser_contour(contour: &Mat) -> Result<Vec<Point>, GeometryWasmError> {
+    match contour.depth() {
+        MatDepth::I32 | MatDepth::F32 => decode_contour(contour),
+        depth => Err(GeometryWasmError::UnsupportedDepth(depth)),
+    }
 }
 
 fn decode_contour(contour: &Mat) -> Result<Vec<Point>, GeometryWasmError> {
@@ -273,7 +297,7 @@ mod tests {
     }
 
     #[test]
-    fn adapters_accept_all_documented_depths_and_layouts() {
+    fn adapters_accept_documented_depths_and_layouts() {
         let i32_points = i32_contour(&[0, 0, 4, 0, 4, 3, 0, 3], 4, 1, 2);
         let f32_points = f32_contour(&[0.0, 0.0, 4.0, 0.0, 4.0, 3.0, 0.0, 3.0], 1, 4, 2);
         let f64_points = f64_contour(&[0.0, 0.0, 4.0, 0.0, 4.0, 3.0, 0.0, 3.0], 4, 2, 1);
@@ -283,8 +307,51 @@ mod tests {
     }
 
     #[test]
+    fn browser_contour_measurements_reject_f64_without_removing_f64_extensions() {
+        let contour = f64_contour(&[0.0, 0.0, 4.0, 0.0, 4.0, 3.0, 0.0, 3.0], 4, 1, 2);
+        assert_eq!(
+            arc_length_adapter(&contour, true),
+            Err(GeometryWasmError::UnsupportedDepth(MatDepth::F64))
+        );
+        assert_eq!(
+            contour_area_adapter(&contour, false),
+            Err(GeometryWasmError::UnsupportedDepth(MatDepth::F64))
+        );
+        assert_eq!(
+            bounding_rect_adapter(&contour),
+            Err(GeometryWasmError::UnsupportedDepth(MatDepth::F64))
+        );
+        assert_eq!(is_contour_convex_adapter(&contour), Ok(true));
+        assert_eq!(
+            point_polygon_test_adapter(&contour, Point { x: 2.0, y: 1.0 }, false),
+            Ok(1.0)
+        );
+    }
+
+    #[test]
+    fn bounding_rect_accepts_only_the_canonical_empty_matrix() {
+        assert_eq!(
+            bounding_rect_adapter(&crate::mat::mat_empty()),
+            Ok(BoundingRect {
+                x: 0,
+                y: 0,
+                width: 0,
+                height: 0,
+            })
+        );
+
+        for (rows, columns) in [(0, 0), (0, 3), (3, 0)] {
+            let typed_empty = Mat::empty_with_layout(rows, columns, 2, MatDepth::I32, true)
+                .expect("valid typed empty contour");
+            assert!(arc_length_adapter(&typed_empty, false).is_err());
+            assert!(contour_area_adapter(&typed_empty, false).is_err());
+            assert!(bounding_rect_adapter(&typed_empty).is_err());
+        }
+    }
+
+    #[test]
     fn adapters_read_strided_roi_logical_bytes() {
-        let parent = f64_contour(
+        let parent = f32_contour(
             &[
                 99.0, 99.0, 0.0, 0.0, 99.0, 99.0, 4.0, 0.0, 99.0, 99.0, 4.0, 3.0, 99.0, 99.0, 0.0,
                 3.0,
@@ -301,7 +368,7 @@ mod tests {
 
     #[test]
     fn bounding_rect_and_polygon_distance_have_stable_results() {
-        let contour = f64_contour(&[-0.2, 1.9, 2.8, -1.1, 0.0, 3.0], 3, 1, 2);
+        let contour = f32_contour(&[-0.2, 1.9, 2.8, -1.1, 0.0, 3.0], 3, 1, 2);
         assert_eq!(
             bounding_rect_adapter(&contour),
             Ok(BoundingRect {
@@ -339,7 +406,7 @@ mod tests {
             contour_area_adapter(&unsupported, false),
             Err(GeometryWasmError::UnsupportedDepth(MatDepth::U8))
         );
-        let non_finite = f64_contour(&[0.0, 0.0, f64::NAN, 1.0], 2, 1, 2);
+        let non_finite = f32_contour(&[0.0, 0.0, f32::NAN, 1.0], 2, 1, 2);
         assert_eq!(
             arc_length_adapter(&non_finite, false),
             Err(GeometryWasmError::Kernel(GeometryError::NonFinitePoint {
