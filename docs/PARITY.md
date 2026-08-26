@@ -25,7 +25,7 @@ Desktop modules that the official OpenCV.js build disables are outside this pari
 
 ## Fully implemented families
 
-Seventy-seven families meet the full-family definition. Current full parity is 77 of 488, or 15.78%.
+Seventy-eight families meet the full-family definition. Current full parity is 78 of 488, or 15.98%.
 
 | Package methods                                                                                                   | OpenCV.js families                              | Verified contract                                                          |
 | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------- |
@@ -61,6 +61,7 @@ Seventy-seven families meet the full-family definition. Current full parity is 7
 | `multiply`, `divide`, `addWeighted`, `convertScaleAbs`                                                            | Matching `cv` numeric families                  | Exact overloads, depths, dtype, outputs, aliases, empties, and overflow    |
 | `arcLength`, `contourArea`, `boundingRect`                                                                        | Matching `cv` contour geometry families         | Exact I32/F32 layouts, arity, truthiness, empties, errors, and lifetime    |
 | `isContourConvex`, `pointPolygonTest`                                                                             | Matching `cv` polygon-query families            | Exact strict convexity, Point2f, small contours, distance, errors, and ROI |
+| `getRotationMatrix2D`                                                                                             | `cv.getRotationMatrix2D`                        | Exact Point2f, F64 conversion, coefficients, and independent ownership     |
 | `transpose`                                                                                                       | `cv.transpose`                                  | Exact all-depth OutputArray, aliasing, empty, arity, and lifetime behavior |
 | `flip`                                                                                                            | `cv.flip`                                       | Exact all-depth OutputArray, signed codes, aliasing, errors, and lifetime  |
 | `countNonZero`                                                                                                    | `cv.countNonZero`                               | Exact all-depth scalar reduction, empty, ROI, errors, and lifetime         |
@@ -69,7 +70,7 @@ Seventy-seven families meet the full-family definition. Current full parity is 7
 
 ## Working partial families
 
-Fifty-two families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 129 families in total.
+Fifty-one families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 129 families in total.
 
 | Package methods                                       | OpenCV.js families                                                    | Current limit                                            |
 | ----------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------- |
@@ -90,7 +91,7 @@ Fifty-two families have useful original Rust/WASM slices but do not meet the ful
 | `determinant`, `invert`, `solve`                      | `cv.determinant`, `cv.invert`, `cv.solve`                             | Selected dense single-channel methods                    |
 | `getStructuringElement`, `createHanningWindow`        | Matching `cv` kernel and window families                              | U8 kernels or F32/F64 windows                            |
 | `ellipse2Poly`, `clipLine`                            | Matching `cv` integer geometry helpers                                | Selected integer argument and return forms               |
-| `getRotationMatrix2D`, `getAffineTransform`           | Matching `cv` affine matrix constructors                              | Selected finite inputs with F64 output                   |
+| `getAffineTransform`                                  | `cv.getAffineTransform`                                               | Selected F32/F64 point inputs with F64 output            |
 | `invertAffineTransform`, `getPerspectiveTransform`    | Matching `cv` transform matrix families                               | Selected F32/F64 inputs with F64 output                  |
 | `createAKAZE`                                         | `cv.AKAZE.create`                                                     | Static factory is absent from the pinned artifact        |
 | `createKAZE`                                          | `cv.KAZE.create`                                                      | Static factory is absent from the pinned artifact        |
@@ -102,6 +103,8 @@ Fifty-two families have useful original Rust/WASM slices but do not meet the ful
 The fixture passes the complete pinned contracts for `arcLength`, `contourArea`, and `boundingRect`. It covers `arcLength`'s exact two-argument arity, `contourArea`'s runtime length of zero and one- or two-argument overloads, and `boundingRect`'s exact one-argument arity. It also checks JavaScript truthiness, I32 and F32 contours in `Nx1C2`, `1xNC2`, and `Nx2C1` layouts, deleted inputs, canonical empty bounds, and rejection of F64, U8, and invalid shapes. The package rejects typed empty contours before entering upstream paths that do not return a safe JavaScript error.
 
 The fixture passes the complete pinned contracts for `isContourConvex` and `pointPolygonTest`. It checks exact one- and three-argument calls, strict clockwise and counter-clockwise convexity, collinear and duplicate vertices, concavity, self-crossing, continuous I32/F32 layouts, structural Point2f conversion, float32 narrowing, JavaScript truthiness, one-point and two-point contours, classification, signed distance, traversal-dependent signed zero, non-finite query sentinels, and rejected empty, deleted, invalid-depth, invalid-shape, and non-contiguous inputs.
+
+The fixture passes the complete pinned contract for `getRotationMatrix2D`. It checks runtime length and exact three-argument arity before field access, structural Point2f field ordering and float32 narrowing, strict Embind double conversion for angle and scale, boolean inputs, signed zero, non-finite propagation, bit-exact 2x3 F64 output, and independent allocation and deletion.
 
 The fixture exposes the direct `AKAZE` constructor and all 15 instance methods. Its complete matrix checks exact arity, defaults, return values, scalar coercion, enum namespaces and singleton identity, structural enum setters, raw unknown wire values, deletion, repeat deletion, and calls after deletion. All 15 instance methods pass and count as implemented. The config-listed static `AKAZE.create` binding is absent from the artifact, so the package factory remains partial.
 

@@ -190,7 +190,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `ellipse2Poly`                              | `cv.ellipse2Poly`                              | Partial | Ordered integer ellipse arcs             |
 | imgproc    | `getAffineTransform`                        | `cv.getAffineTransform`                        | Partial | Three F32/F64 point pairs to F64         |
 | imgproc    | `getPerspectiveTransform`                   | `cv.getPerspectiveTransform`                   | Partial | Four F32/F64 point pairs to F64          |
-| imgproc    | `getRotationMatrix2D`                       | `cv.getRotationMatrix2D`                       | Partial | Finite scalars to a 2x3 F64 matrix       |
+| imgproc    | `getRotationMatrix2D`                       | `cv.getRotationMatrix2D`                       | Full    | Exact Point2f and F64 matrix contract    |
 | imgproc    | `getStructuringElement`                     | `cv.getStructuringElement`                     | Partial | U8 rectangle, cross, or ellipse kernel   |
 | imgproc    | `grayscale`                                 | `cv.cvtColor`                                  | Partial | RGBA-to-gray specialization              |
 | imgproc    | `invertAffineTransform`                     | `cv.invertAffineTransform`                     | Partial | F32/F64 2x3 input to F64 inverse         |
@@ -203,7 +203,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `findContours`                              | `cv.findContours`                              | Planned | Not started                              |
 | imgproc    | `warpPerspective`                           | `cv.warpPerspective`                           | Planned | Not started                              |
 
-Current full parity is **77 of 488 (15.78%)**. There are **52 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+Current full parity is **78 of 488 (15.98%)**. There are **51 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
 
 The fixture passes the complete pinned browser contract for `exp`, `log`, `sqrt`, `pow`, and `magnitude`. It checks exact arity and Mat conversion, Embind F64 power conversion, typed and canonical empty matrices, destination replacement, detached and shared regions, live overlapping traversal, all valid scalar depths, integer saturation and wrapping, and floating-point bit patterns. The package rejects native calls that expose unsafe uninitialized output while preserving the observable rejection and unchanged-state contract.
 
@@ -214,6 +214,8 @@ The fixture passes the complete pinned contracts for `multiply`, `divide`, `addW
 The fixture passes the complete pinned contracts for `arcLength`, `contourArea`, and `boundingRect`. It covers exact arity and runtime length, JavaScript truthiness, I32 and F32 contours in `Nx1C2`, `1xNC2`, and `Nx2C1` layouts, deleted inputs, canonical empty bounds, and rejection of F64, U8, and invalid shapes. The package rejects typed empty contours before entering upstream paths that do not return a safe JavaScript error.
 
 The fixture also passes the complete pinned contracts for `isContourConvex` and `pointPolygonTest`. It covers exact arity, strict convexity, continuous I32/F32 layouts, structural Point2f conversion, float32 narrowing, JavaScript truthiness, one-point and segment contours, classification, signed distance, traversal-dependent signed zero, non-finite query sentinels, deleted and empty inputs, and rejected depths, shapes, and regions.
+
+The fixture passes the complete pinned `getRotationMatrix2D` contract. It checks the exact three-argument call, structural Point2f field order and float32 narrowing, strict Embind double conversion for angle and scale, boolean inputs, signed zero, non-finite propagation, bit-exact 2x3 F64 coefficients, and independent result ownership.
 
 The fixture passes the complete pinned browser contract for `rotate`, including exact arity and constants, Embind signed i32 conversion, all scalar depths, empty and deleted matrices, OutputArray replacement, in-place operation, detached regions, and live shared-region composition. Invalid native codes preserve the observable no-throw contract without exposing the official build's unsafe output state.
 

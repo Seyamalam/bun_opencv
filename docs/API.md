@@ -227,7 +227,7 @@ invertAffineTransform(transform: Mat): Mat;
 getPerspectiveTransform(source: Mat, destination: Mat): Mat;
 ```
 
-`getRotationMatrix2D` accepts finite center, angle, and scale values and returns a 2x3 single-channel F64 matrix.
+`getRotationMatrix2D` accepts exactly three arguments. The center may be any structural Point2f object with `x` and `y` fields. The binding checks those fields in order and narrows them to float32. Angle and scale use strict Embind double conversion; numbers and booleans are accepted, while strings, boxed numbers, and generic coercion objects are rejected. Signed zero, `NaN`, and infinities propagate to a bit-exact `2x3C1` F64 result. Every call allocates an independent matrix.
 
 `getAffineTransform` reads three source and destination points. Each point set may be `3x2C1`, `3x1C2`, or `1x3C2` at F32 or F64 depth. Strided regions are supported. The method rejects non-finite coordinates and collinear source points, then returns a 2x3 single-channel F64 matrix.
 
@@ -235,9 +235,9 @@ getPerspectiveTransform(source: Mat, destination: Mat): Mat;
 
 `getPerspectiveTransform` reads four source and destination points. Each point set may be `4x2C1`, `4x1C2`, or `1x4C2` at F32 or F64 depth. Strided regions are supported. It uses one scaled partial-pivoting solver, fixes the lower-right output coefficient to one, and returns a `3x3C1` F64 matrix. It rejects non-finite values, degenerate point configurations, and transforms that cannot use that normalization.
 
-All four constructors allocate their results. Mutable destination forms and browser differential fixtures remain before these families can move beyond partial status.
+All four constructors allocate their results. `getRotationMatrix2D` passes its complete pinned browser contract. Mutable destination forms and complete browser differential fixtures remain for the other three families.
 
-The pinned OpenCV.js 4.13.0 browser fixture passes the complete audited contracts for all five contour methods. It also passes worked cases for `getStructuringElement` and `getRotationMatrix2D`. Those remaining families still need argument, invalid-input, and numeric-boundary audits before full-family credit.
+The pinned OpenCV.js 4.13.0 browser fixture passes the complete audited contracts for all five contour methods and `getRotationMatrix2D`. The transform-matrix audit covers exact arity, structural Point2f conversion, float32 center narrowing, strict angle and scale conversion, signed zero, non-finite values, exact F64 coefficients, and result ownership. `getStructuringElement` still needs argument, invalid-input, and numeric-boundary audits before full-family credit.
 
 ### Dense matrix algebra
 

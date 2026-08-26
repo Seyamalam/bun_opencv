@@ -1452,10 +1452,10 @@ export const PARITY_MANIFEST = {
       method: "getRotationMatrix2D",
       module: "imgproc",
       notes:
-        "Finite center, angle, and scale inputs allocate a 2x3 single-channel F64 matrix; the worked browser fixture passes, while boundary, error, and broader numeric differential audits remain.",
+        "Matches the pinned three-argument browser binding: structural Point2f fields are checked in x/y order and narrowed to F32, angle and scale use strict Embind F64 conversion with booleans, signed zero and non-finite values propagate, and each call allocates an independent 2x3 single-channel F64 matrix with exact coefficients.",
       patentReview: "required",
       sources: [IMGPROC_SOURCE],
-      status: "partial",
+      status: "implemented",
       upstream: "cv.getRotationMatrix2D",
       upstreamId: "imgproc.function.get-rotation-matrix2-d",
       wasmExport: "matGetRotationMatrix2D",
