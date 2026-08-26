@@ -604,6 +604,18 @@
     },
     {
       "implementationOrigin": "original",
+      "method": "mixChannels",
+      "module": "core",
+      "notes": "All scalar depths, strided regions, alias-safe mutable output, and arbitrary channel pairs for one source and one destination; MatVector input/output forms and differential fixtures remain.",
+      "patentReview": "required",
+      "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
+      "status": "partial",
+      "upstream": "cv.mixChannels",
+      "upstreamId": "core.function.mix-channels",
+      "wasmExport": "matMixChannels"
+    },
+    {
+      "implementationOrigin": "original",
       "method": "split",
       "module": "core",
       "notes": "All scalar depths, channels, and strided regions are supported; the MatVector destination form remains.",

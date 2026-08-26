@@ -25,28 +25,29 @@ Desktop modules that the official OpenCV.js build disables are outside this pari
 
 ## Working partial families
 
-Fifty-two families have useful original Rust/WASM slices. None yet satisfies the full-family definition, so full parity remains 0 of 488.
+Fifty-three families have useful original Rust/WASM slices. None yet satisfies the full-family definition, so full parity remains 0 of 488.
 
-| Package methods                                        | OpenCV.js families                                                    | Current limit                                |
-| ------------------------------------------------------ | --------------------------------------------------------------------- | -------------------------------------------- |
-| `add`, `subtract`, `absdiff`, `min`, `max`             | `cv.add`, `cv.subtract`, `cv.absdiff`, `cv.min`, `cv.max`             | Matching U8 matrix operands                  |
-| `bitwiseAnd`, `bitwiseOr`, `bitwiseXor`, `bitwiseNot`  | `cv.bitwise_and`, `cv.bitwise_or`, `cv.bitwise_xor`, `cv.bitwise_not` | U8 matrices without scalar or mask forms     |
-| `compareEqual`, `inRange`, `countNonZero`              | `cv.compare`, `cv.inRange`, `cv.countNonZero`                         | Selected U8 forms                            |
-| `flip`, `repeat`, `rotate`, `transpose`                | `cv.flip`, `cv.repeat`, `cv.rotate`, `cv.transpose`                   | All depths and mutable destinations          |
-| `split`, `merge`                                       | `cv.split`, `cv.merge`                                                | All depths; selected array call forms        |
-| `hconcat`, `vconcat`                                   | `cv.hconcat`, `cv.vconcat`                                            | All depths; two through four inputs          |
-| `exp`, `log`, `sqrt`, `pow`, `magnitude`               | Matching `cv` floating-point families                                 | F32/F64; selected return forms               |
-| `cartToPolar`, `polarToCart`                           | `cv.cartToPolar`, `cv.polarToCart`                                    | F32/F64 with mutable paired outputs          |
-| `multiply`, `divide`, `addWeighted`, `convertScaleAbs` | Matching `cv` numeric families                                        | All depths; selected matrix forms            |
-| `copyMakeBorder`                                       | `cv.copyMakeBorder`                                                   | All depths and five border modes             |
-| `lut`                                                  | `cv.LUT`                                                              | Byte sources and every table depth           |
-| `norm`, `normalize`                                    | `cv.norm`, `cv.normalize`                                             | All depths, masks, and major norm modes      |
-| `meanStdDev`, `reduce`                                 | `cv.meanStdDev`, `cv.reduce`                                          | All depths and mutable outputs               |
-| `mean`, `minMaxLoc`, `trace`                           | `cv.mean`, `cv.minMaxLoc`, `cv.trace`                                 | Masks or multi-channel trace remain          |
-| `setIdentity`, `randu`, `randn`, `setRNGSeed`          | Matching `cv` initialization and random families                      | Package RNG sequences differ from OpenCV     |
-| `transform`, `perspectiveTransform`                    | `cv.transform`, `cv.perspectiveTransform`                             | Selected channel and coefficient forms       |
-| `determinant`, `invert`, `solve`                       | `cv.determinant`, `cv.invert`, `cv.solve`                             | Selected dense single-channel methods        |
-| `grayscale`, `resizeNearest`, `threshold`              | `cv.cvtColor`, `cv.resize`, `cv.threshold`                            | One RGBA or luma-derived specialization each |
+| Package methods                                        | OpenCV.js families                                                    | Current limit                                 |
+| ------------------------------------------------------ | --------------------------------------------------------------------- | --------------------------------------------- |
+| `add`, `subtract`, `absdiff`, `min`, `max`             | `cv.add`, `cv.subtract`, `cv.absdiff`, `cv.min`, `cv.max`             | Matching U8 matrix operands                   |
+| `bitwiseAnd`, `bitwiseOr`, `bitwiseXor`, `bitwiseNot`  | `cv.bitwise_and`, `cv.bitwise_or`, `cv.bitwise_xor`, `cv.bitwise_not` | U8 matrices without scalar or mask forms      |
+| `compareEqual`, `inRange`, `countNonZero`              | `cv.compare`, `cv.inRange`, `cv.countNonZero`                         | Selected U8 forms                             |
+| `flip`, `repeat`, `rotate`, `transpose`                | `cv.flip`, `cv.repeat`, `cv.rotate`, `cv.transpose`                   | All depths and mutable destinations           |
+| `split`, `merge`                                       | `cv.split`, `cv.merge`                                                | All depths; selected array call forms         |
+| `hconcat`, `vconcat`                                   | `cv.hconcat`, `cv.vconcat`                                            | All depths; two through four inputs           |
+| `exp`, `log`, `sqrt`, `pow`, `magnitude`               | Matching `cv` floating-point families                                 | F32/F64; selected return forms                |
+| `cartToPolar`, `polarToCart`                           | `cv.cartToPolar`, `cv.polarToCart`                                    | F32/F64 with mutable paired outputs           |
+| `multiply`, `divide`, `addWeighted`, `convertScaleAbs` | Matching `cv` numeric families                                        | All depths; selected matrix forms             |
+| `copyMakeBorder`                                       | `cv.copyMakeBorder`                                                   | All depths and five border modes              |
+| `lut`                                                  | `cv.LUT`                                                              | Byte sources and every table depth            |
+| `norm`, `normalize`                                    | `cv.norm`, `cv.normalize`                                             | All depths, masks, and major norm modes       |
+| `meanStdDev`, `reduce`                                 | `cv.meanStdDev`, `cv.reduce`                                          | All depths and mutable outputs                |
+| `mean`, `minMaxLoc`, `trace`                           | `cv.mean`, `cv.minMaxLoc`, `cv.trace`                                 | Masks or multi-channel trace remain           |
+| `mixChannels`                                          | `cv.mixChannels`                                                      | One source and destination; MatVector remains |
+| `setIdentity`, `randu`, `randn`, `setRNGSeed`          | Matching `cv` initialization and random families                      | Package RNG sequences differ from OpenCV      |
+| `transform`, `perspectiveTransform`                    | `cv.transform`, `cv.perspectiveTransform`                             | Selected channel and coefficient forms        |
+| `determinant`, `invert`, `solve`                       | `cv.determinant`, `cv.invert`, `cv.solve`                             | Selected dense single-channel methods         |
+| `grayscale`, `resizeNearest`, `threshold`              | `cv.cvtColor`, `cv.resize`, `cv.threshold`                            | One RGBA or luma-derived specialization each  |
 
 ## Tracked planned sample
 

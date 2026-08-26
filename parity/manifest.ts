@@ -661,6 +661,19 @@ export const PARITY_MANIFEST = {
     },
     {
       implementationOrigin: "original",
+      method: "mixChannels",
+      module: "core",
+      notes:
+        "All scalar depths, strided regions, alias-safe mutable output, and arbitrary channel pairs for one source and one destination; MatVector input/output forms and differential fixtures remain.",
+      patentReview: "required",
+      sources: [CORE_ARRAY_SOURCE],
+      status: "partial",
+      upstream: "cv.mixChannels",
+      upstreamId: "core.function.mix-channels",
+      wasmExport: "matMixChannels",
+    },
+    {
+      implementationOrigin: "original",
       method: "split",
       module: "core",
       notes:

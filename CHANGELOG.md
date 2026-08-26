@@ -14,6 +14,7 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - All-depth identity, uniform random, and normal random matrix fills with reproducible package-owned seed control.
 - Per-element linear, affine, and perspective transforms with allocating and mutable destination forms.
 - Dense determinant, inverse, and linear-system solvers with LU, Cholesky, and QR methods.
+- Alias-safe single-source `mixChannels` routing across all scalar depths.
 - Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
 
 ### Planned

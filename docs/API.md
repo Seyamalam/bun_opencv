@@ -88,9 +88,10 @@ The browser differential harness passes the pinned OpenCV.js 4.13.0 U8 fixtures 
 - `merge([first, second])`, `merge([first, second, third])`, and `merge([first, second, third, fourth])` interleave compatible inputs without invalidating them.
 - `extractChannel(source, channel)` returns one selected channel.
 - `insertChannel(source, destination, channel)` writes a single-channel source into one destination channel.
+- `mixChannels(source, destination, fromTo)` routes flattened source/destination channel pairs into an existing matrix while preserving unmapped destination channels.
 - `hconcat([first, second, ...])` and `vconcat([first, second, ...])` join two through four compatible matrices without invalidating their inputs.
 
-Channel operations preserve raw scalar bytes for all seven depths and compact strided source regions. Insertions into a destination region update its shared parent storage.
+Channel operations preserve raw scalar bytes for all seven depths and compact strided source regions. Insertions and channel routing into a destination region update its shared parent storage. The current `mixChannels` slice accepts one source and one destination; MatVector forms remain.
 
 ### Floating-point math
 

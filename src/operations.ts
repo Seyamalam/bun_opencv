@@ -28,6 +28,7 @@ export const OPENCV_OPERATIONS = [
   { method: "meanStdDev", wasmExport: "matMeanStdDevInto" },
   { method: "merge", wasmExport: "matMerge" },
   { method: "min", wasmExport: "matMinU8" },
+  { method: "mixChannels", wasmExport: "matMixChannels" },
   { method: "minMaxLoc", wasmExport: "matMinMaxLoc" },
   { method: "multiply", wasmExport: "matMultiply" },
   { method: "norm", wasmExport: "matNorm" },
