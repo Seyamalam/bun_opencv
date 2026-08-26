@@ -277,11 +277,13 @@ try {
 }
 ```
 
-Omitting every option uses the OpenCV 4.13 defaults shown above. Descriptor types accept KAZE upright, KAZE, MLDB upright, or MLDB. Descriptor channels range from 1 through 3. Descriptor size is zero or a positive signed 32-bit integer. Octaves and octave layers must be positive signed 32-bit integers. Thresholds must be finite and non-negative. Diffusivity accepts PM G1, PM G2, Weickert, or Charbonnier. `maxPoints` accepts a signed 32-bit integer but has no getter or setter in the pinned AKAZE inventory.
+Omitting every option uses the OpenCV 4.13 defaults shown above. Factory options are deliberately stricter than instance mutation. Descriptor types accept KAZE upright, KAZE, MLDB upright, or MLDB. Descriptor channels range from 1 through 3, descriptor size is non-negative, octave counts are positive signed 32-bit integers, and thresholds are finite and non-negative. Diffusivity accepts PM G1, PM G2, Weickert, or Charbonnier. `maxPoints` accepts a signed 32-bit integer but has no getter or setter in the pinned AKAZE inventory.
 
-The getters return the current Rust-owned values. Setters validate before mutation, so a rejected update preserves the prior value. `getDefaultName()` returns `"Feature2D.AKAZE"`.
+The non-enum instance setters reproduce the pinned Embind boundary. Descriptor-channel, descriptor-size, octave, and octave-layer setters coerce numbers to signed i32 and store the complete signed range. The threshold setter preserves the complete F64 domain, including negative zero, `NaN`, and both infinities. Missing or extra method arguments throw `BindingError`; unsupported scalar input and integer range failures throw `TypeError`. Descriptor type and diffusivity remain validated package enums, and a rejected enum update preserves the previous value. `getDefaultName()` returns `"Feature2D.AKAZE"`.
 
-The pinned OpenCV.js 4.13.0 browser fixture passes the documented defaults and one mutation for every instance setting. The official artifact exposes a directly constructible `AKAZE` class but omits the config-listed static `AKAZE.create`, so the package factory has no direct runtime comparator for that baseline.
+The instance exposes OpenCV.js-compatible `delete()` and idempotent `dispose()`. `delete()` releases the handle and a repeated call throws `BindingError`. Every getter or setter after either release path throws `BindingError`.
+
+The pinned OpenCV.js 4.13.0 browser fixture exposes the direct `AKAZE` constructor and all 15 instance methods. The complete compatibility matrix passes for the 11 non-enum methods, covering exact arity, defaults, return values, scalar coercion, argument errors, and lifetime behavior. The four descriptor-type and diffusivity methods remain partial because the official binding exchanges enum objects. The artifact omits the config-listed static `AKAZE.create`, so the package factory has no direct runtime comparator for that baseline.
 
 Call `dispose()` when the handle is no longer needed. Repeated disposal does nothing. Any getter or setter after disposal throws `OpenCvInputError`.
 
@@ -407,7 +409,7 @@ The pinned OpenCV.js 4.13.0 fixture exposes the direct `GFTTDetector` constructo
 
 ## Errors
 
-The TypeScript boundary throws `OpenCvInputError` for invalid dimensions, byte lengths, thresholds, and strictly validated factory options. Non-enum KAZE and GFTT instance methods throw `BindingError` for argument-count and deleted-object failures, matching the pinned browser binding. Their scalar conversion failures throw `TypeError`. Rust rejects invalid dimensions and byte lengths if a caller bypasses the TypeScript client.
+The TypeScript boundary throws `OpenCvInputError` for invalid dimensions, byte lengths, thresholds, and strictly validated factory options. Non-enum AKAZE, KAZE, and GFTT instance methods throw `BindingError` for argument-count and deleted-object failures, matching the pinned browser binding. Their scalar conversion failures throw `TypeError`. Rust rejects invalid dimensions and byte lengths if a caller bypasses the TypeScript client.
 
 ## Matrices
 

@@ -29,6 +29,8 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - AGAST and FAST enum getters, enum setters, and factories remain partial because enum objects and direct construction do not yet match the pinned browser binding.
 - Eleven fully implemented non-enum KAZE instance methods with exact arity, complete signed i32, F64, and boolean coercion, `BindingError` argument checks, and deletion behavior, bringing the totals to 95 partial, 34 implemented, and 129 supported families.
 - KAZE diffusivity methods and the factory remain partial because enum objects and static construction do not yet match the pinned browser binding.
+- Eleven fully implemented non-enum AKAZE instance methods with exact arity, complete signed i32 and F64 coercion, `BindingError` argument checks, and deletion behavior, bringing the totals to 84 partial, 45 implemented, and 129 supported families.
+- AKAZE descriptor-type and diffusivity methods and the factory remain partial because enum objects and static construction do not yet match the pinned browser binding.
 - OpenCV.js-compatible negative-input and upper-sentinel behavior for `getOptimalDFTSize`, plus a fail-closed numeric browser comparator for enum-backed values.
 - Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
 
