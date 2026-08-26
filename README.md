@@ -110,7 +110,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | core       | `randu`                                     | `cv.randu`                                     | Partial | All depths and per-channel ranges        |
 | core       | `repeat`                                    | `cv.repeat`                                    | Full    | Exact all-depth mutable-output contract  |
 | core       | `reduce`                                    | `cv.reduce`                                    | Partial | Both axes, four modes, all depths        |
-| core       | `rotate`                                    | `cv.rotate`                                    | Partial | All depths and rotation codes            |
+| core       | `rotate`                                    | `cv.rotate`                                    | Full    | Exact all-depth mutable-output contract  |
 | core       | `setIdentity`                               | `cv.setIdentity`                               | Partial | All depths and in-place output           |
 | core       | `setLogLevel`                               | `cv.setLogLevel`                               | Partial | Previous-level return and state update   |
 | core       | `setRNGSeed`                                | `cv.setRNGSeed`                                | Partial | Deterministic package-owned RNG          |
@@ -203,7 +203,9 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `findContours`                              | `cv.findContours`                              | Planned | Not started                              |
 | imgproc    | `warpPerspective`                           | `cv.warpPerspective`                           | Planned | Not started                              |
 
-Current full parity is **60 of 488 (12.30%)**. There are **69 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+Current full parity is **61 of 488 (12.50%)**. There are **68 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+
+The fixture passes the complete pinned browser contract for `rotate`, including exact arity and constants, Embind signed i32 conversion, all scalar depths, empty and deleted matrices, OutputArray replacement, in-place operation, detached regions, and live shared-region composition. Invalid native codes preserve the observable no-throw contract without exposing the official build's unsafe output state.
 
 The fixture passes the complete pinned browser contract for `repeat`, including exact arity, Embind signed i32 conversion, all scalar depths, empty and deleted matrices, OutputArray replacement, compatible and detached regions, exact in-place rejection, and live overlapping shared-region traversal. Invalid native calls are compared by rejection and unchanged state because the official build exposes transient numeric exception pointers; this package preserves stable Rust errors.
 

@@ -1458,10 +1458,10 @@
       "implementationOrigin": "original",
       "method": "rotate",
       "module": "core",
-      "notes": "All scalar depths, channels, three rotation codes, allocating results, and mutable destinations; the U8 browser differential passes, while empty-matrix and all-depth differential audits remain.",
+      "notes": "Exact three-argument browser contract and constants across all scalar depths, Embind signed code conversion, empty and deleted matrices, destination replacement, in-place operation, detached incompatible regions, and live overlapping shared regions.",
       "patentReview": "required",
       "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
-      "status": "partial",
+      "status": "implemented",
       "upstream": "cv.rotate",
       "upstreamId": "core.function.rotate",
       "wasmExport": "matRotate"

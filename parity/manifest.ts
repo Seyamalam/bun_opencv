@@ -1592,10 +1592,10 @@ export const PARITY_MANIFEST = {
       method: "rotate",
       module: "core",
       notes:
-        "All scalar depths, channels, three rotation codes, allocating results, and mutable destinations; the U8 browser differential passes, while empty-matrix and all-depth differential audits remain.",
+        "Exact three-argument browser contract and constants across all scalar depths, Embind signed code conversion, empty and deleted matrices, destination replacement, in-place operation, detached incompatible regions, and live overlapping shared regions.",
       patentReview: "required",
       sources: [CORE_ARRAY_SOURCE],
-      status: "partial",
+      status: "implemented",
       upstream: "cv.rotate",
       upstreamId: "core.function.rotate",
       wasmExport: "matRotate",
