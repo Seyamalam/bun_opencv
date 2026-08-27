@@ -426,9 +426,7 @@ class WasmOpenCv implements OpenCv {
     requireExactArity(arguments.length, 2, "getAffineTransform");
     const sourceHandle = matHandleForBinding(source);
     const destinationHandle = matHandleForBinding(destination);
-    return new Mat(
-      this.#backend.matGetAffineTransform(sourceHandle, destinationHandle),
-    );
+    return new Mat(this.#backend.matGetAffineTransform(sourceHandle, destinationHandle));
   }
 
   getLogLevel(): LogLevel {

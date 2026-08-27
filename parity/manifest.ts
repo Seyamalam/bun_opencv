@@ -1465,10 +1465,10 @@ export const PARITY_MANIFEST = {
       method: "getAffineTransform",
       module: "imgproc",
       notes:
-        "Three F32 or F64 point pairs in 3x2C1, 3x1C2, or 1x3C2 matrices, including strided regions, allocate a 2x3 F64 map; other point containers, mutable output, and differential fixtures remain.",
+        "Matches the exact two-Mat binding, continuous F32 point inputs in 3x2C1, 3x1C2, or 1x3C2 layouts, source preservation, singular zero output, non-finite propagation, exact LU arithmetic, and fresh 2x3 F64 results.",
       patentReview: "required",
       sources: [IMGPROC_SOURCE],
-      status: "partial",
+      status: "implemented",
       upstream: "cv.getAffineTransform",
       upstreamId: "imgproc.function.get-affine-transform",
       wasmExport: "matGetAffineTransform",

@@ -229,7 +229,7 @@ getPerspectiveTransform(source: Mat, destination: Mat): Mat;
 
 `getRotationMatrix2D` accepts exactly three arguments. The center may be any structural Point2f object with `x` and `y` fields. The binding checks those fields in order and narrows them to float32. Angle and scale use strict Embind double conversion; numbers and booleans are accepted, while strings, boxed numbers, and generic coercion objects are rejected. Signed zero, `NaN`, and infinities propagate to a bit-exact `2x3C1` F64 result. Every call allocates an independent matrix.
 
-`getAffineTransform` reads three source and destination points. Each point set may be `3x2C1`, `3x1C2`, or `1x3C2` at F32 or F64 depth. Strided regions are supported. The method rejects non-finite coordinates and collinear source points, then returns a 2x3 single-channel F64 matrix.
+`getAffineTransform` reads three source and destination points from continuous F32 matrices. Each point set may be `3x2C1`, `3x1C2`, or `1x3C2`. It returns a fresh 2x3 single-channel F64 matrix. Collinear source points produce six zeros, and non-finite coordinates propagate through the result.
 
 `invertAffineTransform` accepts a finite, nonsingular `2x3C1` F32 or F64 matrix, including a strided region, and returns a `2x3C1` F64 inverse.
 
