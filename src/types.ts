@@ -336,7 +336,9 @@ export interface OpenCvBackend {
   ): void;
   matMaxU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matMean(source: WasmMatHandle): Float64Array;
+  matMeanMasked(source: WasmMatHandle, mask: WasmMatHandle): Float64Array;
   matMinMaxLoc(source: WasmMatHandle): Float64Array;
+  matMinMaxLocMasked(source: WasmMatHandle, mask: WasmMatHandle): Float64Array;
   matMinU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matSubtractU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matSum(source: WasmMatHandle): Float64Array;
@@ -479,11 +481,13 @@ export interface OpenCv {
   magnitudeAlloc(x: Mat, y: Mat): Mat;
   max(left: Mat, right: Mat): Mat;
   mean(source: Mat): Scalar;
+  mean(source: Mat, mask: Mat): Scalar;
   meanStdDev(source: Mat, means: Mat, standardDeviations: Mat, mask?: Mat): void;
   merge(
     sources: readonly [Mat, Mat] | readonly [Mat, Mat, Mat] | readonly [Mat, Mat, Mat, Mat],
   ): Mat;
   minMaxLoc(source: Mat): MinMaxLocation;
+  minMaxLoc(source: Mat, mask: Mat): MinMaxLocation;
   min(left: Mat, right: Mat): Mat;
   mixChannels(source: Mat, destination: Mat, fromTo: Uint16Array): void;
   multiply(a: Mat, b: Mat, destination: Mat, scale?: number, dtype?: number): void;

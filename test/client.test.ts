@@ -44,10 +44,11 @@ class CopyingMatHandle implements WasmMatHandle {
     readonly channels: number,
     readonly data: Uint8Array,
     readonly depth = 0,
+    emptyIsContinuous = true,
   ) {
     const byteWidth = depthByteWidth(depth);
     this.byteLength = rows * columns * channels * byteWidth;
-    this.isContinuous = rows > 0 && columns > 0;
+    this.isContinuous = rows > 0 && columns > 0 ? true : emptyIsContinuous;
     this.rowStride = columns * channels * byteWidth;
   }
 
@@ -946,7 +947,7 @@ class CopyingBackend implements OpenCvBackend {
   }
 
   matEmpty(): WasmMatHandle {
-    return new CopyingMatHandle(0, 0, 1, new Uint8Array());
+    return new CopyingMatHandle(0, 0, 1, new Uint8Array(), 0, false);
   }
 
   matFlip(source: WasmMatHandle, flipCode: number): WasmMatHandle {
@@ -1690,8 +1691,31 @@ class CopyingBackend implements OpenCvBackend {
     const totals = this.matSum(source);
     const output = new Float64Array(4);
     const pixels = source.rows * source.columns;
+    if (pixels === 0) return output;
     for (let channel = 0; channel < source.channels; channel += 1) {
-      output[channel] = floatAt(totals, channel) / pixels;
+      output[channel] = floatAt(totals, channel) * (1 / pixels);
+    }
+    return output;
+  }
+
+  matMeanMasked(source: WasmMatHandle, mask: WasmMatHandle): Float64Array {
+    if (mask.byteLength === 0) return this.matMean(source);
+    const output = new Float64Array(4);
+    const data = source.toUint8Array();
+    const maskData = mask.toUint8Array();
+    let selected = 0;
+    for (let pixel = 0; pixel < source.rows * source.columns; pixel += 1) {
+      if (byteAt(maskData, pixel) === 0) continue;
+      selected += 1;
+      for (let channel = 0; channel < source.channels; channel += 1) {
+        const index = pixel * source.channels + channel;
+        output[channel] = floatAt(output, channel) + byteAt(data, index);
+      }
+    }
+    if (selected !== 0) {
+      for (let channel = 0; channel < source.channels; channel += 1) {
+        output[channel] = floatAt(output, channel) * (1 / selected);
+      }
     }
     return output;
   }
@@ -1702,6 +1726,10 @@ class CopyingBackend implements OpenCvBackend {
 
   matMinMaxLoc(source: WasmMatHandle): Float64Array {
     const data = source.toUint8Array();
+    if (source.rows === 0 || source.columns === 0) {
+      const coordinate = source.isContinuous ? -1 : 0;
+      return new Float64Array([0, 0, coordinate, coordinate, coordinate, coordinate]);
+    }
     let minimum = byteAt(data, 0);
     let maximum = minimum;
     let minimumIndex = 0;
@@ -1724,6 +1752,43 @@ class CopyingBackend implements OpenCvBackend {
       Math.floor(minimumIndex / source.columns),
       maximumIndex % source.columns,
       Math.floor(maximumIndex / source.columns),
+    ]);
+  }
+
+  matMinMaxLocMasked(source: WasmMatHandle, mask: WasmMatHandle): Float64Array {
+    if (mask.byteLength === 0) return this.matMinMaxLoc(source);
+    const data = source.toUint8Array();
+    const maskData = mask.toUint8Array();
+    let minimum = 0;
+    let maximum = 0;
+    let minimumIndex = -1;
+    let maximumIndex = -1;
+    for (let index = 0; index < source.rows * source.columns; index += 1) {
+      if (byteAt(maskData, index) === 0) continue;
+      const value = byteAt(data, index);
+      if (minimumIndex === -1) {
+        minimum = value;
+        maximum = value;
+        minimumIndex = index;
+        maximumIndex = index;
+        continue;
+      }
+      if (value < minimum) {
+        minimum = value;
+        minimumIndex = index;
+      }
+      if (value > maximum) {
+        maximum = value;
+        maximumIndex = index;
+      }
+    }
+    return new Float64Array([
+      minimum,
+      maximum,
+      minimumIndex === -1 ? -1 : minimumIndex % source.columns,
+      minimumIndex === -1 ? -1 : Math.floor(minimumIndex / source.columns),
+      maximumIndex === -1 ? -1 : maximumIndex % source.columns,
+      maximumIndex === -1 ? -1 : Math.floor(maximumIndex / source.columns),
     ]);
   }
 
@@ -3093,6 +3158,64 @@ describe("OpenCv client", () => {
     });
     expect(client.trace(extremaSource)).toBe(14);
     extremaSource.dispose();
+  });
+
+  test("matches mean and minMaxLoc overload, mask, and empty contracts", () => {
+    expect(client.mean.bind(client)).toHaveLength(0);
+    expect(client.minMaxLoc.bind(client)).toHaveLength(0);
+
+    const source = client.matFromU8(1, 2, 3, new Uint8Array([1, 10, 100, 3, 30, 200]));
+    const firstPixelMask = client.matFromU8(1, 2, 1, new Uint8Array([1, 0]));
+    expect(client.mean(source, firstPixelMask)).toEqual([1, 10, 100, 0]);
+
+    const extrema = client.matFromU8(2, 3, 1, new Uint8Array([5, 2, 9, 2, 9, 4]));
+    const selectiveMask = client.matFromU8(2, 3, 1, new Uint8Array([0, 1, 0, 1, 0, 1]));
+    expect(client.minMaxLoc(extrema, selectiveMask)).toEqual({
+      maxLoc: { x: 2, y: 1 },
+      maxVal: 4,
+      minLoc: { x: 1, y: 0 },
+      minVal: 2,
+    });
+    const zeroMask = client.zerosU8(2, 3, 1);
+    expect(client.minMaxLoc(extrema, zeroMask)).toEqual({
+      maxLoc: { x: -1, y: -1 },
+      maxVal: 0,
+      minLoc: { x: -1, y: -1 },
+      minVal: 0,
+    });
+
+    const empty = client.emptyMat();
+    expect(client.mean(empty)).toEqual([0, 0, 0, 0]);
+    expect(client.minMaxLoc(empty)).toEqual({
+      maxLoc: { x: 0, y: 0 },
+      maxVal: 0,
+      minLoc: { x: 0, y: 0 },
+      minVal: 0,
+    });
+    const typedEmpty = client.matFromF32(0, 3, 1, new Float32Array());
+    expect(client.minMaxLoc(typedEmpty)).toEqual({
+      maxLoc: { x: -1, y: -1 },
+      maxVal: 0,
+      minLoc: { x: -1, y: -1 },
+      minVal: 0,
+    });
+
+    expect(() => {
+      // oxlint-disable-next-line anti-slop/no-reflect-apply, typescript/unbound-method -- The test exercises invalid JavaScript arity.
+      Reflect.apply(client.mean, client, []);
+    }).toThrow(BindingError);
+    expect(() => {
+      // oxlint-disable-next-line anti-slop/no-reflect-apply, typescript/unbound-method -- The test exercises invalid JavaScript arity.
+      Reflect.apply(client.minMaxLoc, client, [extrema, selectiveMask, zeroMask]);
+    }).toThrow(BindingError);
+
+    typedEmpty.dispose();
+    empty.dispose();
+    zeroMask.dispose();
+    selectiveMask.dispose();
+    extrema.dispose();
+    firstPixelMask.dispose();
+    source.dispose();
   });
 
   test("mutates shared matrix destinations", () => {

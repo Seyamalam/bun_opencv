@@ -5,13 +5,24 @@ use std::{error::Error, fmt};
 use wasm_bindgen::prelude::*;
 
 use crate::{
-    core_reductions::{ReductionError, ScalarDepth, count_non_zero, mean, min_max_loc, sum, trace},
+    core_reductions::{
+        count_non_zero, mean, mean_masked, min_max_loc, min_max_loc_masked, sum, trace,
+        ReductionError, ScalarDepth,
+    },
     mat::{Mat, MatDepth},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ReductionWasmError {
     CountOverflow,
+    InvalidMaskDepth(MatDepth),
+    InvalidMaskChannels(u16),
+    InvalidMaskShape {
+        source_rows: u32,
+        source_columns: u32,
+        mask_rows: u32,
+        mask_columns: u32,
+    },
     Reduction(ReductionError),
 }
 
@@ -21,6 +32,22 @@ impl fmt::Display for ReductionWasmError {
             Self::CountOverflow => {
                 formatter.write_str("non-zero element count exceeds the WASM integer limit")
             }
+            Self::InvalidMaskDepth(depth) => {
+                write!(formatter, "reduction masks require U8 depth; received {depth:?}")
+            }
+            Self::InvalidMaskChannels(channels) => write!(
+                formatter,
+                "reduction masks require one channel; received {channels}"
+            ),
+            Self::InvalidMaskShape {
+                source_rows,
+                source_columns,
+                mask_rows,
+                mask_columns,
+            } => write!(
+                formatter,
+                "reduction mask shape {mask_rows}x{mask_columns} does not match source shape {source_rows}x{source_columns}"
+            ),
             Self::Reduction(error) => error.fmt(formatter),
         }
     }
@@ -29,7 +56,10 @@ impl fmt::Display for ReductionWasmError {
 impl Error for ReductionWasmError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            Self::CountOverflow => None,
+            Self::CountOverflow
+            | Self::InvalidMaskDepth(_)
+            | Self::InvalidMaskChannels(_)
+            | Self::InvalidMaskShape { .. } => None,
             Self::Reduction(error) => Some(error),
         }
     }
@@ -75,6 +105,18 @@ pub fn mat_mean(source: &Mat) -> Result<Vec<f64>, JsError> {
         .map_err(JsError::from)
 }
 
+/// Averages up to four channels over pixels selected by a U8 mask.
+///
+/// # Errors
+/// Returns an error for an invalid mask or more than four source channels.
+#[wasm_bindgen(js_name = matMeanMasked)]
+pub fn mat_mean_masked(source: &Mat, mask: &Mat) -> Result<Vec<f64>, JsError> {
+    let mask = reduction_mask(source, mask).map_err(JsError::from)?;
+    reduce_mean_masked(source, mask.as_deref())
+        .map(|lanes| lanes.to_vec())
+        .map_err(JsError::from)
+}
+
 /// Returns minimum, maximum, minimum x/y, and maximum x/y for a single-channel matrix.
 ///
 /// # Errors
@@ -83,6 +125,16 @@ pub fn mat_mean(source: &Mat) -> Result<Vec<f64>, JsError> {
 #[wasm_bindgen(js_name = matMinMaxLoc)]
 pub fn mat_min_max_loc(source: &Mat) -> Result<Vec<f64>, JsError> {
     reduce_min_max_loc(source).map_err(JsError::from)
+}
+
+/// Returns extrema and locations over pixels selected by a U8 mask.
+///
+/// # Errors
+/// Returns an error for an invalid mask or a non-single-channel source.
+#[wasm_bindgen(js_name = matMinMaxLocMasked)]
+pub fn mat_min_max_loc_masked(source: &Mat, mask: &Mat) -> Result<Vec<f64>, JsError> {
+    let mask = reduction_mask(source, mask).map_err(JsError::from)?;
+    reduce_min_max_loc_masked(source, mask.as_deref()).map_err(JsError::from)
 }
 
 /// Sums channel zero along the main diagonal.
@@ -128,7 +180,22 @@ fn reduce_mean(source: &Mat) -> Result<[f64; 4], ReductionWasmError> {
     .map_err(ReductionWasmError::from)
 }
 
+fn reduce_mean_masked(source: &Mat, mask: Option<&[u8]>) -> Result<[f64; 4], ReductionWasmError> {
+    mean_masked(
+        &source.compact_bytes(),
+        source.rows(),
+        source.columns(),
+        source.channels(),
+        scalar_depth(source.depth()),
+        mask,
+    )
+    .map_err(ReductionWasmError::from)
+}
+
 fn reduce_min_max_loc(source: &Mat) -> Result<Vec<f64>, ReductionWasmError> {
+    if (source.rows() == 0 || source.columns() == 0) && source.is_continuous() {
+        return Ok(vec![0.0, 0.0, -1.0, -1.0, -1.0, -1.0]);
+    }
     let result = min_max_loc(
         &source.compact_bytes(),
         source.rows(),
@@ -136,14 +203,57 @@ fn reduce_min_max_loc(source: &Mat) -> Result<Vec<f64>, ReductionWasmError> {
         source.channels(),
         scalar_depth(source.depth()),
     )?;
-    Ok(vec![
+    Ok(min_max_location_lanes(result))
+}
+
+fn reduce_min_max_loc_masked(
+    source: &Mat,
+    mask: Option<&[u8]>,
+) -> Result<Vec<f64>, ReductionWasmError> {
+    if (source.rows() == 0 || source.columns() == 0) && source.is_continuous() {
+        return Ok(vec![0.0, 0.0, -1.0, -1.0, -1.0, -1.0]);
+    }
+    let result = min_max_loc_masked(
+        &source.compact_bytes(),
+        source.rows(),
+        source.columns(),
+        source.channels(),
+        scalar_depth(source.depth()),
+        mask,
+    )?;
+    Ok(min_max_location_lanes(result))
+}
+
+fn min_max_location_lanes(result: crate::core_reductions::MinMaxLocation) -> Vec<f64> {
+    vec![
         result.minimum,
         result.maximum,
         f64::from(result.minimum_location.column),
         f64::from(result.minimum_location.row),
         f64::from(result.maximum_location.column),
         f64::from(result.maximum_location.row),
-    ])
+    ]
+}
+
+fn reduction_mask(source: &Mat, mask: &Mat) -> Result<Option<Vec<u8>>, ReductionWasmError> {
+    if mask.byte_length() == 0 {
+        return Ok(None);
+    }
+    if mask.depth() != MatDepth::U8 {
+        return Err(ReductionWasmError::InvalidMaskDepth(mask.depth()));
+    }
+    if mask.channels() != 1 {
+        return Err(ReductionWasmError::InvalidMaskChannels(mask.channels()));
+    }
+    if mask.rows() != source.rows() || mask.columns() != source.columns() {
+        return Err(ReductionWasmError::InvalidMaskShape {
+            source_rows: source.rows(),
+            source_columns: source.columns(),
+            mask_rows: mask.rows(),
+            mask_columns: mask.columns(),
+        });
+    }
+    Ok(Some(mask.compact_bytes()))
 }
 
 fn reduce_trace(source: &Mat) -> Result<f64, ReductionWasmError> {
@@ -226,6 +336,68 @@ mod tests {
 
         assert_exact_lanes(reduce_sum(&source), [3.0, 30.0, 300.0, 0.0]);
         assert_exact_lanes(reduce_mean(&source), [1.5, 15.0, 150.0, 0.0]);
+    }
+
+    #[test]
+    fn masked_reducers_compact_masks_and_return_empty_selection_sentinels() {
+        let source = matrix(vec![1, 10, 100, 3, 30, 200], 1, 2, 3, MatDepth::U8);
+        let mask = matrix(vec![1, 0], 1, 2, 1, MatDepth::U8);
+        let mask_bytes = reduction_mask(&source, &mask).expect("valid mask");
+        assert_exact_lanes(
+            reduce_mean_masked(&source, mask_bytes.as_deref()),
+            [1.0, 10.0, 100.0, 0.0],
+        );
+
+        let extrema = matrix(vec![5, 2, 9, 2, 9, 4], 2, 3, 1, MatDepth::U8);
+        let parent = matrix(
+            vec![99, 0, 1, 0, 99, 99, 1, 0, 1, 99],
+            2,
+            5,
+            1,
+            MatDepth::U8,
+        );
+        let mask_region = parent.roi(0, 1, 2, 3).expect("strided mask");
+        let mask_bytes = reduction_mask(&extrema, &mask_region).expect("valid strided mask");
+        assert_eq!(
+            reduce_min_max_loc_masked(&extrema, mask_bytes.as_deref()),
+            Ok(vec![2.0, 4.0, 1.0, 0.0, 2.0, 1.0])
+        );
+
+        let zero_mask = matrix(vec![0; 6], 2, 3, 1, MatDepth::U8);
+        let mask_bytes = reduction_mask(&extrema, &zero_mask).expect("valid zero mask");
+        assert_eq!(
+            reduce_min_max_loc_masked(&extrema, mask_bytes.as_deref()),
+            Ok(vec![0.0, 0.0, -1.0, -1.0, -1.0, -1.0])
+        );
+        assert_exact_lanes(reduce_mean(&Mat::empty_output()), [0.0; 4]);
+        assert_eq!(
+            reduce_min_max_loc(&Mat::empty_output()),
+            Ok(vec![0.0, 0.0, -1.0, -1.0, -1.0, -1.0])
+        );
+        assert_eq!(
+            reduce_min_max_loc(&crate::mat::mat_empty()),
+            Ok(vec![0.0; 6])
+        );
+    }
+
+    #[test]
+    fn masked_reducers_reject_invalid_mask_metadata() {
+        let source = matrix(vec![1, 2, 3, 4], 2, 2, 1, MatDepth::U8);
+        let wrong_depth = matrix(vec![0; 16], 2, 2, 1, MatDepth::F32);
+        assert_eq!(
+            reduction_mask(&source, &wrong_depth),
+            Err(ReductionWasmError::InvalidMaskDepth(MatDepth::F32))
+        );
+        let wrong_channels = matrix(vec![1; 8], 2, 2, 2, MatDepth::U8);
+        assert_eq!(
+            reduction_mask(&source, &wrong_channels),
+            Err(ReductionWasmError::InvalidMaskChannels(2))
+        );
+        let wrong_shape = matrix(vec![1; 3], 1, 3, 1, MatDepth::U8);
+        assert!(matches!(
+            reduction_mask(&source, &wrong_shape),
+            Err(ReductionWasmError::InvalidMaskShape { .. })
+        ));
     }
 
     #[test]

@@ -36,12 +36,12 @@ pub(crate) enum ReductionError {
     BufferSizeOverflow,
     /// The byte buffer did not match its declared matrix shape.
     IncorrectBufferLength { expected: usize, actual: usize },
+    /// A compact U8 mask did not contain one byte per source pixel.
+    IncorrectMaskLength { expected: usize, actual: usize },
     /// An operation requiring one channel received another channel count.
     SingleChannelRequired { actual: u16 },
     /// A four-lane channel result cannot represent the matrix channel count.
     TooManyChannels { actual: u16 },
-    /// Every floating-point input to an extrema operation was NaN.
-    AllValuesNaN,
 }
 
 impl fmt::Display for ReductionError {
@@ -56,6 +56,10 @@ impl fmt::Display for ReductionError {
                 formatter,
                 "matrix buffer has {actual} bytes; expected {expected} bytes"
             ),
+            Self::IncorrectMaskLength { expected, actual } => write!(
+                formatter,
+                "mask buffer has {actual} bytes; expected {expected} bytes"
+            ),
             Self::SingleChannelRequired { actual } => write!(
                 formatter,
                 "operation requires one channel; matrix has {actual} channels"
@@ -64,7 +68,6 @@ impl fmt::Display for ReductionError {
                 formatter,
                 "four-lane result supports at most four channels; matrix has {actual} channels"
             ),
-            Self::AllValuesNaN => formatter.write_str("matrix contains no ordered values"),
         }
     }
 }
@@ -75,9 +78,9 @@ impl Error for ReductionError {}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct MatrixLocation {
     /// Row index.
-    pub(crate) row: u32,
+    pub(crate) row: i32,
     /// Column index.
-    pub(crate) column: u32,
+    pub(crate) column: i32,
 }
 
 /// Minimum and maximum values with their first row-major locations.
@@ -172,10 +175,46 @@ pub(crate) fn mean(
     channels: u16,
     depth: ScalarDepth,
 ) -> Result<[f64; 4], ReductionError> {
-    let mut output = sum(data, rows, columns, channels, depth)?;
-    let pixels = f64::from(rows) * f64::from(columns);
-    for value in output.iter_mut().take(usize::from(channels)) {
-        *value /= pixels;
+    mean_masked(data, rows, columns, channels, depth, None)
+}
+
+/// Averages each interleaved channel over pixels selected by an optional compact U8 mask.
+pub(crate) fn mean_masked(
+    data: &[u8],
+    rows: u32,
+    columns: u32,
+    channels: u16,
+    depth: ScalarDepth,
+    mask: Option<&[u8]>,
+) -> Result<[f64; 4], ReductionError> {
+    require_four_lane_result(channels)?;
+    if rows == 0 || columns == 0 {
+        validate_empty(data, channels)?;
+        validate_mask_length(mask, 0)?;
+        return Ok([0.0; 4]);
+    }
+    let elements = validate_compact(data, rows, columns, channels, depth)?;
+    let channel_count = usize::from(channels);
+    let pixels = elements / channel_count;
+    validate_mask_length(mask, pixels)?;
+
+    let mut output = [0.0; 4];
+    let mut selected = 0_u64;
+    for pixel in 0..pixels {
+        if mask.is_some_and(|values| values[pixel] == 0) {
+            continue;
+        }
+        selected += 1;
+        let first = pixel * channel_count;
+        for channel in 0..channel_count {
+            output[channel] += scalar_at(data, first + channel, depth);
+        }
+    }
+    if selected != 0 {
+        let scale = 1.0 / selected as f64;
+        for value in output.iter_mut().take(channel_count) {
+            *value *= scale;
+        }
     }
     Ok(output)
 }
@@ -191,11 +230,32 @@ pub(crate) fn min_max_loc(
     channels: u16,
     depth: ScalarDepth,
 ) -> Result<MinMaxLocation, ReductionError> {
-    let elements = validate_compact(data, rows, columns, channels, depth)?;
+    min_max_loc_masked(data, rows, columns, channels, depth, None)
+}
+
+/// Finds extrema and locations over pixels selected by an optional compact U8 mask.
+pub(crate) fn min_max_loc_masked(
+    data: &[u8],
+    rows: u32,
+    columns: u32,
+    channels: u16,
+    depth: ScalarDepth,
+    mask: Option<&[u8]>,
+) -> Result<MinMaxLocation, ReductionError> {
     require_single_channel(channels)?;
+    if rows == 0 || columns == 0 {
+        validate_empty(data, channels)?;
+        validate_mask_length(mask, 0)?;
+        return Ok(zero_min_max_location(0));
+    }
+    let elements = validate_compact(data, rows, columns, channels, depth)?;
+    validate_mask_length(mask, elements)?;
 
     let mut extrema: Option<(f64, usize, f64, usize)> = None;
     for index in 0..elements {
+        if mask.is_some_and(|values| values[index] == 0) {
+            continue;
+        }
         let value = scalar_at(data, index, depth);
         if value.is_nan() {
             continue;
@@ -216,14 +276,56 @@ pub(crate) fn min_max_loc(
         }
     }
 
-    let (minimum, minimum_index, maximum, maximum_index) =
-        extrema.ok_or(ReductionError::AllValuesNaN)?;
+    let Some((minimum, minimum_index, maximum, maximum_index)) = extrema else {
+        return Ok(zero_min_max_location(-1));
+    };
     Ok(MinMaxLocation {
         minimum,
         minimum_location: location_from_index(minimum_index, columns)?,
         maximum,
         maximum_location: location_from_index(maximum_index, columns)?,
     })
+}
+
+const fn zero_min_max_location(coordinate: i32) -> MinMaxLocation {
+    MinMaxLocation {
+        minimum: 0.0,
+        minimum_location: MatrixLocation {
+            row: coordinate,
+            column: coordinate,
+        },
+        maximum: 0.0,
+        maximum_location: MatrixLocation {
+            row: coordinate,
+            column: coordinate,
+        },
+    }
+}
+
+fn validate_empty(data: &[u8], channels: u16) -> Result<(), ReductionError> {
+    if channels == 0 {
+        return Err(ReductionError::EmptyChannels);
+    }
+    if data.is_empty() {
+        Ok(())
+    } else {
+        Err(ReductionError::IncorrectBufferLength {
+            expected: 0,
+            actual: data.len(),
+        })
+    }
+}
+
+fn validate_mask_length(mask: Option<&[u8]>, pixels: usize) -> Result<(), ReductionError> {
+    if let Some(mask) = mask {
+        if mask.len() != pixels {
+            return Err(ReductionError::IncorrectMaskLength {
+                expected: pixels,
+                actual: mask.len(),
+            });
+        }
+    }
+    Ok(())
 }
 
 /// Sums channel zero along the main diagonal of a compact matrix.
@@ -301,8 +403,8 @@ fn require_four_lane_result(channels: u16) -> Result<(), ReductionError> {
 
 fn location_from_index(index: usize, columns: u32) -> Result<MatrixLocation, ReductionError> {
     let columns = usize::try_from(columns).map_err(|_| ReductionError::BufferSizeOverflow)?;
-    let row = u32::try_from(index / columns).map_err(|_| ReductionError::BufferSizeOverflow)?;
-    let column = u32::try_from(index % columns).map_err(|_| ReductionError::BufferSizeOverflow)?;
+    let row = i32::try_from(index / columns).map_err(|_| ReductionError::BufferSizeOverflow)?;
+    let column = i32::try_from(index % columns).map_err(|_| ReductionError::BufferSizeOverflow)?;
     Ok(MatrixLocation { row, column })
 }
 
@@ -474,11 +576,9 @@ mod tests {
         );
         assert!(sum(&bytes, 2, 2, 1, ScalarDepth::F32).expect("valid matrix")[0].is_nan());
         assert!(mean(&bytes, 2, 2, 1, ScalarDepth::F32).expect("valid matrix")[0].is_nan());
-        assert!(
-            trace(&bytes, 2, 2, 1, ScalarDepth::F32)
-                .expect("valid matrix")
-                .is_nan()
-        );
+        assert!(trace(&bytes, 2, 2, 1, ScalarDepth::F32)
+            .expect("valid matrix")
+            .is_nan());
         assert_eq!(
             min_max_loc(&bytes, 2, 2, 1, ScalarDepth::F32).expect("ordered values remain"),
             MinMaxLocation {
@@ -495,7 +595,65 @@ mod tests {
             .collect();
         assert_eq!(
             min_max_loc(&all_nan, 1, 2, 1, ScalarDepth::F64),
-            Err(ReductionError::AllValuesNaN)
+            Ok(zero_min_max_location(-1))
+        );
+    }
+
+    #[test]
+    fn masked_mean_and_extrema_select_pixels_and_return_empty_sentinels() {
+        let mean_bytes = [1_u16, 10, 100, 3, 30, 200]
+            .into_iter()
+            .flat_map(u16::to_ne_bytes)
+            .collect::<Vec<_>>();
+        assert_exact_lanes(
+            mean_masked(&mean_bytes, 1, 2, 3, ScalarDepth::U16, Some(&[1, 0]))
+                .expect("valid selective mask"),
+            [1.0, 10.0, 100.0, 0.0],
+        );
+        assert_exact_lanes(
+            mean_masked(&mean_bytes, 1, 2, 3, ScalarDepth::U16, Some(&[0, 0]))
+                .expect("empty selection"),
+            [0.0; 4],
+        );
+        assert_exact_lanes(
+            mean_masked(&[], 0, 0, 1, ScalarDepth::U8, None).expect("empty matrix"),
+            [0.0; 4],
+        );
+        let reciprocal_scaled =
+            mean(&[5, 1, 9, 254, 9, 3], 2, 3, 1, ScalarDepth::I8).expect("valid matrix");
+        assert_eq!(
+            reciprocal_scaled[0].to_bits(),
+            (25.0 * (1.0 / 6.0_f64)).to_bits()
+        );
+
+        let values = [5_i16, -2, 9, -2, 9, 4]
+            .into_iter()
+            .flat_map(i16::to_ne_bytes)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            min_max_loc_masked(
+                &values,
+                2,
+                3,
+                1,
+                ScalarDepth::I16,
+                Some(&[0, 1, 0, 1, 0, 1]),
+            )
+            .expect("valid selective mask"),
+            MinMaxLocation {
+                minimum: -2.0,
+                minimum_location: MatrixLocation { row: 0, column: 1 },
+                maximum: 4.0,
+                maximum_location: MatrixLocation { row: 1, column: 2 },
+            }
+        );
+        assert_eq!(
+            min_max_loc_masked(&values, 2, 3, 1, ScalarDepth::I16, Some(&[0; 6]),),
+            Ok(zero_min_max_location(-1))
+        );
+        assert_eq!(
+            min_max_loc_masked(&[], 0, 0, 1, ScalarDepth::U8, None),
+            Ok(zero_min_max_location(0))
         );
     }
 

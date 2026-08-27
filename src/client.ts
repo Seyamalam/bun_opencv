@@ -628,8 +628,14 @@ class WasmOpenCv implements OpenCv {
     return new Mat(this.#backend.matMaxU8(left.handleForBackend(), right.handleForBackend()));
   }
 
-  mean(source: Mat): Scalar {
-    return scalarFromArray(this.#backend.matMean(source.handleForBackend()));
+  mean(...arguments_: [source: Mat] | [source: Mat, mask: Mat]): Scalar {
+    requireOverloadArity(arguments_.length, 1, 2, "mean");
+    const source = matHandleForBinding(arguments_[0]);
+    const values =
+      arguments_.length === 1
+        ? this.#backend.matMean(source)
+        : this.#backend.matMeanMasked(source, matHandleForBinding(arguments_[1]));
+    return scalarFromArray(values);
   }
 
   meanStdDev(source: Mat, means: Mat, standardDeviations: Mat, mask?: Mat): void {
@@ -844,8 +850,14 @@ class WasmOpenCv implements OpenCv {
     );
   }
 
-  minMaxLoc(source: Mat): MinMaxLocation {
-    return minMaxLocationFromArray(this.#backend.matMinMaxLoc(source.handleForBackend()));
+  minMaxLoc(...arguments_: [source: Mat] | [source: Mat, mask: Mat]): MinMaxLocation {
+    requireOverloadArity(arguments_.length, 1, 2, "minMaxLoc");
+    const source = matHandleForBinding(arguments_[0]);
+    const values =
+      arguments_.length === 1
+        ? this.#backend.matMinMaxLoc(source)
+        : this.#backend.matMinMaxLocMasked(source, matHandleForBinding(arguments_[1]));
+    return minMaxLocationFromArray(values);
   }
 
   resizeNearest(image: RgbaImage, targetWidth: number, targetHeight: number): RgbaImage {
