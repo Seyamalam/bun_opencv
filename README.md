@@ -224,8 +224,27 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `canny`                                     | `cv.Canny`                                     | Planned | Not started                                |
 | imgproc    | `findContours`                              | `cv.findContours`                              | Planned | Not started                                |
 | imgproc    | `warpPerspective`                           | `cv.warpPerspective`                           | Planned | Not started                                |
+| photo      | `createTonemapDrago`                        | `cv.createTonemapDrago`                        | Partial | Global factory absent; no pixel process    |
+| photo      | `createTonemapMantiuk`                      | `cv.createTonemapMantiuk`                      | Partial | Global factory absent; no pixel process    |
+| photo      | `createTonemapReinhard`                     | `cv.createTonemapReinhard`                     | Partial | Global factory absent; no pixel process    |
+| photo      | `Tonemap.getGamma`                          | `cv.Tonemap.getGamma`                          | Full    | Exact inherited F32 state and lifecycle    |
+| photo      | `Tonemap.setGamma`                          | `cv.Tonemap.setGamma`                          | Full    | Exact float coercion and call contract     |
+| photo      | `TonemapDrago.getBias`                      | `cv.TonemapDrago.getBias`                      | Full    | Exact F32 state and lifecycle              |
+| photo      | `TonemapDrago.getSaturation`                | `cv.TonemapDrago.getSaturation`                | Full    | Exact F32 state and lifecycle              |
+| photo      | `TonemapDrago.setBias`                      | `cv.TonemapDrago.setBias`                      | Full    | Exact float coercion and call contract     |
+| photo      | `TonemapDrago.setSaturation`                | `cv.TonemapDrago.setSaturation`                | Full    | Exact float coercion and call contract     |
+| photo      | `TonemapMantiuk.getSaturation`              | `cv.TonemapMantiuk.getSaturation`              | Full    | Exact F32 state and lifecycle              |
+| photo      | `TonemapMantiuk.getScale`                   | `cv.TonemapMantiuk.getScale`                   | Full    | Exact F32 state and lifecycle              |
+| photo      | `TonemapMantiuk.setSaturation`              | `cv.TonemapMantiuk.setSaturation`              | Full    | Exact float coercion and call contract     |
+| photo      | `TonemapMantiuk.setScale`                   | `cv.TonemapMantiuk.setScale`                   | Full    | Exact float coercion and call contract     |
+| photo      | `TonemapReinhard.getColorAdaptation`        | `cv.TonemapReinhard.getColorAdaptation`        | Full    | Exact F32 state and lifecycle              |
+| photo      | `TonemapReinhard.getIntensity`              | `cv.TonemapReinhard.getIntensity`              | Full    | Exact F32 state and lifecycle              |
+| photo      | `TonemapReinhard.getLightAdaptation`        | `cv.TonemapReinhard.getLightAdaptation`        | Full    | Exact F32 state and lifecycle              |
+| photo      | `TonemapReinhard.setColorAdaptation`        | `cv.TonemapReinhard.setColorAdaptation`        | Full    | Exact float coercion and call contract     |
+| photo      | `TonemapReinhard.setIntensity`              | `cv.TonemapReinhard.setIntensity`              | Full    | Exact float coercion and call contract     |
+| photo      | `TonemapReinhard.setLightAdaptation`        | `cv.TonemapReinhard.setLightAdaptation`        | Full    | Exact float coercion and call contract     |
 
-Current full parity is **108 of 488 (22.13%)**. There are **43 partial families**, for **151 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+Current full parity is **124 of 488 (25.41%)**. There are **46 partial families**, for **170 supported families** in total. The 25% milestone is complete. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
 
 The fixture passes the complete pinned browser contract for `determinant`. The function requires exactly one live `Mat` and accepts only nonempty square single-channel F32 or F64 matrices, including non-contiguous regions. It preserves the input, matches the direct 1x1, 2x2, and 3x3 paths with signed-zero and non-finite propagation, and keeps F32 and F64 arithmetic distinct during elimination for larger matrices. The audit locks the absolute pivot cutoffs, exact cutoff acceptance, row-swap signs, singular positive zero, stored-F32 widening in the small formulas, and Hilbert precision. Integer, multichannel, nonsquare, empty, deleted, and non-Mat inputs reject before computation.
 

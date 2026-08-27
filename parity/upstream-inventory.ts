@@ -182,6 +182,22 @@ const AUDITED_BINDING_FORMS: Readonly<Record<string, AuditedBindingForm>> = Obje
   "imgproc.function.get-structuring-element": { overloadCount: 2, runtimeArity: 0 },
   "imgproc.function.is-contour-convex": { overloadCount: 1, runtimeArity: 1 },
   "imgproc.function.point-polygon-test": { overloadCount: 1, runtimeArity: 3 },
+  "photo.tonemap.get-gamma": { overloadCount: 1, runtimeArity: 0 },
+  "photo.tonemap.set-gamma": { overloadCount: 1, runtimeArity: 1 },
+  "photo.tonemap-drago.get-bias": { overloadCount: 1, runtimeArity: 0 },
+  "photo.tonemap-drago.get-saturation": { overloadCount: 1, runtimeArity: 0 },
+  "photo.tonemap-drago.set-bias": { overloadCount: 1, runtimeArity: 1 },
+  "photo.tonemap-drago.set-saturation": { overloadCount: 1, runtimeArity: 1 },
+  "photo.tonemap-mantiuk.get-saturation": { overloadCount: 1, runtimeArity: 0 },
+  "photo.tonemap-mantiuk.get-scale": { overloadCount: 1, runtimeArity: 0 },
+  "photo.tonemap-mantiuk.set-saturation": { overloadCount: 1, runtimeArity: 1 },
+  "photo.tonemap-mantiuk.set-scale": { overloadCount: 1, runtimeArity: 1 },
+  "photo.tonemap-reinhard.get-color-adaptation": { overloadCount: 1, runtimeArity: 0 },
+  "photo.tonemap-reinhard.get-intensity": { overloadCount: 1, runtimeArity: 0 },
+  "photo.tonemap-reinhard.get-light-adaptation": { overloadCount: 1, runtimeArity: 0 },
+  "photo.tonemap-reinhard.set-color-adaptation": { overloadCount: 1, runtimeArity: 1 },
+  "photo.tonemap-reinhard.set-intensity": { overloadCount: 1, runtimeArity: 1 },
+  "photo.tonemap-reinhard.set-light-adaptation": { overloadCount: 1, runtimeArity: 1 },
 });
 
 const MODULE_SURFACES = {

@@ -466,6 +466,30 @@ Each setter returns `undefined`. Call `delete()` for OpenCV.js-compatible owners
 
 The pinned OpenCV.js 4.13.0 fixture exposes the direct `GFTTDetector` constructor and all 13 instance methods. The browser matrix verifies method arity, defaults, return values, scalar coercion, missing and extra arguments, deletion, repeat deletion, and calls after deletion. All 13 instance methods count as implemented. The artifact omits the config-listed static `GFTTDetector.create` method. The package factory remains partial because it supports one six-argument shape and omits the `gradientSize` overload.
 
+### Tone-map configuration
+
+The three package factories allocate Rust-owned configuration handles with the pinned constructor argument order:
+
+```ts
+const drago = cv.createTonemapDrago(1, 1, 0.85);
+const mantiuk = cv.createTonemapMantiuk(1, 0.7, 1);
+const reinhard = cv.createTonemapReinhard(1, 0, 1, 0);
+
+try {
+  drago.setGamma(1.2);
+  mantiuk.setScale(0.8);
+  reinhard.setIntensity(-1);
+} finally {
+  drago.dispose();
+  mantiuk.dispose();
+  reinhard.dispose();
+}
+```
+
+All three concrete types inherit exact `getGamma()` and `setGamma(value)` behavior. Drago adds bias and saturation getters and setters. Mantiuk adds scale and saturation getters and setters. Reinhard adds intensity, light-adaptation, and color-adaptation getters and setters. Constructor and setter inputs accept JavaScript numbers and booleans at the untyped binding boundary, narrow to float32, and preserve signed zero, `NaN`, and infinities. Missing or extra arguments throw `BindingError`; unsupported scalar inputs throw `TypeError` without mutation.
+
+`delete()` matches the pinned repeated-delete errors, while `dispose()` is idempotent. Calls after release distinguish inherited `Tonemap const*` or `Tonemap` pointers from concrete const or mutable pointers. The pinned browser artifact exposes the three concrete constructors but omits the config-listed global `createTonemap*` functions, so the package factories remain partial. Pixel processing is not implemented or claimed yet.
+
 ## Errors
 
 The TypeScript boundary throws `OpenCvInputError` for invalid dimensions, byte lengths, thresholds, and strictly validated factory options. Audited detector instance methods throw `BindingError` for argument-count and deleted-object failures, matching the pinned browser binding. Their scalar and enum-object boundary failures throw `TypeError` where the pinned binding does. Rust rejects invalid dimensions and byte lengths if a caller bypasses the TypeScript client.

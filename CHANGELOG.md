@@ -52,6 +52,7 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - A fully implemented `trace` family with exact one-argument dispatch, all scalar depths, four-lane diagonal sums, rectangular and strided matrices, typed empties, F32 widening, and pinned floating-point accumulation. The totals are now 42 partial, 87 implemented, and 129 supported families.
 - A fully implemented `bitwiseNot` family with exact destination overloads, all scalar depths, optional masks, typed empties, strided matrices, raw floating-point bits, aliases, and pinned live-overlap behavior. The totals are now 41 partial, 88 implemented, and 129 supported families.
 - Nine fully implemented MSER configuration methods and eleven fully implemented ORB configuration methods with exact defaults, arity, scalar and enum coercion, validation, and lifetime behavior. The absent static factories remain partial, bringing the totals to 43 partial, 108 implemented, and 151 supported families.
+- Sixteen fully implemented Drago, Mantiuk, Reinhard, and inherited Tonemap state methods with exact float32 defaults, conversion, arity, return values, and lifetime behavior. Three absent global factories remain partial, bringing the totals to 46 partial, 124 implemented, and 170 supported families.
 - Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
 
 ### Planned
