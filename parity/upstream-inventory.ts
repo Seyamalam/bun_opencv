@@ -153,6 +153,7 @@ const AUDITED_BINDING_FORMS: Readonly<Record<string, AuditedBindingForm>> = Obje
   "imgproc.function.contour-area": { overloadCount: 2, runtimeArity: 0 },
   "imgproc.function.get-affine-transform": { overloadCount: 1, runtimeArity: 2 },
   "imgproc.function.get-rotation-matrix2-d": { overloadCount: 1, runtimeArity: 3 },
+  "imgproc.function.get-structuring-element": { overloadCount: 2, runtimeArity: 0 },
   "imgproc.function.is-contour-convex": { overloadCount: 1, runtimeArity: 1 },
   "imgproc.function.point-polygon-test": { overloadCount: 1, runtimeArity: 3 },
 });

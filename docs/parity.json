@@ -1266,10 +1266,10 @@
       "implementationOrigin": "original",
       "method": "getStructuringElement",
       "module": "imgproc",
-      "notes": "Positive-size single-channel U8 rectangle, cross, and ellipse kernels with centered or explicit anchors; the explicit-anchor cross browser fixture passes, while broader shape, anchor, and error differential audits remain.",
+      "notes": "Matches exact two- and three-argument overloads, Embind integer conversion for structural Size and Point values, default and explicit anchors, rectangle, cross, ellipse, and diamond geometry, invalid inputs, and fresh single-channel U8 results.",
       "patentReview": "required",
       "sources": ["https://docs.opencv.org/4.13.0/d7/dbd/group__imgproc.html"],
-      "status": "partial",
+      "status": "implemented",
       "upstream": "cv.getStructuringElement",
       "upstreamId": "imgproc.function.get-structuring-element",
       "wasmExport": "getStructuringElement"

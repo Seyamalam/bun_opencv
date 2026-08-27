@@ -1400,10 +1400,10 @@ export const PARITY_MANIFEST = {
       method: "getStructuringElement",
       module: "imgproc",
       notes:
-        "Positive-size single-channel U8 rectangle, cross, and ellipse kernels with centered or explicit anchors; the explicit-anchor cross browser fixture passes, while broader shape, anchor, and error differential audits remain.",
+        "Matches exact two- and three-argument overloads, Embind integer conversion for structural Size and Point values, default and explicit anchors, rectangle, cross, ellipse, and diamond geometry, invalid inputs, and fresh single-channel U8 results.",
       patentReview: "required",
       sources: [IMGPROC_SOURCE],
-      status: "partial",
+      status: "implemented",
       upstream: "cv.getStructuringElement",
       upstreamId: "imgproc.function.get-structuring-element",
       wasmExport: "getStructuringElement",

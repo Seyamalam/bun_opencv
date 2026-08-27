@@ -45,6 +45,7 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - A fully implemented `determinant` family with exact one-argument Mat binding, nonempty square single-channel F32/F64 inputs, strided-region preservation, direct small-matrix behavior, depth-specific elimination and pivot cutoffs, signed zero, non-finite propagation, and exact Hilbert fixtures. The totals are now 50 partial, 79 implemented, and 129 supported families.
 - A fully implemented `setIdentity` family with exact overload dispatch, Mat-before-Scalar conversion, structural four-lane Scalars, boolean and non-finite values, all seven shipped depths, integer conversion sentinels, typed empties, multichannel layouts, signed zero, and strided in-place ROI mutation. The totals are now 49 partial, 80 implemented, and 129 supported families.
 - A fully implemented `getAffineTransform` family with exact two-Mat dispatch, continuous F32 point layouts, source preservation, singular zero matrices, non-finite propagation, bit-exact LU arithmetic, and fresh 2x3 F64 results. The totals are now 48 partial, 81 implemented, and 129 supported families.
+- A fully implemented `getStructuringElement` family with exact overload dispatch, structural Size and Point conversion, Embind signed integers, default and explicit anchors, rectangle, cross, ellipse, and diamond kernels, plus complete invalid-input coverage. The totals are now 47 partial, 82 implemented, and 129 supported families.
 - Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
 
 ### Planned

@@ -210,7 +210,7 @@ ellipse2Poly(
 clipLine(rectangle: Rect, start: Point, end: Point): readonly [Point, Point] | undefined;
 ```
 
-`getStructuringElement` returns a single-channel U8 kernel. Kind `0` is a rectangle, `1` is a cross, and `2` is an ellipse. Width and height must be positive. The default anchor is `{ x: -1, y: -1 }`, which selects the center of each dimension. A custom anchor moves the cross intersection. Rectangle and ellipse geometry stay centered. The compact result must fit the WASM matrix limit.
+`getStructuringElement` returns a single-channel U8 kernel. Kind `0` is a rectangle, `1` is a cross, `2` is an ellipse, and `3` is a diamond. Width and height must be positive after Embind signed-integer conversion. The default anchor is `{ x: -1, y: -1 }`, which selects each dimension's center. A custom anchor moves the cross intersection. Rectangle, ellipse, and diamond geometry stay centered.
 
 `createHanningWindow` returns a single-channel F32 or F64 matrix. Each dimension must be at least two. The implementation caps allocation at the conservative F64 WASM matrix limit. The values are the outer product of non-negative sine weights, which are the square roots of one-dimensional Hann coefficients.
 
@@ -237,7 +237,7 @@ getPerspectiveTransform(source: Mat, destination: Mat): Mat;
 
 All four constructors allocate their results. `getRotationMatrix2D` passes its complete pinned browser contract. Mutable destination forms and complete browser differential fixtures remain for the other three families.
 
-The pinned OpenCV.js 4.13.0 browser fixture passes the complete audited contracts for all five contour methods and `getRotationMatrix2D`. The transform-matrix audit covers exact arity, structural Point2f conversion, float32 center narrowing, strict angle and scale conversion, signed zero, non-finite values, exact F64 coefficients, and result ownership. `getStructuringElement` still needs argument, invalid-input, and numeric-boundary audits before full-family credit.
+The pinned OpenCV.js 4.13.0 browser fixture passes the complete audited contracts for all five contour methods, `getRotationMatrix2D`, `getAffineTransform`, and `getStructuringElement`. The audits cover exact overloads, structural value-object conversion, numeric edge behavior, output metadata, source preservation, and independent result ownership.
 
 ### Dense matrix algebra
 
