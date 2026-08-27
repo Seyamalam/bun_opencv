@@ -4176,6 +4176,81 @@ function auditAffineTransform(reference) {
   return { arity, conversionOrder, layouts, strided, numeric };
 }
 
+function auditStructuringElement(reference) {
+  const capture = (callback) => {
+    let matrix;
+    try {
+      matrix = callback();
+      return { threw: false, matrix: summarizeTypedMat(matrix) };
+    } catch (error) {
+      return {
+        threw: true,
+        error: {
+          name: error?.name,
+          constructor: error?.constructor?.name,
+          message: error?.message,
+          text: String(error),
+          instanceofError: error instanceof Error,
+        },
+      };
+    } finally {
+      safeDelete(matrix);
+    }
+  };
+  const arity = {
+    length: reference.getStructuringElement.length,
+    zero: captureCall(() => reference.getStructuringElement()),
+    one: captureCall(() => reference.getStructuringElement(0)),
+    two: capture(() => reference.getStructuringElement(0, { width: 3, height: 3 })),
+    three: capture(() =>
+      reference.getStructuringElement(1, { width: 3, height: 3 }, { x: 1, y: 1 }),
+    ),
+    four: captureCall(() =>
+      reference.getStructuringElement(0, { width: 3, height: 3 }, { x: 1, y: 1 }, 0),
+    ),
+  };
+  const fixtures = [
+    ["rect 3x2", 0, { width: 3, height: 2 }],
+    ["cross default 3x3", 1, { width: 3, height: 3 }],
+    ["cross anchor 0,1", 1, { width: 3, height: 3 }, { x: 0, y: 1 }],
+    ["ellipse 1x1", 2, { width: 1, height: 1 }],
+    ["ellipse 2x2", 2, { width: 2, height: 2 }],
+    ["ellipse 4x4", 2, { width: 4, height: 4 }],
+    ["ellipse 5x3", 2, { width: 5, height: 3 }],
+    ["diamond 5x5", 3, { width: 5, height: 5 }],
+  ].map(([name, kind, size, anchor]) => ({
+    name,
+    call: capture(() =>
+      anchor === undefined
+        ? reference.getStructuringElement(kind, size)
+        : reference.getStructuringElement(kind, size, anchor),
+    ),
+  }));
+  const conversions = [
+    ["boolean shape", true, { width: 3, height: 3 }, { x: 1, y: 1 }],
+    ["numeric string shape", "1", { width: 3, height: 3 }, { x: 1, y: 1 }],
+    ["boolean size", 0, { width: true, height: true }, { x: 0, y: 0 }],
+    ["fractional size", 0, { width: 3.9, height: 2.9 }, { x: 0, y: 0 }],
+    ["boolean anchor", 1, { width: 3, height: 3 }, { x: true, y: false }],
+    ["partial default anchor", 1, { width: 3, height: 3 }, { x: -1, y: 0 }],
+  ].map(([name, kind, size, anchor]) => ({
+    name,
+    call: capture(() => reference.getStructuringElement(kind, size, anchor)),
+  }));
+  const rejected = [
+    ["unknown shape", 4, { width: 3, height: 3 }, { x: 1, y: 1 }],
+    ["zero width", 0, { width: 0, height: 3 }, { x: 0, y: 0 }],
+    ["negative width", 0, { width: -1, height: 3 }, { x: 0, y: 0 }],
+    ["anchor outside", 1, { width: 3, height: 3 }, { x: 3, y: 1 }],
+    ["missing size width", 0, { height: 3 }, { x: 0, y: 0 }],
+    ["string size width", 0, { width: "3", height: 3 }, { x: 0, y: 0 }],
+  ].map(([name, kind, size, anchor]) => ({
+    name,
+    call: capture(() => reference.getStructuringElement(kind, size, anchor)),
+  }));
+  return { arity, fixtures, conversions, rejected };
+}
+
 function auditSetIdentity(reference) {
   const auditCase = (name, rows, cols, type, values, scalar, useDefault = false) => {
     const matrix = makeSeedMat(reference, rows, cols, type, values);
@@ -5625,6 +5700,12 @@ self.addEventListener("message", async ({ data: input }) => {
       self.postMessage({ outputs: { affineTransformAudit: auditAffineTransform(reference) } });
       return;
     }
+    if (request === "structuring-element-contracts") {
+      self.postMessage({
+        outputs: { structuringElementAudit: auditStructuringElement(reference) },
+      });
+      return;
+    }
     const source = reference.matFromArray(2, 3, reference.CV_8UC1, sourceInput);
     const outputs = {};
     const operations = [
@@ -5809,6 +5890,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.determinantAudit = auditDeterminant(reference);
     outputs.setIdentityAudit = auditSetIdentity(reference);
     outputs.affineTransformAudit = auditAffineTransform(reference);
+    outputs.structuringElementAudit = auditStructuringElement(reference);
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });

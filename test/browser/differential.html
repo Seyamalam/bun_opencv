@@ -4134,6 +4134,81 @@
         return { arity, conversionOrder, layouts, strided, numeric };
       }
 
+      function auditPackageStructuringElement(packageCv) {
+        const capture = (callback) => {
+          let matrix;
+          try {
+            matrix = callback();
+            return { threw: false, matrix: summarizePackageTypedMat(matrix) };
+          } catch (error) {
+            return {
+              threw: true,
+              error: {
+                name: error?.name,
+                constructor: error?.constructor?.name,
+                message: error?.message,
+                text: String(error),
+                instanceofError: error instanceof Error,
+              },
+            };
+          } finally {
+            disposePackageMat(matrix);
+          }
+        };
+        const arity = {
+          length: packageCv.getStructuringElement.length,
+          zero: captureCall(() => packageCv.getStructuringElement()),
+          one: captureCall(() => packageCv.getStructuringElement(0)),
+          two: capture(() => packageCv.getStructuringElement(0, { width: 3, height: 3 })),
+          three: capture(() =>
+            packageCv.getStructuringElement(1, { width: 3, height: 3 }, { x: 1, y: 1 }),
+          ),
+          four: captureCall(() =>
+            packageCv.getStructuringElement(0, { width: 3, height: 3 }, { x: 1, y: 1 }, 0),
+          ),
+        };
+        const fixtures = [
+          ["rect 3x2", 0, { width: 3, height: 2 }],
+          ["cross default 3x3", 1, { width: 3, height: 3 }],
+          ["cross anchor 0,1", 1, { width: 3, height: 3 }, { x: 0, y: 1 }],
+          ["ellipse 1x1", 2, { width: 1, height: 1 }],
+          ["ellipse 2x2", 2, { width: 2, height: 2 }],
+          ["ellipse 4x4", 2, { width: 4, height: 4 }],
+          ["ellipse 5x3", 2, { width: 5, height: 3 }],
+          ["diamond 5x5", 3, { width: 5, height: 5 }],
+        ].map(([name, kind, size, anchor]) => ({
+          name,
+          call: capture(() =>
+            anchor === undefined
+              ? packageCv.getStructuringElement(kind, size)
+              : packageCv.getStructuringElement(kind, size, anchor),
+          ),
+        }));
+        const conversions = [
+          ["boolean shape", true, { width: 3, height: 3 }, { x: 1, y: 1 }],
+          ["numeric string shape", "1", { width: 3, height: 3 }, { x: 1, y: 1 }],
+          ["boolean size", 0, { width: true, height: true }, { x: 0, y: 0 }],
+          ["fractional size", 0, { width: 3.9, height: 2.9 }, { x: 0, y: 0 }],
+          ["boolean anchor", 1, { width: 3, height: 3 }, { x: true, y: false }],
+          ["partial default anchor", 1, { width: 3, height: 3 }, { x: -1, y: 0 }],
+        ].map(([name, kind, size, anchor]) => ({
+          name,
+          call: capture(() => packageCv.getStructuringElement(kind, size, anchor)),
+        }));
+        const rejected = [
+          ["unknown shape", 4, { width: 3, height: 3 }, { x: 1, y: 1 }],
+          ["zero width", 0, { width: 0, height: 3 }, { x: 0, y: 0 }],
+          ["negative width", 0, { width: -1, height: 3 }, { x: 0, y: 0 }],
+          ["anchor outside", 1, { width: 3, height: 3 }, { x: 3, y: 1 }],
+          ["missing size width", 0, { height: 3 }, { x: 0, y: 0 }],
+          ["string size width", 0, { width: "3", height: 3 }, { x: 0, y: 0 }],
+        ].map(([name, kind, size, anchor]) => ({
+          name,
+          call: capture(() => packageCv.getStructuringElement(kind, size, anchor)),
+        }));
+        return { arity, fixtures, conversions, rejected };
+      }
+
       function auditPackageDeterminant(packageCv) {
         const createMat = (order, depth, values) =>
           makePackageSeedMat(packageCv, order, order, depth, 1, values);
@@ -6035,7 +6110,9 @@
                             ? "set-identity-contracts"
                             : searchParameters.has("reference-affine-transform")
                               ? "affine-transform-contracts"
-                              : undefined;
+                              : searchParameters.has("reference-structuring-element")
+                                ? "structuring-element-contracts"
+                                : undefined;
         const referenceOutputs = await runReference(input, referenceRequest);
         if (searchParameters.has("reference-transpose")) {
           packageSource.dispose();
@@ -6114,6 +6191,13 @@
           result.textContent = JSON.stringify(referenceOutputs.affineTransformAudit, null, 2);
           break differential;
         }
+        if (searchParameters.has("reference-structuring-element")) {
+          packageSource.dispose();
+          globalThis.structuringElementReferenceAudit = referenceOutputs.structuringElementAudit;
+          result.style.whiteSpace = "pre-wrap";
+          result.textContent = JSON.stringify(referenceOutputs.structuringElementAudit, null, 2);
+          break differential;
+        }
         const packageFloatMathAudit = auditPackageFloatMath(packageCv);
         const floatMathDifference = findDifference(
           normalizeFloatMathAudit(packageFloatMathAudit),
@@ -6183,6 +6267,14 @@
         );
         if (affineTransformDifference !== undefined) {
           throw new Error(affineTransformDifference);
+        }
+        const structuringElementDifference = findDifference(
+          normalizeContourAudit(auditPackageStructuringElement(packageCv)),
+          normalizeContourAudit(referenceOutputs.structuringElementAudit),
+          "getStructuringElement audit",
+        );
+        if (structuringElementDifference !== undefined) {
+          throw new Error(structuringElementDifference);
         }
         const packageRotationMatrixAudit = auditPackageRotationMatrix(packageCv);
         const rotationMatrixDifference = findDifference(
