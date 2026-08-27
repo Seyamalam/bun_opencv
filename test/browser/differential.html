@@ -4493,6 +4493,265 @@
         };
       }
 
+      function encodeReductionResult(value) {
+        if (typeof value === "number") return encodeFloat64(value);
+        if (Array.isArray(value)) return value.map((entry) => encodeReductionResult(entry));
+        if (typeof value === "object" && value !== null) {
+          return Object.fromEntries(
+            Object.entries(value).map(([key, entry]) => [key, encodeReductionResult(entry)]),
+          );
+        }
+        return encodeValue(value);
+      }
+
+      function captureReduction(callback) {
+        try {
+          return { threw: false, value: encodeReductionResult(callback()) };
+        } catch (error) {
+          return {
+            threw: true,
+            error: {
+              name: error?.name,
+              constructor: error?.constructor?.name,
+              message: error?.message,
+              text: String(error),
+              instanceofError: error instanceof Error,
+            },
+          };
+        }
+      }
+
+      function auditPackageMaskedReducer(packageCv, method) {
+        const make = (rows, columns, depth, channels, values) =>
+          makePackageSeedMat(packageCv, rows, columns, depth, channels, values);
+        const run = (name, source, mask) => {
+          const call = captureReduction(() =>
+            mask === undefined ? packageCv[method](source) : packageCv[method](source, mask),
+          );
+          disposePackageMat(mask);
+          disposePackageMat(source);
+          return { name, call };
+        };
+        const valuesForDepth = {
+          mean: {
+            u8: [1, 2, 3, 10],
+            i8: [-8, -1, 3, 10],
+            u16: [1, 255, 1024, 65_535],
+            i16: [-32_768, -17, 23, 32_767],
+            i32: [-2_000_000_000, -3, 11, 2_000_000_000],
+            f32: [-1.5, -0.25, 2.25, 9.5],
+            f64: [-1.25, -0.5, 2.75, 9.5],
+          },
+          minMaxLoc: {
+            u8: [9, 2, 7, 2, 9, 4],
+            i8: [-8, 2, 7, -8, 7, 4],
+            u16: [65_535, 2, 1024, 2, 65_535, 4],
+            i16: [-32_768, 2, 32_767, -32_768, 32_767, 4],
+            i32: [-2_000_000_000, 2, 2_000_000_000, -2_000_000_000, 2_000_000_000, 4],
+            f32: [-8.5, 2.25, 7.5, -8.5, 7.5, 4],
+            f64: [-8.25, 2.5, 7.75, -8.25, 7.75, 4],
+          },
+        }[method];
+        const depthCases = [
+          ["U8", "u8", valuesForDepth.u8],
+          ["I8", "i8", valuesForDepth.i8],
+          ["U16", "u16", valuesForDepth.u16],
+          ["I16", "i16", valuesForDepth.i16],
+          ["I32", "i32", valuesForDepth.i32],
+          ["F32", "f32", valuesForDepth.f32],
+          ["F64", "f64", valuesForDepth.f64],
+        ].map(([name, depth, values]) => run(name, make(2, values.length / 2, depth, 1, values)));
+
+        const aritySource = make(2, 3, "u8", 1, [1, 2, 3, 4, 5, 6]);
+        const arityMask = make(2, 3, "u8", 1, [1, 0, 1, 0, 1, 0]);
+        const arity = {
+          length: packageCv[method].length,
+          zero: captureReduction(() => packageCv[method]()),
+          one: captureReduction(() => packageCv[method](aritySource)),
+          two: captureReduction(() => packageCv[method](aritySource, arityMask)),
+          three: captureReduction(() => packageCv[method](aritySource, arityMask, 1)),
+        };
+        disposePackageMat(arityMask);
+        disposePackageMat(aritySource);
+
+        let maskReads = 0;
+        const deferredMask = {
+          get $$() {
+            maskReads += 1;
+            return undefined;
+          },
+        };
+        const conversionOrder = {
+          call: captureReduction(() => packageCv[method]({}, deferredMask)),
+          maskReads,
+        };
+
+        const channelCases =
+          method === "mean"
+            ? [
+                ["C1", 1, [1, 2, 3, 4, 5, 6]],
+                ["C2", 2, [1, 10, 2, 20, 3, 30, 4, 40, 5, 50, 6, 60]],
+                ["C3", 3, [1, 10, 100, 2, 20, 200, 3, 30, 300, 4, 40, 400, 5, 50, 500, 6, 60, 600]],
+                [
+                  "C4",
+                  4,
+                  [
+                    1, 10, 100, 1000, 2, 20, 200, 2000, 3, 30, 300, 3000, 4, 40, 400, 4000, 5, 50,
+                    500, 5000, 6, 60, 600, 6000,
+                  ],
+                ],
+              ].map(([name, channels, values]) => run(name, make(2, 3, "f64", channels, values)))
+            : [run("C1", make(2, 3, "f64", 1, [9, -3, -3, 9, 0, 9]))];
+
+        const rejectedChannels = [
+          method === "mean"
+            ? run(
+                "C5",
+                make(
+                  2,
+                  2,
+                  "f64",
+                  5,
+                  Array.from({ length: 20 }, (_, index) => index + 1),
+                ),
+              )
+            : run("C2", make(2, 2, "f64", 2, [1, 10, 2, 20, 3, 30, 4, 40])),
+        ];
+
+        const maskedSourceValues =
+          method === "mean"
+            ? [5, 50, 500, 1, 10, 100, 9, 90, 900, -2, -20, -200, 9, 90, 900, 3, 30, 300]
+            : [5, 1, 9, -2, 9, 3];
+        const maskedSourceChannels = method === "mean" ? 3 : 1;
+        const masks = [
+          ["all selected", [1, 1, 1, 1, 1, 1]],
+          ["selective nonzero", [0, 255, 1, 0, 0, 7]],
+          ["all zero", [0, 0, 0, 0, 0, 0]],
+        ].map(([name, values]) =>
+          run(
+            name,
+            make(2, 3, "f64", maskedSourceChannels, maskedSourceValues),
+            make(2, 3, "u8", 1, values),
+          ),
+        );
+        const rejectedMasks = [
+          run(
+            "I8 depth",
+            make(2, 3, "f64", 1, [5, 1, 9, -2, 9, 3]),
+            make(2, 3, "i8", 1, [1, 0, 1, 0, 1, 0]),
+          ),
+          run(
+            "two channels",
+            make(2, 3, "f64", 1, [5, 1, 9, -2, 9, 3]),
+            make(2, 3, "u8", 2, [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]),
+          ),
+          run(
+            "wrong rows",
+            make(2, 3, "f64", 1, [5, 1, 9, -2, 9, 3]),
+            make(1, 3, "u8", 1, [1, 0, 1]),
+          ),
+          run(
+            "wrong columns",
+            make(2, 3, "f64", 1, [5, 1, 9, -2, 9, 3]),
+            make(2, 2, "u8", 1, [1, 0, 1, 0]),
+          ),
+        ];
+
+        const canonicalEmpty = run("canonical", packageCv.emptyMat());
+        const typedEmpty = [
+          ["zero by zero", 0, 0, "f32"],
+          ["zero by three", 0, 3, "f32"],
+          ["three by zero", 3, 0, "f64"],
+        ].map(([name, rows, columns, depth]) => run(name, make(rows, columns, depth, 1, [])));
+        const emptyMasks = [
+          run("canonical mask", make(2, 3, "f64", 1, [5, 1, 9, -2, 9, 3]), packageCv.emptyMat()),
+          run("typed mask", make(2, 3, "f64", 1, [5, 1, 9, -2, 9, 3]), make(0, 0, "u8", 1, [])),
+        ];
+
+        const sourceChannels = method === "mean" ? 3 : 1;
+        const sourceParentValues = Array.from({ length: 3 * 5 * sourceChannels }, (_, index) =>
+          index % 7 === 0 ? -index : index + 0.5,
+        );
+        const maskParentValues = [0, 1, 0, 1, 0, 1, 0, 2, 0, 1, 0, 1, 0, 3, 0];
+        const sourceParent = make(3, 5, "f64", sourceChannels, sourceParentValues);
+        const maskParent = make(3, 5, "u8", 1, maskParentValues);
+        const sourceRegion = sourceParent.roi(0, 1, 3, 3);
+        const maskRegion = maskParent.roi(0, 1, 3, 3);
+        const strided = {
+          sourceContinuous: sourceRegion.isContinuous,
+          maskContinuous: maskRegion.isContinuous,
+          unmasked: captureReduction(() => packageCv[method](sourceRegion)),
+          masked: captureReduction(() => packageCv[method](sourceRegion, maskRegion)),
+        };
+        disposePackageMat(maskRegion);
+        disposePackageMat(sourceRegion);
+        disposePackageMat(maskParent);
+        disposePackageMat(sourceParent);
+
+        const numeric =
+          method === "mean"
+            ? [
+                run("NaN", make(1, 3, "f64", 1, [Number.NaN, 1, 2])),
+                run(
+                  "opposite infinities",
+                  make(1, 2, "f64", 1, [Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]),
+                ),
+                run("negative zeros", make(1, 3, "f64", 1, [-0, -0, -0])),
+              ]
+            : [
+                run("NaN among finite", make(1, 4, "f64", 1, [Number.NaN, 2, -1, 4])),
+                run(
+                  "infinities",
+                  make(1, 4, "f64", 1, [0, Number.POSITIVE_INFINITY, -1, Number.NEGATIVE_INFINITY]),
+                ),
+                run("signed zero tie", make(1, 3, "f64", 1, [-0, 0, -0])),
+              ];
+
+        const locations =
+          method === "minMaxLoc"
+            ? [
+                run("row-major ties", make(2, 4, "f64", 1, [5, -3, -3, 9, 9, 0, -3, 9])),
+                run(
+                  "masked ties",
+                  make(2, 4, "f64", 1, [5, -3, -3, 9, 9, 0, -3, 9]),
+                  make(2, 4, "u8", 1, [0, 0, 1, 0, 1, 0, 1, 1]),
+                ),
+              ]
+            : [];
+
+        const deletedSource = make(1, 2, "u8", 1, [1, 2]);
+        disposePackageMat(deletedSource);
+        const liveSource = make(1, 2, "u8", 1, [1, 2]);
+        const deletedMask = make(1, 2, "u8", 1, [1, 0]);
+        disposePackageMat(deletedMask);
+        const lifetime = {
+          deletedSource: captureReduction(() => packageCv[method](deletedSource)),
+          deletedMask: captureReduction(() => packageCv[method](liveSource, deletedMask)),
+          nonMatSources: [null, {}, new Uint8Array([1, 2])].map((value) =>
+            captureReduction(() => packageCv[method](value)),
+          ),
+          nonMatMasks: [null, {}, new Uint8Array([1, 0])].map((value) =>
+            captureReduction(() => packageCv[method](liveSource, value)),
+          ),
+        };
+        disposePackageMat(liveSource);
+
+        return {
+          arity,
+          conversionOrder,
+          depths: depthCases,
+          channels: channelCases,
+          rejectedChannels,
+          masks,
+          rejectedMasks,
+          empty: { canonical: canonicalEmpty, typed: typedEmpty, masks: emptyMasks },
+          strided,
+          numeric,
+          locations,
+          lifetime,
+        };
+      }
+
       function auditPackageDeterminant(packageCv) {
         const createMat = (order, depth, values) =>
           makePackageSeedMat(packageCv, order, order, depth, 1, values);
@@ -6400,7 +6659,11 @@
                                   ? "structuring-element-contracts"
                                   : searchParameters.has("reference-hanning-window")
                                     ? "hanning-window-contracts"
-                                    : undefined;
+                                    : searchParameters.has("reference-mean")
+                                      ? "mean-contracts"
+                                      : searchParameters.has("reference-min-max-loc")
+                                        ? "min-max-loc-contracts"
+                                        : undefined;
         const referenceOutputs = await runReference(input, referenceRequest);
         if (searchParameters.has("reference-transpose")) {
           packageSource.dispose();
@@ -6499,6 +6762,20 @@
           globalThis.hanningWindowReferenceAudit = referenceOutputs.hanningWindowAudit;
           result.style.whiteSpace = "pre-wrap";
           result.textContent = JSON.stringify(referenceOutputs.hanningWindowAudit, null, 2);
+          break differential;
+        }
+        if (searchParameters.has("reference-mean")) {
+          packageSource.dispose();
+          globalThis.meanReferenceAudit = referenceOutputs.meanAudit;
+          result.style.whiteSpace = "pre-wrap";
+          result.textContent = JSON.stringify(referenceOutputs.meanAudit, null, 2);
+          break differential;
+        }
+        if (searchParameters.has("reference-min-max-loc")) {
+          packageSource.dispose();
+          globalThis.minMaxLocReferenceAudit = referenceOutputs.minMaxLocAudit;
+          result.style.whiteSpace = "pre-wrap";
+          result.textContent = JSON.stringify(referenceOutputs.minMaxLocAudit, null, 2);
           break differential;
         }
         const packageFloatMathAudit = auditPackageFloatMath(packageCv);
@@ -6613,6 +6890,22 @@
         );
         if (hanningWindowDifference !== undefined) {
           throw new Error(hanningWindowDifference);
+        }
+        const meanDifference = findDifference(
+          normalizeContourAudit(auditPackageMaskedReducer(packageCv, "mean")),
+          normalizeContourAudit(referenceOutputs.meanAudit),
+          "mean audit",
+        );
+        if (meanDifference !== undefined) {
+          throw new Error(meanDifference);
+        }
+        const minMaxLocDifference = findDifference(
+          normalizeContourAudit(auditPackageMaskedReducer(packageCv, "minMaxLoc")),
+          normalizeContourAudit(referenceOutputs.minMaxLocAudit),
+          "minMaxLoc audit",
+        );
+        if (minMaxLocDifference !== undefined) {
+          throw new Error(minMaxLocDifference);
         }
         const packageRotationMatrixAudit = auditPackageRotationMatrix(packageCv);
         const rotationMatrixDifference = findDifference(

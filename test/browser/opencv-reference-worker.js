@@ -4520,6 +4520,269 @@ function auditHanningWindow(reference) {
   return { arity, conversionOrder, fixtures, destinations, compatibleRoi, conversions, rejected };
 }
 
+function encodeReductionResult(value) {
+  if (typeof value === "number") return encodeFloat64(value);
+  if (Array.isArray(value)) return value.map((entry) => encodeReductionResult(entry));
+  if (typeof value === "object" && value !== null) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, encodeReductionResult(entry)]),
+    );
+  }
+  return encodeValue(value);
+}
+
+function captureReduction(callback) {
+  try {
+    return { threw: false, value: encodeReductionResult(callback()) };
+  } catch (error) {
+    return {
+      threw: true,
+      error: {
+        name: error?.name,
+        constructor: error?.constructor?.name,
+        message: error?.message,
+        text: String(error),
+        instanceofError: error instanceof Error,
+      },
+    };
+  }
+}
+
+function auditMaskedReducer(reference, method) {
+  const make = (rows, columns, type, values) => makeSeedMat(reference, rows, columns, type, values);
+  const run = (name, source, mask) => {
+    const call = captureReduction(() =>
+      mask === undefined ? reference[method](source) : reference[method](source, mask),
+    );
+    safeDelete(mask);
+    safeDelete(source);
+    return { name, call };
+  };
+  const valuesForDepth = {
+    mean: {
+      u8: [1, 2, 3, 10],
+      i8: [-8, -1, 3, 10],
+      u16: [1, 255, 1024, 65_535],
+      i16: [-32_768, -17, 23, 32_767],
+      i32: [-2_000_000_000, -3, 11, 2_000_000_000],
+      f32: [-1.5, -0.25, 2.25, 9.5],
+      f64: [-1.25, -0.5, 2.75, 9.5],
+    },
+    minMaxLoc: {
+      u8: [9, 2, 7, 2, 9, 4],
+      i8: [-8, 2, 7, -8, 7, 4],
+      u16: [65_535, 2, 1024, 2, 65_535, 4],
+      i16: [-32_768, 2, 32_767, -32_768, 32_767, 4],
+      i32: [-2_000_000_000, 2, 2_000_000_000, -2_000_000_000, 2_000_000_000, 4],
+      f32: [-8.5, 2.25, 7.5, -8.5, 7.5, 4],
+      f64: [-8.25, 2.5, 7.75, -8.25, 7.75, 4],
+    },
+  }[method];
+  const depthCases = [
+    ["U8", reference.CV_8UC1, valuesForDepth.u8],
+    ["I8", reference.CV_8SC1, valuesForDepth.i8],
+    ["U16", reference.CV_16UC1, valuesForDepth.u16],
+    ["I16", reference.CV_16SC1, valuesForDepth.i16],
+    ["I32", reference.CV_32SC1, valuesForDepth.i32],
+    ["F32", reference.CV_32FC1, valuesForDepth.f32],
+    ["F64", reference.CV_64FC1, valuesForDepth.f64],
+  ].map(([name, type, values]) => run(name, make(2, values.length / 2, type, values)));
+
+  const aritySource = make(2, 3, reference.CV_8UC1, [1, 2, 3, 4, 5, 6]);
+  const arityMask = make(2, 3, reference.CV_8UC1, [1, 0, 1, 0, 1, 0]);
+  const arity = {
+    length: reference[method].length,
+    zero: captureReduction(() => reference[method]()),
+    one: captureReduction(() => reference[method](aritySource)),
+    two: captureReduction(() => reference[method](aritySource, arityMask)),
+    three: captureReduction(() => reference[method](aritySource, arityMask, 1)),
+  };
+  safeDelete(arityMask);
+  safeDelete(aritySource);
+
+  let maskReads = 0;
+  const deferredMask = {
+    get $$() {
+      maskReads += 1;
+      return undefined;
+    },
+  };
+  const conversionOrder = {
+    call: captureReduction(() => reference[method]({}, deferredMask)),
+    maskReads,
+  };
+
+  const channelCases =
+    method === "mean"
+      ? [
+          ["C1", reference.CV_64FC1, [1, 2, 3, 4, 5, 6]],
+          ["C2", reference.CV_64FC2, [1, 10, 2, 20, 3, 30, 4, 40, 5, 50, 6, 60]],
+          [
+            "C3",
+            reference.CV_64FC3,
+            [1, 10, 100, 2, 20, 200, 3, 30, 300, 4, 40, 400, 5, 50, 500, 6, 60, 600],
+          ],
+          [
+            "C4",
+            reference.CV_64FC4,
+            [
+              1, 10, 100, 1000, 2, 20, 200, 2000, 3, 30, 300, 3000, 4, 40, 400, 4000, 5, 50, 500,
+              5000, 6, 60, 600, 6000,
+            ],
+          ],
+        ].map(([name, type, values]) => run(name, make(2, 3, type, values)))
+      : [run("C1", make(2, 3, reference.CV_64FC1, [9, -3, -3, 9, 0, 9]))];
+
+  const rejectedChannels = [
+    method === "mean"
+      ? run("C5", new reference.Mat(2, 2, reference.CV_64FC4 + 8))
+      : run("C2", make(2, 2, reference.CV_64FC2, [1, 10, 2, 20, 3, 30, 4, 40])),
+  ];
+
+  const maskedSourceValues =
+    method === "mean"
+      ? [5, 50, 500, 1, 10, 100, 9, 90, 900, -2, -20, -200, 9, 90, 900, 3, 30, 300]
+      : [5, 1, 9, -2, 9, 3];
+  const maskedSourceType = method === "mean" ? reference.CV_64FC3 : reference.CV_64FC1;
+  const masks = [
+    ["all selected", [1, 1, 1, 1, 1, 1]],
+    ["selective nonzero", [0, 255, 1, 0, 0, 7]],
+    ["all zero", [0, 0, 0, 0, 0, 0]],
+  ].map(([name, values]) =>
+    run(
+      name,
+      make(2, 3, maskedSourceType, maskedSourceValues),
+      make(2, 3, reference.CV_8UC1, values),
+    ),
+  );
+  const rejectedMasks = [
+    run(
+      "I8 depth",
+      make(2, 3, reference.CV_64FC1, [5, 1, 9, -2, 9, 3]),
+      make(2, 3, reference.CV_8SC1, [1, 0, 1, 0, 1, 0]),
+    ),
+    run(
+      "two channels",
+      make(2, 3, reference.CV_64FC1, [5, 1, 9, -2, 9, 3]),
+      make(2, 3, reference.CV_8UC2, [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]),
+    ),
+    run(
+      "wrong rows",
+      make(2, 3, reference.CV_64FC1, [5, 1, 9, -2, 9, 3]),
+      make(1, 3, reference.CV_8UC1, [1, 0, 1]),
+    ),
+    run(
+      "wrong columns",
+      make(2, 3, reference.CV_64FC1, [5, 1, 9, -2, 9, 3]),
+      make(2, 2, reference.CV_8UC1, [1, 0, 1, 0]),
+    ),
+  ];
+
+  const canonicalEmpty = run("canonical", new reference.Mat());
+  const typedEmpty = [
+    ["zero by zero", 0, 0, reference.CV_32FC1],
+    ["zero by three", 0, 3, reference.CV_32FC1],
+    ["three by zero", 3, 0, reference.CV_64FC1],
+  ].map(([name, rows, columns, type]) => run(name, new reference.Mat(rows, columns, type)));
+  const emptyMasks = [
+    run("canonical mask", make(2, 3, reference.CV_64FC1, [5, 1, 9, -2, 9, 3]), new reference.Mat()),
+    run(
+      "typed mask",
+      make(2, 3, reference.CV_64FC1, [5, 1, 9, -2, 9, 3]),
+      new reference.Mat(0, 0, reference.CV_8UC1),
+    ),
+  ];
+
+  const sourceChannels = method === "mean" ? 3 : 1;
+  const sourceType = method === "mean" ? reference.CV_64FC3 : reference.CV_64FC1;
+  const sourceParentValues = Array.from({ length: 3 * 5 * sourceChannels }, (_, index) =>
+    index % 7 === 0 ? -index : index + 0.5,
+  );
+  const maskParentValues = [0, 1, 0, 1, 0, 1, 0, 2, 0, 1, 0, 1, 0, 3, 0];
+  const sourceParent = make(3, 5, sourceType, sourceParentValues);
+  const maskParent = make(3, 5, reference.CV_8UC1, maskParentValues);
+  const sourceRegion = sourceParent.roi(new reference.Rect(1, 0, 3, 3));
+  const maskRegion = maskParent.roi(new reference.Rect(1, 0, 3, 3));
+  const strided = {
+    sourceContinuous: sourceRegion.isContinuous(),
+    maskContinuous: maskRegion.isContinuous(),
+    unmasked: captureReduction(() => reference[method](sourceRegion)),
+    masked: captureReduction(() => reference[method](sourceRegion, maskRegion)),
+  };
+  safeDelete(maskRegion);
+  safeDelete(sourceRegion);
+  safeDelete(maskParent);
+  safeDelete(sourceParent);
+
+  const numeric =
+    method === "mean"
+      ? [
+          run("NaN", make(1, 3, reference.CV_64FC1, [Number.NaN, 1, 2])),
+          run(
+            "opposite infinities",
+            make(1, 2, reference.CV_64FC1, [Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]),
+          ),
+          run("negative zeros", make(1, 3, reference.CV_64FC1, [-0, -0, -0])),
+        ]
+      : [
+          run("NaN among finite", make(1, 4, reference.CV_64FC1, [Number.NaN, 2, -1, 4])),
+          run(
+            "infinities",
+            make(1, 4, reference.CV_64FC1, [
+              0,
+              Number.POSITIVE_INFINITY,
+              -1,
+              Number.NEGATIVE_INFINITY,
+            ]),
+          ),
+          run("signed zero tie", make(1, 3, reference.CV_64FC1, [-0, 0, -0])),
+        ];
+
+  const locations =
+    method === "minMaxLoc"
+      ? [
+          run("row-major ties", make(2, 4, reference.CV_64FC1, [5, -3, -3, 9, 9, 0, -3, 9])),
+          run(
+            "masked ties",
+            make(2, 4, reference.CV_64FC1, [5, -3, -3, 9, 9, 0, -3, 9]),
+            make(2, 4, reference.CV_8UC1, [0, 0, 1, 0, 1, 0, 1, 1]),
+          ),
+        ]
+      : [];
+
+  const deletedSource = make(1, 2, reference.CV_8UC1, [1, 2]);
+  safeDelete(deletedSource);
+  const liveSource = make(1, 2, reference.CV_8UC1, [1, 2]);
+  const deletedMask = make(1, 2, reference.CV_8UC1, [1, 0]);
+  safeDelete(deletedMask);
+  const lifetime = {
+    deletedSource: captureReduction(() => reference[method](deletedSource)),
+    deletedMask: captureReduction(() => reference[method](liveSource, deletedMask)),
+    nonMatSources: [null, {}, new Uint8Array([1, 2])].map((value) =>
+      captureReduction(() => reference[method](value)),
+    ),
+    nonMatMasks: [null, {}, new Uint8Array([1, 0])].map((value) =>
+      captureReduction(() => reference[method](liveSource, value)),
+    ),
+  };
+  safeDelete(liveSource);
+
+  return {
+    arity,
+    conversionOrder,
+    depths: depthCases,
+    channels: channelCases,
+    rejectedChannels,
+    masks,
+    rejectedMasks,
+    empty: { canonical: canonicalEmpty, typed: typedEmpty, masks: emptyMasks },
+    strided,
+    numeric,
+    locations,
+    lifetime,
+  };
+}
+
 function auditSetIdentity(reference) {
   const auditCase = (name, rows, cols, type, values, scalar, useDefault = false) => {
     const matrix = makeSeedMat(reference, rows, cols, type, values);
@@ -5987,6 +6250,16 @@ self.addEventListener("message", async ({ data: input }) => {
       });
       return;
     }
+    if (request === "mean-contracts") {
+      self.postMessage({ outputs: { meanAudit: auditMaskedReducer(reference, "mean") } });
+      return;
+    }
+    if (request === "min-max-loc-contracts") {
+      self.postMessage({
+        outputs: { minMaxLocAudit: auditMaskedReducer(reference, "minMaxLoc") },
+      });
+      return;
+    }
     const source = reference.matFromArray(2, 3, reference.CV_8UC1, sourceInput);
     const outputs = {};
     const operations = [
@@ -6174,6 +6447,8 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.invertAffineTransformAudit = auditInvertAffineTransform(reference);
     outputs.structuringElementAudit = auditStructuringElement(reference);
     outputs.hanningWindowAudit = auditHanningWindow(reference);
+    outputs.meanAudit = auditMaskedReducer(reference, "mean");
+    outputs.minMaxLocAudit = auditMaskedReducer(reference, "minMaxLoc");
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });
