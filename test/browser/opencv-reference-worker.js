@@ -4931,6 +4931,327 @@ function auditTrace(reference) {
   return { arity, depthChannels, rejectedChannels, empty, strided, numeric, lifetime };
 }
 
+function auditBitwiseNot(reference) {
+  const makeRaw = (rows, columns, type, bytes) => {
+    const matrix = new reference.Mat(rows, columns, type);
+    if (bytes.length > 0) matrix.data.set(bytes);
+    return matrix;
+  };
+  // oxlint-disable-next-line unicorn/consistent-function-scoping -- The fixture generator belongs to this audit.
+  const bytes = (length, seed = 1) =>
+    Uint8Array.from({ length }, (_, index) => (seed + index * 37) & 255);
+  const run = (name, source, destination, mask, extraMatrices = []) => {
+    const matrices = [
+      ["source", source],
+      ["destination", destination],
+      ...(mask === undefined ? [] : [["mask", mask]]),
+      ...extraMatrices,
+    ];
+    const audit = auditTransposeCall(
+      () =>
+        mask === undefined
+          ? reference.bitwise_not(source, destination)
+          : reference.bitwise_not(source, destination, mask),
+      matrices,
+    );
+    for (const matrix of new Set(matrices.map(([, value]) => value))) safeDelete(matrix);
+    return { name, audit };
+  };
+  // oxlint-disable-next-line unicorn/consistent-function-scoping -- The type encoder belongs to this audit.
+  const type = (depth, channels) => depth + ((channels - 1) << 3);
+  const depthCases = [
+    ["U8", reference.CV_8U, 1],
+    ["I8", reference.CV_8S, 1],
+    ["U16", reference.CV_16U, 2],
+    ["I16", reference.CV_16S, 2],
+    ["I32", reference.CV_32S, 4],
+    ["F32", reference.CV_32F, 4],
+    ["F64", reference.CV_64F, 8],
+  ];
+
+  const aritySource = makeRaw(2, 3, reference.CV_8UC1, new Uint8Array([1, 2, 3, 4, 5, 6]));
+  const arityDestination = makeRaw(
+    2,
+    3,
+    reference.CV_8UC1,
+    new Uint8Array([99, 98, 97, 96, 95, 94]),
+  );
+  const arityMask = makeRaw(2, 3, reference.CV_8UC1, new Uint8Array([255, 0, 1, 0, 2, 0]));
+  const arity = {
+    length: reference.bitwise_not.length,
+    zero: captureCall(() => reference.bitwise_not()),
+    one: captureCall(() => reference.bitwise_not(aritySource)),
+    two: captureCall(() => reference.bitwise_not(aritySource, arityDestination)),
+    three: captureCall(() => reference.bitwise_not(aritySource, arityDestination, arityMask)),
+    four: captureCall(() =>
+      reference.bitwise_not(aritySource, arityDestination, arityMask, arityMask),
+    ),
+  };
+  safeDelete(arityMask);
+  safeDelete(arityDestination);
+  safeDelete(aritySource);
+
+  let destinationReads = 0;
+  let maskReads = 0;
+  const deferredDestination = {
+    get $$() {
+      destinationReads += 1;
+      return undefined;
+    },
+  };
+  const deferredMask = {
+    get $$() {
+      maskReads += 1;
+      return undefined;
+    },
+  };
+  const orderSource = makeRaw(1, 1, reference.CV_8UC1, new Uint8Array([1]));
+  const conversionOrder = {
+    sourceBeforeDestination: captureCall(() =>
+      reference.bitwise_not({}, deferredDestination, deferredMask),
+    ),
+    destinationReadsAfterInvalidSource: destinationReads,
+    maskReadsAfterInvalidSource: maskReads,
+    destinationBeforeMask: captureCall(() => reference.bitwise_not(orderSource, {}, deferredMask)),
+    maskReadsAfterInvalidDestination: maskReads,
+  };
+  safeDelete(orderSource);
+
+  const depthChannels = depthCases.flatMap(([name, depth, width], depthIndex) =>
+    [1, 2, 3, 4, 5].map((channels) => {
+      const byteLength = 2 * 3 * channels * width;
+      return run(
+        `${name} C${channels}`,
+        makeRaw(2, 3, type(depth, channels), bytes(byteLength, depthIndex * 19 + channels)),
+        new reference.Mat(),
+      );
+    }),
+  );
+  const specialBits = [
+    run(
+      "F32 special bit patterns",
+      makeRaw(
+        2,
+        3,
+        reference.CV_32FC1,
+        new Uint8Array([
+          0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 128, 127, 0, 0, 128, 255, 1, 0, 192, 127, 1, 0, 0, 0,
+        ]),
+      ),
+      new reference.Mat(),
+    ),
+    run(
+      "F64 special bit patterns",
+      makeRaw(
+        1,
+        4,
+        reference.CV_64FC1,
+        new Uint8Array([
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 0, 0, 0, 240, 127, 1, 0, 0, 0,
+          0, 0, 248, 127,
+        ]),
+      ),
+      new reference.Mat(),
+    ),
+  ];
+
+  const destinationSourceBytes = bytes(2 * 3 * 2 * 2, 17);
+  const destinationCases = [
+    run("fresh", makeRaw(2, 3, reference.CV_16UC2, destinationSourceBytes), new reference.Mat()),
+    run(
+      "compatible",
+      makeRaw(2, 3, reference.CV_16UC2, destinationSourceBytes),
+      makeRaw(2, 3, reference.CV_16UC2, bytes(destinationSourceBytes.length, 99)),
+    ),
+    run(
+      "wrong layout",
+      makeRaw(2, 3, reference.CV_16UC2, destinationSourceBytes),
+      makeRaw(1, 2, reference.CV_8UC1, new Uint8Array([99, 98])),
+    ),
+  ];
+
+  const maskedSourceBytes = bytes(2 * 3 * 3 * 4, 23);
+  const maskValues = new Uint8Array([255, 0, 1, 0, 2, 0]);
+  const maskCases = [
+    run(
+      "U8 compatible preserves unselected",
+      makeRaw(2, 3, reference.CV_32FC3, maskedSourceBytes),
+      makeRaw(2, 3, reference.CV_32FC3, bytes(maskedSourceBytes.length, 99)),
+      makeRaw(2, 3, reference.CV_8UC1, maskValues),
+    ),
+    run(
+      "I8 compatible preserves unselected",
+      makeRaw(2, 3, reference.CV_32FC3, maskedSourceBytes),
+      makeRaw(2, 3, reference.CV_32FC3, bytes(maskedSourceBytes.length, 99)),
+      makeRaw(2, 3, reference.CV_8SC1, maskValues),
+    ),
+    run(
+      "fresh zeros unselected",
+      makeRaw(2, 3, reference.CV_32FC3, maskedSourceBytes),
+      new reference.Mat(),
+      makeRaw(2, 3, reference.CV_8UC1, maskValues),
+    ),
+    run(
+      "wrong layout zeros unselected",
+      makeRaw(2, 3, reference.CV_32FC3, maskedSourceBytes),
+      makeRaw(1, 1, reference.CV_8UC1, new Uint8Array([99])),
+      makeRaw(2, 3, reference.CV_8UC1, maskValues),
+    ),
+  ];
+
+  const emptyMaskCases = [
+    run(
+      "canonical mask",
+      makeRaw(2, 3, reference.CV_8UC1, new Uint8Array([1, 2, 3, 4, 5, 6])),
+      new reference.Mat(),
+      new reference.Mat(),
+    ),
+    run(
+      "typed wrong-metadata mask",
+      makeRaw(2, 3, reference.CV_8UC1, new Uint8Array([1, 2, 3, 4, 5, 6])),
+      new reference.Mat(),
+      new reference.Mat(0, 3, reference.CV_16UC2),
+    ),
+  ];
+
+  const rejectedMask = (name, mask) =>
+    run(
+      name,
+      makeRaw(2, 3, reference.CV_8UC2, bytes(12, 31)),
+      makeRaw(2, 3, reference.CV_8UC2, bytes(12, 99)),
+      mask,
+    );
+  const rejectedMasks = [
+    rejectedMask("U16 depth", makeRaw(2, 3, reference.CV_16UC1, bytes(12, 1))),
+    rejectedMask("two channels", makeRaw(2, 3, reference.CV_8UC2, bytes(12, 1))),
+    rejectedMask("wrong rows", makeRaw(1, 3, reference.CV_8UC1, bytes(3, 1))),
+    rejectedMask("wrong columns", makeRaw(2, 2, reference.CV_8UC1, bytes(4, 1))),
+  ];
+
+  const empty = [
+    run("canonical source", new reference.Mat(), new reference.Mat()),
+    run("zero rows F32 C2", new reference.Mat(0, 3, reference.CV_32FC2), new reference.Mat()),
+    run("zero columns F64 C4", new reference.Mat(3, 0, reference.CV_64FC4), new reference.Mat()),
+  ];
+
+  const aliases = [
+    (() => {
+      const matrix = makeRaw(2, 3, reference.CV_8UC1, new Uint8Array([1, 2, 3, 4, 5, 6]));
+      return run("source equals destination", matrix, matrix);
+    })(),
+    (() => {
+      const matrix = makeRaw(2, 3, reference.CV_8UC1, new Uint8Array([1, 2, 3, 4, 5, 6]));
+      return run(
+        "source equals destination masked",
+        matrix,
+        matrix,
+        makeRaw(2, 3, reference.CV_8UC1, maskValues),
+      );
+    })(),
+    (() => {
+      const sourceMask = makeRaw(2, 3, reference.CV_8UC1, maskValues);
+      return run("source equals mask", sourceMask, new reference.Mat(), sourceMask);
+    })(),
+    (() => {
+      const destinationMask = makeRaw(2, 3, reference.CV_8UC1, maskValues);
+      return run(
+        "destination equals mask",
+        makeRaw(2, 3, reference.CV_8UC1, new Uint8Array([1, 2, 3, 4, 5, 6])),
+        destinationMask,
+        destinationMask,
+      );
+    })(),
+    (() => {
+      const matrix = makeRaw(2, 3, reference.CV_8UC1, maskValues);
+      return run("all arguments alias", matrix, matrix, matrix);
+    })(),
+  ];
+
+  const sourceParent = makeRaw(3, 5, reference.CV_16UC2, bytes(3 * 5 * 4, 7));
+  const destinationParent = makeRaw(3, 5, reference.CV_16UC2, bytes(3 * 5 * 4, 99));
+  const maskParent = makeRaw(
+    3,
+    5,
+    reference.CV_8UC1,
+    new Uint8Array([0, 1, 0, 2, 0, 1, 0, 3, 0, 4, 0, 5, 0, 6, 0]),
+  );
+  const strided = run(
+    "strided source destination and mask",
+    sourceParent.roi(new reference.Rect(1, 0, 3, 3)),
+    destinationParent.roi(new reference.Rect(1, 0, 3, 3)),
+    maskParent.roi(new reference.Rect(1, 0, 3, 3)),
+    [
+      ["sourceParent", sourceParent],
+      ["destinationParent", destinationParent],
+      ["maskParent", maskParent],
+    ],
+  );
+
+  const overlapCases = [
+    (() => {
+      const parent = makeRaw(3, 6, reference.CV_8UC1, bytes(18, 1));
+      return run(
+        "overlapping source and destination",
+        parent.roi(new reference.Rect(0, 0, 4, 3)),
+        parent.roi(new reference.Rect(1, 0, 4, 3)),
+        undefined,
+        [["parent", parent]],
+      );
+    })(),
+    (() => {
+      const parent = makeRaw(3, 7, reference.CV_8UC1, bytes(21, 3));
+      return run(
+        "overlapping source destination and mask",
+        parent.roi(new reference.Rect(0, 0, 4, 3)),
+        parent.roi(new reference.Rect(1, 0, 4, 3)),
+        parent.roi(new reference.Rect(2, 0, 4, 3)),
+        [["parent", parent]],
+      );
+    })(),
+  ];
+
+  const deletedSource = makeRaw(1, 1, reference.CV_8UC1, new Uint8Array([1]));
+  safeDelete(deletedSource);
+  const deletedDestination = new reference.Mat();
+  safeDelete(deletedDestination);
+  const deletedMask = makeRaw(1, 1, reference.CV_8UC1, new Uint8Array([1]));
+  safeDelete(deletedMask);
+  const liveSource = makeRaw(1, 1, reference.CV_8UC1, new Uint8Array([1]));
+  const liveDestination = new reference.Mat();
+  const lifetime = {
+    deletedSource: captureCall(() => reference.bitwise_not(deletedSource, liveDestination)),
+    deletedDestination: captureCall(() => reference.bitwise_not(liveSource, deletedDestination)),
+    deletedMask: captureCall(() => reference.bitwise_not(liveSource, liveDestination, deletedMask)),
+    nonMatSources: [undefined, null, {}, 1, new Uint8Array([1])].map((value) =>
+      captureCall(() => reference.bitwise_not(value, liveDestination)),
+    ),
+    nonMatDestinations: [undefined, null, {}, 1, new Uint8Array([1])].map((value) =>
+      captureCall(() => reference.bitwise_not(liveSource, value)),
+    ),
+    nonMatMasks: [undefined, null, {}, 1, new Uint8Array([1])].map((value) =>
+      captureCall(() => reference.bitwise_not(liveSource, liveDestination, value)),
+    ),
+  };
+  safeDelete(liveDestination);
+  safeDelete(liveSource);
+
+  return {
+    arity,
+    conversionOrder,
+    depthChannels,
+    specialBits,
+    destinations: destinationCases,
+    masks: maskCases,
+    emptyMasks: emptyMaskCases,
+    rejectedMasks,
+    empty,
+    aliases,
+    strided,
+    overlap: overlapCases,
+    lifetime,
+  };
+}
+
 function auditSetIdentity(reference) {
   const auditCase = (name, rows, cols, type, values, scalar, useDefault = false) => {
     const matrix = makeSeedMat(reference, rows, cols, type, values);
@@ -6412,6 +6733,10 @@ self.addEventListener("message", async ({ data: input }) => {
       self.postMessage({ outputs: { traceAudit: auditTrace(reference) } });
       return;
     }
+    if (request === "bitwise-not-contracts") {
+      self.postMessage({ outputs: { bitwiseNotAudit: auditBitwiseNot(reference) } });
+      return;
+    }
     const source = reference.matFromArray(2, 3, reference.CV_8UC1, sourceInput);
     const outputs = {};
     const operations = [
@@ -6602,6 +6927,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.meanAudit = auditMaskedReducer(reference, "mean");
     outputs.minMaxLocAudit = auditMaskedReducer(reference, "minMaxLoc");
     outputs.traceAudit = auditTrace(reference);
+    outputs.bitwiseNotAudit = auditBitwiseNot(reference);
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });

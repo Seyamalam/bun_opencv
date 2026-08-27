@@ -4898,6 +4898,344 @@
         return { arity, depthChannels, rejectedChannels, empty, strided, numeric, lifetime };
       }
 
+      function auditPackageBitwiseNot(packageCv) {
+        const makeRaw = (rows, columns, depth, channels, rawBytes) => {
+          const scalarLength = rows * columns * channels;
+          const matrix = makePackageSeedMat(
+            packageCv,
+            rows,
+            columns,
+            depth,
+            channels,
+            new Array(scalarLength).fill(0),
+          );
+          if (rawBytes.length > 0) matrix.copyFromBytes(rawBytes);
+          return matrix;
+        };
+        // oxlint-disable-next-line unicorn/consistent-function-scoping -- The fixture generator belongs to this audit.
+        const bytes = (length, seed = 1) =>
+          Uint8Array.from({ length }, (_, index) => (seed + index * 37) & 255);
+        const run = (name, source, destination, mask, extraMatrices = []) => {
+          const matrices = [
+            ["source", source],
+            ["destination", destination],
+            ...(mask === undefined ? [] : [["mask", mask]]),
+            ...extraMatrices,
+          ];
+          const audit = auditPackageTransposeCall(
+            () =>
+              mask === undefined
+                ? packageCv.bitwiseNot(source, destination)
+                : packageCv.bitwiseNot(source, destination, mask),
+            matrices,
+          );
+          for (const matrix of new Set(matrices.map(([, value]) => value))) {
+            disposePackageMat(matrix);
+          }
+          return { name, audit };
+        };
+        const depthCases = [
+          ["U8", "u8", 1],
+          ["I8", "i8", 1],
+          ["U16", "u16", 2],
+          ["I16", "i16", 2],
+          ["I32", "i32", 4],
+          ["F32", "f32", 4],
+          ["F64", "f64", 8],
+        ];
+
+        const aritySource = makeRaw(2, 3, "u8", 1, new Uint8Array([1, 2, 3, 4, 5, 6]));
+        const arityDestination = makeRaw(2, 3, "u8", 1, new Uint8Array([99, 98, 97, 96, 95, 94]));
+        const arityMask = makeRaw(2, 3, "u8", 1, new Uint8Array([255, 0, 1, 0, 2, 0]));
+        const arity = {
+          length: packageCv.bitwiseNot.length,
+          zero: captureCall(() => packageCv.bitwiseNot()),
+          one: captureCall(() => packageCv.bitwiseNot(aritySource)),
+          two: captureCall(() => packageCv.bitwiseNot(aritySource, arityDestination)),
+          three: captureCall(() => packageCv.bitwiseNot(aritySource, arityDestination, arityMask)),
+          four: captureCall(() =>
+            packageCv.bitwiseNot(aritySource, arityDestination, arityMask, arityMask),
+          ),
+        };
+        disposePackageMat(arityMask);
+        disposePackageMat(arityDestination);
+        disposePackageMat(aritySource);
+
+        let destinationReads = 0;
+        let maskReads = 0;
+        const deferredDestination = {
+          get $$() {
+            destinationReads += 1;
+            return undefined;
+          },
+        };
+        const deferredMask = {
+          get $$() {
+            maskReads += 1;
+            return undefined;
+          },
+        };
+        const orderSource = makeRaw(1, 1, "u8", 1, new Uint8Array([1]));
+        const conversionOrder = {
+          sourceBeforeDestination: captureCall(() =>
+            packageCv.bitwiseNot({}, deferredDestination, deferredMask),
+          ),
+          destinationReadsAfterInvalidSource: destinationReads,
+          maskReadsAfterInvalidSource: maskReads,
+          destinationBeforeMask: captureCall(() =>
+            packageCv.bitwiseNot(orderSource, {}, deferredMask),
+          ),
+          maskReadsAfterInvalidDestination: maskReads,
+        };
+        disposePackageMat(orderSource);
+
+        const depthChannels = depthCases.flatMap(([name, depth, width], depthIndex) =>
+          [1, 2, 3, 4, 5].map((channels) => {
+            const byteLength = 2 * 3 * channels * width;
+            return run(
+              `${name} C${channels}`,
+              makeRaw(2, 3, depth, channels, bytes(byteLength, depthIndex * 19 + channels)),
+              packageCv.emptyMat(),
+            );
+          }),
+        );
+        const specialBits = [
+          run(
+            "F32 special bit patterns",
+            makeRaw(
+              2,
+              3,
+              "f32",
+              1,
+              new Uint8Array([
+                0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 128, 127, 0, 0, 128, 255, 1, 0, 192, 127, 1, 0, 0,
+                0,
+              ]),
+            ),
+            packageCv.emptyMat(),
+          ),
+          run(
+            "F64 special bit patterns",
+            makeRaw(
+              1,
+              4,
+              "f64",
+              1,
+              new Uint8Array([
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 0, 0, 0, 240, 127, 1, 0,
+                0, 0, 0, 0, 248, 127,
+              ]),
+            ),
+            packageCv.emptyMat(),
+          ),
+        ];
+
+        const destinationSourceBytes = bytes(2 * 3 * 2 * 2, 17);
+        const destinationCases = [
+          run("fresh", makeRaw(2, 3, "u16", 2, destinationSourceBytes), packageCv.emptyMat()),
+          run(
+            "compatible",
+            makeRaw(2, 3, "u16", 2, destinationSourceBytes),
+            makeRaw(2, 3, "u16", 2, bytes(destinationSourceBytes.length, 99)),
+          ),
+          run(
+            "wrong layout",
+            makeRaw(2, 3, "u16", 2, destinationSourceBytes),
+            makeRaw(1, 2, "u8", 1, new Uint8Array([99, 98])),
+          ),
+        ];
+
+        const maskedSourceBytes = bytes(2 * 3 * 3 * 4, 23);
+        const maskValues = new Uint8Array([255, 0, 1, 0, 2, 0]);
+        const maskCases = [
+          run(
+            "U8 compatible preserves unselected",
+            makeRaw(2, 3, "f32", 3, maskedSourceBytes),
+            makeRaw(2, 3, "f32", 3, bytes(maskedSourceBytes.length, 99)),
+            makeRaw(2, 3, "u8", 1, maskValues),
+          ),
+          run(
+            "I8 compatible preserves unselected",
+            makeRaw(2, 3, "f32", 3, maskedSourceBytes),
+            makeRaw(2, 3, "f32", 3, bytes(maskedSourceBytes.length, 99)),
+            makeRaw(2, 3, "i8", 1, maskValues),
+          ),
+          run(
+            "fresh zeros unselected",
+            makeRaw(2, 3, "f32", 3, maskedSourceBytes),
+            packageCv.emptyMat(),
+            makeRaw(2, 3, "u8", 1, maskValues),
+          ),
+          run(
+            "wrong layout zeros unselected",
+            makeRaw(2, 3, "f32", 3, maskedSourceBytes),
+            makeRaw(1, 1, "u8", 1, new Uint8Array([99])),
+            makeRaw(2, 3, "u8", 1, maskValues),
+          ),
+        ];
+
+        const emptyMaskCases = [
+          run(
+            "canonical mask",
+            makeRaw(2, 3, "u8", 1, new Uint8Array([1, 2, 3, 4, 5, 6])),
+            packageCv.emptyMat(),
+            packageCv.emptyMat(),
+          ),
+          run(
+            "typed wrong-metadata mask",
+            makeRaw(2, 3, "u8", 1, new Uint8Array([1, 2, 3, 4, 5, 6])),
+            packageCv.emptyMat(),
+            makeRaw(0, 3, "u16", 2, new Uint8Array()),
+          ),
+        ];
+
+        const rejectedMask = (name, mask) =>
+          run(
+            name,
+            makeRaw(2, 3, "u8", 2, bytes(12, 31)),
+            makeRaw(2, 3, "u8", 2, bytes(12, 99)),
+            mask,
+          );
+        const rejectedMasks = [
+          rejectedMask("U16 depth", makeRaw(2, 3, "u16", 1, bytes(12, 1))),
+          rejectedMask("two channels", makeRaw(2, 3, "u8", 2, bytes(12, 1))),
+          rejectedMask("wrong rows", makeRaw(1, 3, "u8", 1, bytes(3, 1))),
+          rejectedMask("wrong columns", makeRaw(2, 2, "u8", 1, bytes(4, 1))),
+        ];
+
+        const empty = [
+          run("canonical source", packageCv.emptyMat(), packageCv.emptyMat()),
+          run("zero rows F32 C2", makeRaw(0, 3, "f32", 2, new Uint8Array()), packageCv.emptyMat()),
+          run(
+            "zero columns F64 C4",
+            makeRaw(3, 0, "f64", 4, new Uint8Array()),
+            packageCv.emptyMat(),
+          ),
+        ];
+
+        const aliases = [
+          (() => {
+            const matrix = makeRaw(2, 3, "u8", 1, new Uint8Array([1, 2, 3, 4, 5, 6]));
+            return run("source equals destination", matrix, matrix);
+          })(),
+          (() => {
+            const matrix = makeRaw(2, 3, "u8", 1, new Uint8Array([1, 2, 3, 4, 5, 6]));
+            return run(
+              "source equals destination masked",
+              matrix,
+              matrix,
+              makeRaw(2, 3, "u8", 1, maskValues),
+            );
+          })(),
+          (() => {
+            const sourceMask = makeRaw(2, 3, "u8", 1, maskValues);
+            return run("source equals mask", sourceMask, packageCv.emptyMat(), sourceMask);
+          })(),
+          (() => {
+            const destinationMask = makeRaw(2, 3, "u8", 1, maskValues);
+            return run(
+              "destination equals mask",
+              makeRaw(2, 3, "u8", 1, new Uint8Array([1, 2, 3, 4, 5, 6])),
+              destinationMask,
+              destinationMask,
+            );
+          })(),
+          (() => {
+            const matrix = makeRaw(2, 3, "u8", 1, maskValues);
+            return run("all arguments alias", matrix, matrix, matrix);
+          })(),
+        ];
+
+        const sourceParent = makeRaw(3, 5, "u16", 2, bytes(3 * 5 * 4, 7));
+        const destinationParent = makeRaw(3, 5, "u16", 2, bytes(3 * 5 * 4, 99));
+        const maskParent = makeRaw(
+          3,
+          5,
+          "u8",
+          1,
+          new Uint8Array([0, 1, 0, 2, 0, 1, 0, 3, 0, 4, 0, 5, 0, 6, 0]),
+        );
+        const strided = run(
+          "strided source destination and mask",
+          sourceParent.roi(0, 1, 3, 3),
+          destinationParent.roi(0, 1, 3, 3),
+          maskParent.roi(0, 1, 3, 3),
+          [
+            ["sourceParent", sourceParent],
+            ["destinationParent", destinationParent],
+            ["maskParent", maskParent],
+          ],
+        );
+
+        const overlapCases = [
+          (() => {
+            const parent = makeRaw(3, 6, "u8", 1, bytes(18, 1));
+            return run(
+              "overlapping source and destination",
+              parent.roi(0, 0, 3, 4),
+              parent.roi(0, 1, 3, 4),
+              undefined,
+              [["parent", parent]],
+            );
+          })(),
+          (() => {
+            const parent = makeRaw(3, 7, "u8", 1, bytes(21, 3));
+            return run(
+              "overlapping source destination and mask",
+              parent.roi(0, 0, 3, 4),
+              parent.roi(0, 1, 3, 4),
+              parent.roi(0, 2, 3, 4),
+              [["parent", parent]],
+            );
+          })(),
+        ];
+
+        const deletedSource = makeRaw(1, 1, "u8", 1, new Uint8Array([1]));
+        disposePackageMat(deletedSource);
+        const deletedDestination = packageCv.emptyMat();
+        disposePackageMat(deletedDestination);
+        const deletedMask = makeRaw(1, 1, "u8", 1, new Uint8Array([1]));
+        disposePackageMat(deletedMask);
+        const liveSource = makeRaw(1, 1, "u8", 1, new Uint8Array([1]));
+        const liveDestination = packageCv.emptyMat();
+        const lifetime = {
+          deletedSource: captureCall(() => packageCv.bitwiseNot(deletedSource, liveDestination)),
+          deletedDestination: captureCall(() =>
+            packageCv.bitwiseNot(liveSource, deletedDestination),
+          ),
+          deletedMask: captureCall(() =>
+            packageCv.bitwiseNot(liveSource, liveDestination, deletedMask),
+          ),
+          nonMatSources: [undefined, null, {}, 1, new Uint8Array([1])].map((value) =>
+            captureCall(() => packageCv.bitwiseNot(value, liveDestination)),
+          ),
+          nonMatDestinations: [undefined, null, {}, 1, new Uint8Array([1])].map((value) =>
+            captureCall(() => packageCv.bitwiseNot(liveSource, value)),
+          ),
+          nonMatMasks: [undefined, null, {}, 1, new Uint8Array([1])].map((value) =>
+            captureCall(() => packageCv.bitwiseNot(liveSource, liveDestination, value)),
+          ),
+        };
+        disposePackageMat(liveDestination);
+        disposePackageMat(liveSource);
+
+        return {
+          arity,
+          conversionOrder,
+          depthChannels,
+          specialBits,
+          destinations: destinationCases,
+          masks: maskCases,
+          emptyMasks: emptyMaskCases,
+          rejectedMasks,
+          empty,
+          aliases,
+          strided,
+          overlap: overlapCases,
+          lifetime,
+        };
+      }
+
       function auditPackageDeterminant(packageCv) {
         const createMat = (order, depth, values) =>
           makePackageSeedMat(packageCv, order, order, depth, 1, values);
@@ -6811,7 +7149,9 @@
                                         ? "min-max-loc-contracts"
                                         : searchParameters.has("reference-trace")
                                           ? "trace-contracts"
-                                          : undefined;
+                                          : searchParameters.has("reference-bitwise-not")
+                                            ? "bitwise-not-contracts"
+                                            : undefined;
         const referenceOutputs = await runReference(input, referenceRequest);
         if (searchParameters.has("reference-transpose")) {
           packageSource.dispose();
@@ -6931,6 +7271,13 @@
           globalThis.traceReferenceAudit = referenceOutputs.traceAudit;
           result.style.whiteSpace = "pre-wrap";
           result.textContent = JSON.stringify(referenceOutputs.traceAudit, null, 2);
+          break differential;
+        }
+        if (searchParameters.has("reference-bitwise-not")) {
+          packageSource.dispose();
+          globalThis.bitwiseNotReferenceAudit = referenceOutputs.bitwiseNotAudit;
+          result.style.whiteSpace = "pre-wrap";
+          result.textContent = JSON.stringify(referenceOutputs.bitwiseNotAudit, null, 2);
           break differential;
         }
         const packageFloatMathAudit = auditPackageFloatMath(packageCv);
@@ -7069,6 +7416,15 @@
         );
         if (traceDifference !== undefined) {
           throw new Error(traceDifference);
+        }
+        const packageBitwiseNotAudit = auditPackageBitwiseNot(packageCv);
+        const bitwiseNotDifference = findDifference(
+          normalizeContourAudit(packageBitwiseNotAudit),
+          normalizeContourAudit(referenceOutputs.bitwiseNotAudit),
+          "bitwise_not audit",
+        );
+        if (bitwiseNotDifference !== undefined) {
+          throw new Error(bitwiseNotDifference);
         }
         const packageRotationMatrixAudit = auditPackageRotationMatrix(packageCv);
         const rotationMatrixDifference = findDifference(
