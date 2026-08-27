@@ -6,8 +6,6 @@ Version 0.1.0 implements four RGBA operations: grayscale, invert, binary thresho
 
 ## Install
 
-The package is not published yet. After the first release:
-
 ```sh
 bun add wasmosaic
 ```
