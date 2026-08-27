@@ -6464,6 +6464,287 @@ function auditKazePrimitive(createDetector) {
   };
 }
 
+function auditOrb(createDetector, namespace, surface) {
+  const getters = ["getDefaultName", "getFastThreshold"];
+  const setters = [
+    ["setEdgeThreshold", 17],
+    ["setFastThreshold", 37],
+    ["setFirstLevel", 2],
+    ["setMaxFeatures", 1000],
+    ["setNLevels", 12],
+    ["setPatchSize", 45],
+    ["setScaleFactor", 1.5],
+    ["setScoreType", namespace.ORB_ScoreType.FAST_SCORE],
+    ["setWTA_K", 4],
+  ];
+  const i32Cases = [
+    ["positive fraction", 1.9],
+    ["negative fraction", -1.9],
+    ["negative zero", -0],
+    ["NaN", Number.NaN],
+    ["positive infinity", Number.POSITIVE_INFINITY],
+    ["negative infinity", Number.NEGATIVE_INFINITY],
+    ["i32 maximum", 2_147_483_647],
+    ["i32 maximum plus one", 2_147_483_648],
+    ["i32 minimum", -2_147_483_648],
+    ["i32 minimum minus one", -2_147_483_649],
+    ["true", true],
+    ["false", false],
+    ["null", null],
+    ["numeric string", "42"],
+    ["object", {}],
+    ["explicit undefined", undefined],
+  ];
+  const f64Cases = [
+    ["positive fraction", 1.9],
+    ["negative fraction", -1.9],
+    ["negative zero", -0],
+    ["NaN", Number.NaN],
+    ["positive infinity", Number.POSITIVE_INFINITY],
+    ["negative infinity", Number.NEGATIVE_INFINITY],
+    ["true", true],
+    ["false", false],
+    ["null", null],
+    ["numeric string", "1.5"],
+    ["object", {}],
+    ["explicit undefined", undefined],
+  ];
+
+  const defaultsDetector = createDetector();
+  const defaults = {
+    defaultName: captureCall(() => defaultsDetector.getDefaultName()),
+    fastThreshold: captureCall(() => defaultsDetector.getFastThreshold()),
+  };
+  safeDelete(defaultsDetector);
+
+  const getterArity = getters.map((method) => {
+    const detector = createDetector();
+    const audit = {
+      method,
+      length: detector[method].length,
+      exact: captureCall(() => detector[method]()),
+      extraOne: captureCall(() => detector[method](1)),
+      extraTwo: captureCall(() => detector[method](1, 2)),
+    };
+    safeDelete(detector);
+    return audit;
+  });
+  const setterArity = setters.map(([method, value]) => {
+    const detector = createDetector();
+    const audit = {
+      method,
+      length: detector[method].length,
+      exact: captureCall(() => detector[method](value)),
+      missing: captureCall(() => detector[method]()),
+      extraOne: captureCall(() => detector[method](value, 1)),
+      extraTwo: captureCall(() => detector[method](value, 1, 2)),
+    };
+    safeDelete(detector);
+    return audit;
+  });
+
+  const auditCalls = (method, cases) =>
+    cases.map(([label, value]) => {
+      const detector = createDetector();
+      const call = captureCall(() => detector[method](value));
+      safeDelete(detector);
+      return { label, input: encodeValue(value), call };
+    });
+  const inheritedScore = Object.create({ value: 1 });
+  const scoreCases = [
+    ["HARRIS singleton", namespace.ORB_ScoreType.HARRIS_SCORE],
+    ["FAST singleton", namespace.ORB_ScoreType.FAST_SCORE],
+    ["plain fractional value", { value: 19.9 }],
+    ["inherited value", inheritedScore],
+    ["empty object", {}],
+    ["number primitive", 1],
+    ["string primitive", "1"],
+    ["boolean primitive", true],
+    ["null", null],
+    ["explicit undefined", undefined],
+  ];
+
+  const deadDetector = createDetector();
+  const deleteLength = deadDetector.delete.length;
+  const firstDelete = captureCall(() => deadDetector.delete());
+  const postDelete = {
+    getters: getters.map((method) => ({
+      method,
+      call: captureCall(() => deadDetector[method]()),
+    })),
+    setters: setters.map(([method, value]) => ({
+      method,
+      call: captureCall(() => deadDetector[method](value)),
+    })),
+    secondDelete: captureCall(() => deadDetector.delete()),
+  };
+  const auditDeleteExtra = (...arguments_) => {
+    const detector = createDetector();
+    const call = captureCall(() => detector.delete(...arguments_));
+    safeDelete(detector);
+    return call;
+  };
+
+  const scoreNamespace = namespace.ORB_ScoreType;
+  return {
+    surface,
+    defaults,
+    arity: { getters: getterArity, setters: setterArity },
+    i32: auditSetterCases(createDetector, "setFastThreshold", "getFastThreshold", i32Cases),
+    firstLevel: auditCalls("setFirstLevel", [
+      ["positive fraction", 1.9],
+      ["negative fraction", -1.9],
+      ["negative integer", -1],
+    ]),
+    f64: auditCalls("setScaleFactor", f64Cases),
+    score: auditCalls("setScoreType", scoreCases),
+    enums: {
+      keys: Object.keys(scoreNamespace),
+      harrisValue: scoreNamespace.HARRIS_SCORE.value,
+      fastValue: scoreNamespace.FAST_SCORE.value,
+      harrisConstructorName: scoreNamespace.HARRIS_SCORE.constructor.name,
+      fastConstructorName: scoreNamespace.FAST_SCORE.constructor.name,
+      harrisValueIdentity: scoreNamespace.values[0] === scoreNamespace.HARRIS_SCORE,
+      fastValueIdentity: scoreNamespace.values[1] === scoreNamespace.FAST_SCORE,
+      globals: [namespace.ORB_HARRIS_SCORE, namespace.ORB_FAST_SCORE],
+      globalTypes: [typeof namespace.ORB_HARRIS_SCORE, typeof namespace.ORB_FAST_SCORE],
+      singletonIsGlobal: [
+        scoreNamespace.HARRIS_SCORE === namespace.ORB_HARRIS_SCORE,
+        scoreNamespace.FAST_SCORE === namespace.ORB_FAST_SCORE,
+      ],
+    },
+    lifetime: {
+      deleteLength,
+      firstDelete,
+      postDelete,
+      deleteExtraOne: auditDeleteExtra(1),
+      deleteExtraTwo: auditDeleteExtra(1, 2),
+    },
+  };
+}
+
+function auditMser(createDetector, surface) {
+  const getters = ["getDefaultName", "getDelta", "getMaxArea", "getMinArea", "getPass2Only"];
+  const setters = [
+    ["setDelta", "getDelta", 7],
+    ["setMaxArea", "getMaxArea", 14_401],
+    ["setMinArea", "getMinArea", 61],
+    ["setPass2Only", "getPass2Only", true],
+  ];
+  const i32Cases = [
+    ["positive fraction", 1.9],
+    ["negative fraction", -1.9],
+    ["negative zero", -0],
+    ["NaN", Number.NaN],
+    ["positive infinity", Number.POSITIVE_INFINITY],
+    ["negative infinity", Number.NEGATIVE_INFINITY],
+    ["i32 maximum", 2_147_483_647],
+    ["i32 maximum plus one", 2_147_483_648],
+    ["i32 minimum", -2_147_483_648],
+    ["i32 minimum minus one", -2_147_483_649],
+    ["u32 maximum", 4_294_967_295],
+    ["u32 modulus", 4_294_967_296],
+    ["null", null],
+    ["true", true],
+    ["false", false],
+    ["numeric string", "42"],
+    ["fraction string", "-1.9"],
+    ["empty string", ""],
+    ["non-numeric string", "opencv"],
+    ["object", {}],
+    ["explicit undefined", undefined],
+  ];
+  const booleanCases = [
+    ["true", true],
+    ["false", false],
+    ["zero", 0],
+    ["one", 1],
+    ["negative one", -1],
+    ["NaN", Number.NaN],
+    ["positive infinity", Number.POSITIVE_INFINITY],
+    ["negative infinity", Number.NEGATIVE_INFINITY],
+    ["null", null],
+    ["empty string", ""],
+    ["zero string", "0"],
+    ["false string", "false"],
+    ["object", {}],
+    ["explicit undefined", undefined],
+  ];
+  const captureState = (detector) =>
+    Object.fromEntries(getters.map((method) => [method, captureCall(() => detector[method]())]));
+
+  const defaultsDetector = createDetector();
+  const defaults = captureState(defaultsDetector);
+  safeDelete(defaultsDetector);
+
+  const getterArity = getters.map((method) => {
+    const detector = createDetector();
+    const audit = {
+      method,
+      length: detector[method].length,
+      exact: captureCall(() => detector[method]()),
+      extraOne: captureCall(() => detector[method](1)),
+      extraTwo: captureCall(() => detector[method](1, 2)),
+    };
+    safeDelete(detector);
+    return audit;
+  });
+  const setterArity = setters.map(([method, getter, value]) => {
+    const detector = createDetector();
+    const audit = {
+      method,
+      length: detector[method].length,
+      missing: captureCall(() => detector[method]()),
+      exact: captureCall(() => detector[method](value)),
+      stateAfterExact: captureCall(() => detector[getter]()),
+      extraOne: captureCall(() => detector[method](value, 1)),
+      extraTwo: captureCall(() => detector[method](value, 1, 2)),
+    };
+    safeDelete(detector);
+    return audit;
+  });
+
+  const deadDetector = createDetector();
+  const deleteLength = deadDetector.delete.length;
+  const firstDelete = captureCall(() => deadDetector.delete());
+  const postDelete = {
+    getters: getters.map((method) => ({
+      method,
+      call: captureCall(() => deadDetector[method]()),
+    })),
+    setters: setters.map(([method, , value]) => ({
+      method,
+      call: captureCall(() => deadDetector[method](value)),
+    })),
+    secondDelete: captureCall(() => deadDetector.delete()),
+  };
+  const auditDeleteExtra = (...arguments_) => {
+    const detector = createDetector();
+    const call = captureCall(() => detector.delete(...arguments_));
+    safeDelete(detector);
+    return call;
+  };
+
+  return {
+    surface,
+    defaults,
+    arity: { getters: getterArity, setters: setterArity },
+    i32: {
+      delta: auditSetterCases(createDetector, "setDelta", "getDelta", i32Cases),
+      maxArea: auditSetterCases(createDetector, "setMaxArea", "getMaxArea", i32Cases),
+      minArea: auditSetterCases(createDetector, "setMinArea", "getMinArea", i32Cases),
+    },
+    boolean: auditSetterCases(createDetector, "setPass2Only", "getPass2Only", booleanCases),
+    lifetime: {
+      deleteLength,
+      firstDelete,
+      postDelete,
+      deleteExtraOne: auditDeleteExtra(1),
+      deleteExtraTwo: auditDeleteExtra(1, 2),
+    },
+  };
+}
+
 function auditThresholdDetector(createDetector) {
   const getters = ["getDefaultName", "getNonmaxSuppression", "getThreshold"];
   const setters = [
@@ -6737,6 +7018,37 @@ self.addEventListener("message", async ({ data: input }) => {
       self.postMessage({ outputs: { bitwiseNotAudit: auditBitwiseNot(reference) } });
       return;
     }
+    if (request === "orb-contracts") {
+      self.postMessage({
+        outputs: {
+          orbAudit: auditOrb(() => new reference.ORB(), reference, {
+            constructorLength: reference.ORB.length,
+            staticCreatePresent: typeof reference.ORB.create !== "undefined",
+          }),
+        },
+      });
+      return;
+    }
+    if (request === "mser-contracts") {
+      self.postMessage({
+        outputs: {
+          mserAudit: auditMser(() => new reference.MSER(), {
+            constructorLength: reference.MSER.length,
+            constructorArities: Array.from({ length: 11 }, (_, count) =>
+              captureCall(() => {
+                const detector = Reflect.construct(
+                  reference.MSER,
+                  [5, 60, 14_400, 0.25, 0.2, 200, 1.01, 0.003, 5, 1].slice(0, count),
+                );
+                detector.delete();
+              }),
+            ),
+            staticCreatePresent: typeof reference.MSER.create !== "undefined",
+          }),
+        },
+      });
+      return;
+    }
     const source = reference.matFromArray(2, 3, reference.CV_8UC1, sourceInput);
     const outputs = {};
     const operations = [
@@ -6928,6 +7240,14 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.minMaxLocAudit = auditMaskedReducer(reference, "minMaxLoc");
     outputs.traceAudit = auditTrace(reference);
     outputs.bitwiseNotAudit = auditBitwiseNot(reference);
+    outputs.orbAudit = auditOrb(() => new reference.ORB(), reference, {
+      constructorLength: reference.ORB.length,
+      staticCreatePresent: typeof reference.ORB.create !== "undefined",
+    });
+    outputs.mserAudit = auditMser(() => new reference.MSER(), {
+      constructorLength: reference.MSER.length,
+      staticCreatePresent: typeof reference.MSER.create !== "undefined",
+    });
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });
