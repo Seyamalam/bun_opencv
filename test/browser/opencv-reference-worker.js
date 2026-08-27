@@ -4783,6 +4783,154 @@ function auditMaskedReducer(reference, method) {
   };
 }
 
+function traceMatrixValues(rows, columns, channels, diagonalValues, fill = 0) {
+  const values = Array.from({ length: rows * columns * channels }, () => fill);
+  for (let row = 0; row < diagonalValues.length; row += 1) {
+    for (let channel = 0; channel < channels; channel += 1) {
+      values[(row * columns + row) * channels + channel] = diagonalValues[row][channel];
+    }
+  }
+  return values;
+}
+
+function captureTrace(callback) {
+  try {
+    const value = callback();
+    const array = Array.isArray(value);
+    return {
+      threw: false,
+      scalarContract: {
+        array,
+        plainArray: array && Object.getPrototypeOf(value) === Array.prototype,
+        length: array ? value.length : null,
+        numbersOnly: array && value.every((entry) => typeof entry === "number"),
+      },
+      value: encodeReductionResult(value),
+    };
+  } catch (error) {
+    return {
+      threw: true,
+      error: {
+        name: error?.name,
+        constructor: error?.constructor?.name,
+        message: error?.message,
+        text: String(error),
+        instanceofError: error instanceof Error,
+      },
+    };
+  }
+}
+
+function auditTrace(reference) {
+  const make = (rows, columns, type, values) => makeSeedMat(reference, rows, columns, type, values);
+  const run = (name, source) => {
+    const call = captureTrace(() => reference.trace(source));
+    safeDelete(source);
+    return { name, call };
+  };
+
+  const aritySource = make(2, 2, reference.CV_64FC1, [1, 0, 0, 2]);
+  const arity = {
+    length: reference.trace.length,
+    zero: captureTrace(() => reference.trace()),
+    exact: captureTrace(() => reference.trace(aritySource)),
+    extra: captureTrace(() => reference.trace(aritySource, 1)),
+  };
+  safeDelete(aritySource);
+
+  const depthTypes = [
+    ["U8", reference.CV_8UC1],
+    ["I8", reference.CV_8SC1],
+    ["U16", reference.CV_16UC1],
+    ["I16", reference.CV_16SC1],
+    ["I32", reference.CV_32SC1],
+    ["F32", reference.CV_32FC1],
+    ["F64", reference.CV_64FC1],
+  ];
+  const depthChannels = depthTypes.flatMap(([depth, singleChannelType]) =>
+    [1, 2, 3, 4].map((channels) => {
+      const first = Array.from({ length: channels }, (_, channel) => channel + 1);
+      const second = Array.from({ length: channels }, (_, channel) => (channel + 1) * 10);
+      const type = singleChannelType + ((channels - 1) << 3);
+      return run(
+        `${depth} C${channels}`,
+        make(2, 3, type, traceMatrixValues(2, 3, channels, [first, second], 91)),
+      );
+    }),
+  );
+
+  const rejectedChannels = run("F64 C5", new reference.Mat(2, 2, reference.CV_64FC1 + (4 << 3)));
+
+  const empty = [
+    run("canonical", new reference.Mat()),
+    run("zero rows F32 C2", new reference.Mat(0, 3, reference.CV_32FC2)),
+    run("zero columns F64 C4", new reference.Mat(3, 0, reference.CV_64FC4)),
+  ];
+
+  const stridedParent = make(
+    3,
+    5,
+    reference.CV_64FC3,
+    Array.from({ length: 45 }, (_, index) => index + 0.25),
+  );
+  const stridedSource = stridedParent.roi(new reference.Rect(1, 0, 3, 3));
+  const strided = {
+    continuous: stridedSource.isContinuous(),
+    call: captureTrace(() => reference.trace(stridedSource)),
+  };
+  safeDelete(stridedSource);
+  safeDelete(stridedParent);
+
+  const numeric = [
+    run(
+      "F32 widened accumulation",
+      make(
+        3,
+        3,
+        reference.CV_32FC1,
+        traceMatrixValues(3, 3, 1, [[16_777_216], [1], [-16_777_216]]),
+      ),
+    ),
+    run(
+      "F64 fractional accumulation",
+      make(3, 3, reference.CV_64FC1, traceMatrixValues(3, 3, 1, [[0.1], [0.2], [0.3]])),
+    ),
+    run(
+      "F64 ordered accumulation",
+      make(3, 3, reference.CV_64FC1, traceMatrixValues(3, 3, 1, [[2 ** 53], [1], [-(2 ** 53)]])),
+    ),
+    run("signed zero lanes", make(1, 1, reference.CV_64FC4, [-0, 0, -0, 0])),
+    run(
+      "NaN and infinities",
+      make(
+        2,
+        2,
+        reference.CV_64FC4,
+        traceMatrixValues(2, 2, 4, [
+          [
+            Number.NaN,
+            Number.POSITIVE_INFINITY,
+            Number.NEGATIVE_INFINITY,
+            Number.POSITIVE_INFINITY,
+          ],
+          [1, 2, 3, Number.NEGATIVE_INFINITY],
+        ]),
+      ),
+    ),
+  ];
+
+  const deletedSource = make(1, 1, reference.CV_64FC1, [7]);
+  safeDelete(deletedSource);
+  const lifetime = {
+    deletedSource: captureTrace(() => reference.trace(deletedSource)),
+    nonMatSources: [undefined, null, {}, 1, new Uint8Array([1])].map((value) =>
+      captureTrace(() => reference.trace(value)),
+    ),
+  };
+
+  return { arity, depthChannels, rejectedChannels, empty, strided, numeric, lifetime };
+}
+
 function auditSetIdentity(reference) {
   const auditCase = (name, rows, cols, type, values, scalar, useDefault = false) => {
     const matrix = makeSeedMat(reference, rows, cols, type, values);
@@ -6260,6 +6408,10 @@ self.addEventListener("message", async ({ data: input }) => {
       });
       return;
     }
+    if (request === "trace-contracts") {
+      self.postMessage({ outputs: { traceAudit: auditTrace(reference) } });
+      return;
+    }
     const source = reference.matFromArray(2, 3, reference.CV_8UC1, sourceInput);
     const outputs = {};
     const operations = [
@@ -6449,6 +6601,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.hanningWindowAudit = auditHanningWindow(reference);
     outputs.meanAudit = auditMaskedReducer(reference, "mean");
     outputs.minMaxLocAudit = auditMaskedReducer(reference, "minMaxLoc");
+    outputs.traceAudit = auditTrace(reference);
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });
