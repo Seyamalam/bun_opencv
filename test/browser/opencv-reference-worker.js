@@ -6745,6 +6745,189 @@ function auditMser(createDetector, surface) {
   };
 }
 
+function auditTonemap(factories, surface) {
+  const floatCases = [
+    ["negative", -2.25],
+    ["negative zero", -0],
+    ["zero", 0],
+    ["fraction", 0.123456789],
+    ["tiny", 1e-40],
+    ["huge", 1e40],
+    ["NaN", Number.NaN],
+    ["positive infinity", Number.POSITIVE_INFINITY],
+    ["negative infinity", Number.NEGATIVE_INFINITY],
+    ["true", true],
+    ["false", false],
+    ["null", null],
+    ["numeric string", "2.5"],
+    ["empty string", ""],
+    ["array", [2.5]],
+    ["object", {}],
+    ["explicit undefined", undefined],
+  ];
+  const definitions = {
+    drago: {
+      create: factories.drago,
+      getters: ["getGamma", "getBias", "getSaturation"],
+      setters: [
+        ["setGamma", "getGamma", 0.25],
+        ["setBias", "getBias", 0.5],
+        ["setSaturation", "getSaturation", 1.5],
+      ],
+      maximumArguments: 3,
+    },
+    mantiuk: {
+      create: factories.mantiuk,
+      getters: ["getGamma", "getScale", "getSaturation"],
+      setters: [
+        ["setGamma", "getGamma", 0.25],
+        ["setScale", "getScale", 0.5],
+        ["setSaturation", "getSaturation", 1.5],
+      ],
+      maximumArguments: 3,
+    },
+    reinhard: {
+      create: factories.reinhard,
+      getters: ["getGamma", "getIntensity", "getLightAdaptation", "getColorAdaptation"],
+      setters: [
+        ["setGamma", "getGamma", 0.25],
+        ["setIntensity", "getIntensity", -1.5],
+        ["setLightAdaptation", "getLightAdaptation", 0.5],
+        ["setColorAdaptation", "getColorAdaptation", 0.75],
+      ],
+      maximumArguments: 4,
+    },
+  };
+
+  const auditFamily = ({ create, getters, setters, maximumArguments }) => {
+    const captureState = (tonemap) =>
+      Object.fromEntries(getters.map((method) => [method, captureCall(() => tonemap[method]())]));
+
+    const defaultsTonemap = create();
+    const defaults = captureState(defaultsTonemap);
+    safeDelete(defaultsTonemap);
+
+    const constructorArities = Array.from({ length: maximumArguments + 3 }, (_, argumentCount) => {
+      let tonemap;
+      const call = captureCall(() => {
+        tonemap = create(...[0.25, 1.25, 2.25, 3.25, 4.25, 5.25].slice(0, argumentCount));
+      });
+      const state = tonemap === undefined ? null : captureState(tonemap);
+      safeDelete(tonemap);
+      return { argumentCount, call, state };
+    });
+
+    const getterArity = getters.map((method) => {
+      const tonemap = create();
+      const audit = {
+        method,
+        length: tonemap[method].length,
+        exact: captureCall(() => tonemap[method]()),
+        extraOne: captureCall(() => tonemap[method](1)),
+        extraTwo: captureCall(() => tonemap[method](1, 2)),
+      };
+      safeDelete(tonemap);
+      return audit;
+    });
+
+    const setterArity = setters.map(([method, getter, value]) => {
+      const tonemap = create();
+      const audit = {
+        method,
+        length: tonemap[method].length,
+        missing: captureCall(() => tonemap[method]()),
+        exact: captureCall(() => tonemap[method](value)),
+        stateAfterExact: captureCall(() => tonemap[getter]()),
+        extraOne: captureCall(() => tonemap[method](value, 1)),
+        extraTwo: captureCall(() => tonemap[method](value, 1, 2)),
+      };
+      safeDelete(tonemap);
+      return audit;
+    });
+
+    const state = Object.fromEntries(
+      setters.map(([setter, getter]) => [
+        setter,
+        auditSetterCases(create, setter, getter, floatCases),
+      ]),
+    );
+
+    const deadTonemap = create();
+    const deleteLength = deadTonemap.delete.length;
+    const firstDelete = captureCall(() => deadTonemap.delete());
+    const postDelete = {
+      getters: getters.map((method) => ({
+        method,
+        call: captureCall(() => deadTonemap[method]()),
+      })),
+      setters: setters.map(([method, , value]) => ({
+        method,
+        call: captureCall(() => deadTonemap[method](value)),
+      })),
+      secondDelete: captureCall(() => deadTonemap.delete()),
+    };
+    const auditDeleteExtra = (...arguments_) => {
+      const tonemap = create();
+      const call = captureCall(() => tonemap.delete(...arguments_));
+      safeDelete(tonemap);
+      return call;
+    };
+
+    return {
+      defaults,
+      constructorArities,
+      arity: { getters: getterArity, setters: setterArity },
+      state,
+      lifetime: {
+        deleteLength,
+        firstDelete,
+        postDelete,
+        deleteExtraOne: auditDeleteExtra(1),
+        deleteExtraTwo: auditDeleteExtra(1, 2),
+      },
+    };
+  };
+
+  return {
+    surface,
+    drago: auditFamily(definitions.drago),
+    mantiuk: auditFamily(definitions.mantiuk),
+    reinhard: auditFamily(definitions.reinhard),
+  };
+}
+
+function auditReferenceTonemap(reference) {
+  const drago = new reference.TonemapDrago();
+  const surface = {
+    constructorLengths: {
+      drago: reference.TonemapDrago.length,
+      mantiuk: reference.TonemapMantiuk.length,
+      reinhard: reference.TonemapReinhard.length,
+    },
+    factoryTypes: {
+      drago: typeof reference.createTonemapDrago,
+      mantiuk: typeof reference.createTonemapMantiuk,
+      reinhard: typeof reference.createTonemapReinhard,
+    },
+    dragoSigmaTypes: {
+      getSigmaColor: typeof drago.getSigmaColor,
+      getSigmaSpace: typeof drago.getSigmaSpace,
+      setSigmaColor: typeof drago.setSigmaColor,
+      setSigmaSpace: typeof drago.setSigmaSpace,
+    },
+    processType: typeof drago.process,
+  };
+  safeDelete(drago);
+  return auditTonemap(
+    {
+      drago: (...arguments_) => new reference.TonemapDrago(...arguments_),
+      mantiuk: (...arguments_) => new reference.TonemapMantiuk(...arguments_),
+      reinhard: (...arguments_) => new reference.TonemapReinhard(...arguments_),
+    },
+    surface,
+  );
+}
+
 function auditThresholdDetector(createDetector) {
   const getters = ["getDefaultName", "getNonmaxSuppression", "getThreshold"];
   const setters = [
@@ -7049,6 +7232,10 @@ self.addEventListener("message", async ({ data: input }) => {
       });
       return;
     }
+    if (request === "tonemap-contracts") {
+      self.postMessage({ outputs: { tonemapAudit: auditReferenceTonemap(reference) } });
+      return;
+    }
     const source = reference.matFromArray(2, 3, reference.CV_8UC1, sourceInput);
     const outputs = {};
     const operations = [
@@ -7248,6 +7435,7 @@ self.addEventListener("message", async ({ data: input }) => {
       constructorLength: reference.MSER.length,
       staticCreatePresent: typeof reference.MSER.create !== "undefined",
     });
+    outputs.tonemapAudit = auditReferenceTonemap(reference);
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });
