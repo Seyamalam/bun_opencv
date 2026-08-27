@@ -60,6 +60,7 @@ export type {
   BorderType,
   DecompositionMethod,
   HanningWindowDepth,
+  HanningWindowType,
   LogLevel,
   MinMaxLocation,
   NormalizeType,

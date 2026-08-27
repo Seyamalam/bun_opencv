@@ -75,7 +75,7 @@ export const OPENCV_OPERATIONS = [
   { method: "createAgastFeatureDetector", wasmExport: "create" },
   { method: "createFastFeatureDetector", wasmExport: "create" },
   { method: "createGFTTDetector", wasmExport: "create" },
-  { method: "createHanningWindow", wasmExport: "createHanningWindow" },
+  { method: "createHanningWindow", wasmExport: "createHanningWindowInto" },
   { method: "createKAZE", wasmExport: "create" },
   { method: "determinant", wasmExport: "matDeterminant" },
   { method: "divide", wasmExport: "matDivide" },

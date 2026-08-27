@@ -823,12 +823,24 @@ class CopyingBackend implements OpenCvBackend {
     const values = Array.from({ length: rows * columns }, (_, index) => {
       const row = Math.floor(index / columns);
       const column = index % columns;
-      return cleanTiny(
-        Math.sin((Math.PI * row) / (rows - 1)) * Math.sin((Math.PI * column) / (columns - 1)),
-      );
+      const vertical = 0.5 * (1 - Math.cos((2 * Math.PI * row) / (rows - 1)));
+      const horizontal = 0.5 * (1 - Math.cos((2 * Math.PI * column) / (columns - 1)));
+      return cleanTiny(Math.sqrt(vertical * horizontal));
     });
     const typed = depth === 5 ? new Float32Array(values) : new Float64Array(values);
     return new CopyingMatHandle(rows, columns, 1, copyViewBytes(typed), depth);
+  }
+
+  createHanningWindowInto(
+    destination: WasmMatHandle,
+    columns: number,
+    rows: number,
+    depth: number,
+  ): void {
+    if (columns < 2 || rows < 2 || (depth !== 5 && depth !== 6)) {
+      throw new OpenCvInputError("invalid Hanning window arguments");
+    }
+    destination.copyFromBytes(this.createHanningWindow(columns, rows, depth).toUint8Array());
   }
 
   ellipse2Poly(
@@ -2437,8 +2449,11 @@ describe("OpenCv client", () => {
     const kernel = client.getStructuringElement(1, { width: 3, height: 3 }, { x: 1, y: 1 });
     expect(kernel.toUint8Array()).toEqual(new Uint8Array([0, 1, 0, 1, 1, 1, 0, 1, 0]));
 
-    const window = client.createHanningWindow({ width: 3, height: 3 }, "f64");
+    const window = client.zerosF64(3, 3, 1);
+    expect(client.createHanningWindow(window, { width: 3, height: 3 }, 6)).toBeUndefined();
     expect(window.toFloat64Array()).toEqual(new Float64Array([0, 0, 0, 0, 1, 0, 0, 0, 0]));
+    const allocatedWindow = client.createHanningWindowAlloc({ width: 3, height: 3 }, "f64");
+    expect(allocatedWindow.toFloat64Array()).toEqual(new Float64Array([0, 0, 0, 0, 1, 0, 0, 0, 0]));
 
     expect(client.ellipse2Poly({ x: 0, y: 0 }, { width: 10, height: 5 }, 0, 0, 90, 90)).toEqual([
       { x: 10, y: 0 },
@@ -2453,12 +2468,38 @@ describe("OpenCv client", () => {
     expect(
       client.clipLine({ x: 10, y: 20, width: 5, height: 4 }, { x: 0, y: 0 }, { x: 1, y: 1 }),
     ).toBeUndefined();
-    expect(() => client.createHanningWindow({ width: 1, height: 3 }, "f32")).toThrow(
-      OpenCvInputError,
-    );
+    expect(() => client.createHanningWindow(window, { width: 1, height: 3 }, 5)).toThrow();
 
+    allocatedWindow.dispose();
     window.dispose();
     kernel.dispose();
+  });
+
+  test("matches createHanningWindow destination, conversion, and arity contracts", () => {
+    expect(client.createHanningWindow.bind(client)).toHaveLength(3);
+    const destination = client.zerosF32(2, 3, 1);
+    // oxlint-disable-next-line anti-slop/no-reflect-apply, typescript/unbound-method -- The test exercises the untyped JavaScript binding boundary.
+    Reflect.apply(client.createHanningWindow, client, [
+      destination,
+      { width: 3.9, height: 2.9 },
+      5.9,
+    ]);
+    expect(destination.toFloat32Array()).toEqual(new Float32Array([0, 0, 0, 0, 0, 0]));
+
+    expect(() => {
+      // oxlint-disable-next-line anti-slop/no-reflect-apply, typescript/unbound-method -- The test exercises invalid JavaScript arity.
+      Reflect.apply(client.createHanningWindow, client, [destination, { width: 3, height: 3 }]);
+    }).toThrow(BindingError);
+    expect(() => {
+      // oxlint-disable-next-line anti-slop/no-reflect-apply, typescript/unbound-method -- The test exercises invalid JavaScript arity.
+      Reflect.apply(client.createHanningWindow, client, [
+        destination,
+        { width: 3, height: 3 },
+        5,
+        1,
+      ]);
+    }).toThrow(BindingError);
+    destination.dispose();
   });
 
   test("matches getStructuringElement overload and integer conversion contracts", () => {

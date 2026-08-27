@@ -94,20 +94,17 @@ pub(crate) fn hanning_window(columns: u32, rows: u32) -> Result<Vec<f64>, Helper
 
     let mut output = Vec::with_capacity(length);
     for row in 0..rows {
-        let vertical = sine_window_weight(row, rows);
+        let vertical = hanning_coefficient(row, rows);
         for column in 0..columns {
-            output.push(vertical * sine_window_weight(column, columns));
+            output.push((vertical * hanning_coefficient(column, columns)).sqrt());
         }
     }
     Ok(output)
 }
 
-fn sine_window_weight(index: u32, length: u32) -> f64 {
-    if index == 0 || index + 1 == length {
-        0.0
-    } else {
-        (std::f64::consts::PI * f64::from(index) / f64::from(length - 1)).sin()
-    }
+fn hanning_coefficient(index: u32, length: u32) -> f64 {
+    let angle = std::f64::consts::TAU * f64::from(index) / f64::from(length - 1);
+    0.5 * (1.0 - angle.cos())
 }
 
 impl Error for HelperError {}
@@ -411,25 +408,28 @@ mod tests {
     }
 
     #[test]
-    fn hanning_window_is_the_outer_product_of_sine_weights() {
+    fn hanning_window_matches_the_pinned_cosine_square_root_bits() {
         let window = hanning_window(4, 3).expect("valid window");
-        let expected = [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            3.0_f64.sqrt() / 2.0,
-            3.0_f64.sqrt() / 2.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-        ];
-        for (actual, expected) in window.iter().zip(expected) {
-            assert!((actual - expected).abs() < 1.0e-15);
-        }
+        assert_eq!(
+            window
+                .into_iter()
+                .map(f64::to_bits)
+                .collect::<Vec<_>>(),
+            [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0x3FEB_B67A_E858_4CAA,
+                0x3FEB_B67A_E858_4CAC,
+                0,
+                0,
+                0,
+                0,
+                0,
+            ]
+        );
     }
 
     #[test]

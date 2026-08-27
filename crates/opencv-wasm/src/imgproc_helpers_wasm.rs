@@ -14,6 +14,7 @@ use crate::{
 #[derive(Debug)]
 enum HelperWasmError {
     UnsupportedWindowDepth(MatDepth),
+    UnsupportedWindowType(i32),
     Kernel(HelperError),
     Matrix(MatError),
 }
@@ -24,6 +25,10 @@ impl fmt::Display for HelperWasmError {
             Self::UnsupportedWindowDepth(depth) => write!(
                 formatter,
                 "Hanning window depth must be F32 or F64; received {depth:?}"
+            ),
+            Self::UnsupportedWindowType(code) => write!(
+                formatter,
+                "Hanning window type must be CV_32F (5) or CV_64F (6); received {code}"
             ),
             Self::Kernel(error) => error.fmt(formatter),
             Self::Matrix(error) => error.fmt(formatter),
@@ -36,7 +41,7 @@ impl Error for HelperWasmError {
         match self {
             Self::Kernel(error) => Some(error),
             Self::Matrix(error) => Some(error),
-            Self::UnsupportedWindowDepth(_) => None,
+            Self::UnsupportedWindowDepth(_) | Self::UnsupportedWindowType(_) => None,
         }
     }
 }
@@ -97,6 +102,48 @@ pub fn get_structuring_element(
 #[wasm_bindgen(js_name = createHanningWindow)]
 pub fn create_hanning_window(columns: u32, rows: u32, depth: MatDepth) -> Result<Mat, JsError> {
     create_hanning_window_mat(columns, rows, depth).map_err(JsError::from)
+}
+
+/// Writes a two-dimensional Hanning window into a mutable destination.
+///
+/// Dimensions use signed 32-bit binding values and must each be at least two. Type code 5 selects
+/// F32 and type code 6 selects F64. A destination with another layout is rebound.
+///
+/// # Errors
+/// Returns an error for dimensions below two, another type code, size overflow, or an invalid
+/// destination write.
+#[wasm_bindgen(js_name = createHanningWindowInto)]
+pub fn create_hanning_window_into(
+    destination: &Mat,
+    columns: i32,
+    rows: i32,
+    depth: i32,
+) -> Result<(), JsError> {
+    create_hanning_window_into_adapter(destination, columns, rows, depth).map_err(JsError::from)
+}
+
+fn create_hanning_window_into_adapter(
+    destination: &Mat,
+    columns: i32,
+    rows: i32,
+    depth: i32,
+) -> Result<(), HelperWasmError> {
+    let columns = u32::try_from(columns).map_err(|_| HelperError::WindowTooSmall)?;
+    let rows = u32::try_from(rows).map_err(|_| HelperError::WindowTooSmall)?;
+    let depth = match depth {
+        5 => MatDepth::F32,
+        6 => MatDepth::F64,
+        code => return Err(HelperWasmError::UnsupportedWindowType(code)),
+    };
+    let output = create_hanning_window_mat(columns, rows, depth)?;
+    destination.write_output(
+        output.compact_bytes(),
+        output.rows(),
+        output.columns(),
+        output.channels(),
+        output.depth(),
+    )?;
+    Ok(())
 }
 
 fn create_hanning_window_mat(
@@ -246,5 +293,69 @@ mod tests {
             clip_line_rect(10, 20, 5, 4, 8, 21, 16, 21).expect("valid clip"),
             [10, 21, 14, 21]
         );
+    }
+
+    #[test]
+    fn hanning_destination_adapter_rebinds_and_writes_compatible_regions() {
+        let destination = Mat::empty_output();
+        create_hanning_window_into_adapter(&destination, 4, 3, 6)
+            .expect("empty destination rebinds");
+        assert_eq!(
+            (
+                destination.rows(),
+                destination.columns(),
+                destination.channels(),
+                destination.depth()
+            ),
+            (3, 4, 1, MatDepth::F64)
+        );
+        assert_eq!(
+            destination
+                .to_f64_array()
+                .expect("F64 window")
+                .into_iter()
+                .map(f64::to_bits)
+                .collect::<Vec<_>>(),
+            [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0x3FEB_B67A_E858_4CAA,
+                0x3FEB_B67A_E858_4CAC,
+                0,
+                0,
+                0,
+                0,
+                0,
+            ]
+        );
+
+        let parent = Mat::from_owned_bytes(
+            vec![99.0_f32; 20]
+                .into_iter()
+                .flat_map(f32::to_ne_bytes)
+                .collect(),
+            4,
+            5,
+            1,
+            MatDepth::F32,
+        )
+        .expect("destination parent");
+        let region = parent.roi(1, 1, 2, 3).expect("compatible destination region");
+        create_hanning_window_into_adapter(&region, 3, 2, 5)
+            .expect("compatible region write");
+        assert_eq!(region.to_f32_array().expect("F32 region"), [0.0; 6]);
+        assert_eq!(
+            parent.to_f32_array().expect("F32 parent"),
+            [
+                99.0, 99.0, 99.0, 99.0, 99.0, 99.0, 0.0, 0.0, 0.0, 99.0, 99.0, 0.0, 0.0,
+                0.0, 99.0, 99.0, 99.0, 99.0, 99.0, 99.0,
+            ]
+        );
+
+        assert!(create_hanning_window_into_adapter(&destination, 1, 3, 5).is_err());
+        assert!(create_hanning_window_into_adapter(&destination, 3, 3, 4).is_err());
     }
 }

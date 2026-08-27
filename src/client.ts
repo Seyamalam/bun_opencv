@@ -33,6 +33,7 @@ import type {
   BorderType,
   DecompositionMethod,
   HanningWindowDepth,
+  HanningWindowType,
   LogLevel,
   MinMaxLocation,
   NormalizeType,
@@ -184,7 +185,20 @@ class WasmOpenCv implements OpenCv {
     return this.#backend.matContourArea(matHandleForBinding(contour), coerceBoolean(oriented));
   }
 
-  createHanningWindow(size: Size, depth: HanningWindowDepth): Mat {
+  createHanningWindow(destination: Mat, size: Size, type: HanningWindowType): void {
+    requireExactArity(arguments.length, 3, "createHanningWindow");
+    const destinationHandle = matHandleForBinding(destination);
+    const convertedSize = size2iForBinding(size);
+    const convertedType = toWasmI32(type);
+    this.#backend.createHanningWindowInto(
+      destinationHandle,
+      convertedSize.width,
+      convertedSize.height,
+      convertedType,
+    );
+  }
+
+  createHanningWindowAlloc(size: Size, depth: HanningWindowDepth): Mat {
     validateMinimumSize(size, 2, "Hanning window");
     return new Mat(this.#backend.createHanningWindow(size.width, size.height, depthCode(depth)));
   }

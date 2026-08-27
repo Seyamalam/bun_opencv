@@ -65,6 +65,9 @@ export type StructuringElementKind = 0 | 1 | 2 | 3;
 /** Floating-point depths supported by Hanning windows. */
 export type HanningWindowDepth = "f32" | "f64";
 
+/** OpenCV matrix type code accepted by `createHanningWindow`. */
+export type HanningWindowType = 5 | 6;
+
 /** OpenCV-compatible log severity from silent through verbose. */
 export type LogLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -94,6 +97,12 @@ export interface OpenCvBackend {
     endY: number,
   ): Int32Array;
   createHanningWindow(columns: number, rows: number, depth: number): WasmMatHandle;
+  createHanningWindowInto(
+    destination: WasmMatHandle,
+    columns: number,
+    rows: number,
+    depth: number,
+  ): void;
   ellipse2Poly(
     centerX: number,
     centerY: number,
@@ -403,7 +412,8 @@ export interface OpenCv {
   cartToPolar(x: Mat, y: Mat, magnitude: Mat, angle: Mat, degrees?: boolean): void;
   countNonZero(source: Mat): number;
   contourArea(contour: Mat, oriented?: boolean): number;
-  createHanningWindow(size: Size, depth: HanningWindowDepth): Mat;
+  createHanningWindow(destination: Mat, size: Size, type: HanningWindowType): void;
+  createHanningWindowAlloc(size: Size, depth: HanningWindowDepth): Mat;
   createAKAZE(options?: AKAZEOptions): AKAZE;
   createKAZE(options?: KAZEOptions): KAZE;
   createAgastFeatureDetector(options?: AgastFeatureDetectorOptions): AgastFeatureDetector;
