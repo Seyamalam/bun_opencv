@@ -6,8 +6,8 @@ use wasm_bindgen::prelude::*;
 
 use crate::{
     core_ops::{
-        absdiff_u8, add_u8, bitwise_and_u8, bitwise_not_u8, bitwise_or_u8, bitwise_xor_u8,
-        compare_eq_u8, count_non_zero_u8, in_range_u8, max_u8, min_u8, subtract_u8, CoreOpError,
+        CoreOpError, absdiff_u8, add_u8, bitwise_and_u8, bitwise_not_u8, bitwise_or_u8,
+        bitwise_xor_u8, compare_eq_u8, count_non_zero_u8, in_range_u8, max_u8, min_u8, subtract_u8,
     },
     mat::{Mat, MatDepth, MatError},
 };
@@ -633,9 +633,7 @@ mod tests {
             1,
         );
         let source = parent.roi(0, 0, 2, 4).expect("valid source region");
-        let destination = parent
-            .roi(0, 1, 2, 4)
-            .expect("valid destination region");
+        let destination = parent.roi(0, 1, 2, 4).expect("valid destination region");
 
         apply_bitwise_not_into(&source, &destination, None)
             .expect("valid overlapping bitwise inversion");

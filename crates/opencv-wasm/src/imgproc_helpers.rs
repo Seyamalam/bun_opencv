@@ -411,10 +411,7 @@ mod tests {
     fn hanning_window_matches_the_pinned_cosine_square_root_bits() {
         let window = hanning_window(4, 3).expect("valid window");
         assert_eq!(
-            window
-                .into_iter()
-                .map(f64::to_bits)
-                .collect::<Vec<_>>(),
+            window.into_iter().map(f64::to_bits).collect::<Vec<_>>(),
             [
                 0,
                 0,

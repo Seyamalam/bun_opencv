@@ -343,15 +343,16 @@ mod tests {
             MatDepth::F32,
         )
         .expect("destination parent");
-        let region = parent.roi(1, 1, 2, 3).expect("compatible destination region");
-        create_hanning_window_into_adapter(&region, 3, 2, 5)
-            .expect("compatible region write");
+        let region = parent
+            .roi(1, 1, 2, 3)
+            .expect("compatible destination region");
+        create_hanning_window_into_adapter(&region, 3, 2, 5).expect("compatible region write");
         assert_eq!(region.to_f32_array().expect("F32 region"), [0.0; 6]);
         assert_eq!(
             parent.to_f32_array().expect("F32 parent"),
             [
-                99.0, 99.0, 99.0, 99.0, 99.0, 99.0, 0.0, 0.0, 0.0, 99.0, 99.0, 0.0, 0.0,
-                0.0, 99.0, 99.0, 99.0, 99.0, 99.0, 99.0,
+                99.0, 99.0, 99.0, 99.0, 99.0, 99.0, 0.0, 0.0, 0.0, 99.0, 99.0, 0.0, 0.0, 0.0, 99.0,
+                99.0, 99.0, 99.0, 99.0, 99.0,
             ]
         );
 

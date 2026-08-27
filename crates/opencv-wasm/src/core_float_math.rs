@@ -512,8 +512,7 @@ mod tests {
         assert_eq!(actual.len(), expected.len());
         for (actual, expected) in actual.iter().zip(expected) {
             assert!(
-                actual.to_bits() == expected.to_bits()
-                    || (actual - expected).abs() <= tolerance,
+                actual.to_bits() == expected.to_bits() || (actual - expected).abs() <= tolerance,
                 "expected {expected}, got {actual}"
             );
         }
@@ -523,8 +522,7 @@ mod tests {
         assert_eq!(actual.len(), expected.len());
         for (actual, expected) in actual.iter().zip(expected) {
             assert!(
-                actual.to_bits() == expected.to_bits()
-                    || (actual - expected).abs() <= tolerance,
+                actual.to_bits() == expected.to_bits() || (actual - expected).abs() <= tolerance,
                 "expected {expected}, got {actual}"
             );
         }
@@ -707,7 +705,12 @@ mod tests {
         .unwrap();
         assert_eq!(
             decode_f64(&magnitude).unwrap(),
-            [1.414_213_538_169_860_8, 4.154_354_572_296_143, f64::INFINITY, 0.0]
+            [
+                1.414_213_538_169_860_8,
+                4.154_354_572_296_143,
+                f64::INFINITY,
+                0.0
+            ]
         );
         close_f64(
             &decode_f64(&angle).unwrap(),
@@ -723,12 +726,22 @@ mod tests {
         .unwrap();
         close_f64(
             &decode_f64(&x).unwrap(),
-            &[0.992_388_963_699_340_8, 2.298_668_861_389_16, f64::INFINITY, 0.0],
+            &[
+                0.992_388_963_699_340_8,
+                2.298_668_861_389_16,
+                f64::INFINITY,
+                0.0,
+            ],
             1e-6,
         );
         close_f64(
             &decode_f64(&y).unwrap(),
-            &[0.123_143_427_073_955_54, -2.141_431_808_471_679_7, f64::INFINITY, 0.0],
+            &[
+                0.123_143_427_073_955_54,
+                -2.141_431_808_471_679_7,
+                f64::INFINITY,
+                0.0,
+            ],
             1e-6,
         );
     }

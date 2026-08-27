@@ -703,10 +703,7 @@ impl Mat {
     pub(crate) fn shares_allocation_with(&self, other: &Self) -> bool {
         let self_header = self.header.borrow();
         let other_header = other.header.borrow();
-        match (
-            self_header.storage.as_ref(),
-            other_header.storage.as_ref(),
-        ) {
+        match (self_header.storage.as_ref(), other_header.storage.as_ref()) {
             (Some(self_storage), Some(other_storage)) => {
                 self_storage.shares_allocation_with(other_storage)
             }
@@ -1182,9 +1179,7 @@ mod tests {
             (0, 3, 7, MatDepth::F64),
         ];
 
-        for (matrix, (rows, columns, channels, depth)) in
-            matrices.into_iter().zip(expected)
-        {
+        for (matrix, (rows, columns, channels, depth)) in matrices.into_iter().zip(expected) {
             let matrix = matrix.expect("typed empty matrix");
             assert_eq!(
                 (matrix.rows(), matrix.columns(), matrix.channels()),

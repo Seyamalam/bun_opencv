@@ -249,7 +249,13 @@ pub fn mat_cart_to_polar(
     angle: &Mat,
     degrees: bool,
 ) -> Result<(), JsError> {
-    pair_into(x, y, magnitude, angle, PairOperation::CartToPolar { degrees })
+    pair_into(
+        x,
+        y,
+        magnitude,
+        angle,
+        PairOperation::CartToPolar { degrees },
+    )
     .map_err(JsError::from)
 }
 
@@ -564,20 +570,8 @@ fn pair_into(
         return Err(FloatMathWasmError::PairedOutputsAlias);
     }
     if left.rows() == 0 || left.columns() == 0 {
-        first.write_empty_layout(
-            left.rows(),
-            left.columns(),
-            left.channels(),
-            depth,
-            true,
-        )?;
-        second.write_empty_layout(
-            left.rows(),
-            left.columns(),
-            left.channels(),
-            depth,
-            true,
-        )?;
+        first.write_empty_layout(left.rows(), left.columns(), left.channels(), depth, true)?;
+        second.write_empty_layout(left.rows(), left.columns(), left.channels(), depth, true)?;
         return Ok(());
     }
     let first_live = matches(left, first)

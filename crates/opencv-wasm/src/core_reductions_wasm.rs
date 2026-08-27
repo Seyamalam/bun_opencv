@@ -6,8 +6,8 @@ use wasm_bindgen::prelude::*;
 
 use crate::{
     core_reductions::{
-        count_non_zero, mean, mean_masked, min_max_loc, min_max_loc_masked, sum, trace,
-        ReductionError, ScalarDepth,
+        ReductionError, ScalarDepth, count_non_zero, mean, mean_masked, min_max_loc,
+        min_max_loc_masked, sum, trace,
     },
     mat::{Mat, MatDepth},
 };
@@ -33,7 +33,10 @@ impl fmt::Display for ReductionWasmError {
                 formatter.write_str("non-zero element count exceeds the WASM integer limit")
             }
             Self::InvalidMaskDepth(depth) => {
-                write!(formatter, "reduction masks require U8 depth; received {depth:?}")
+                write!(
+                    formatter,
+                    "reduction masks require U8 depth; received {depth:?}"
+                )
             }
             Self::InvalidMaskChannels(channels) => write!(
                 formatter,

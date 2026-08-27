@@ -393,8 +393,7 @@ mod tests {
             ]
         );
         assert_eq!(
-            invert_affine_transform_f32(&[2.0, 0.0, 4.0, 0.0, 3.0, -6.0])
-                .map(f32::to_bits),
+            invert_affine_transform_f32(&[2.0, 0.0, 4.0, 0.0, 3.0, -6.0]).map(f32::to_bits),
             [
                 0x3F00_0000,
                 0x8000_0000,
@@ -438,7 +437,6 @@ mod tests {
 
     #[test]
     fn invalid_perspective_geometry_is_rejected() {
-
         let source = [[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]];
         let destination = [[0.0, 0.0], [1.0, 1.0], [2.0, 1.0], [3.0, 2.0]];
         assert_eq!(

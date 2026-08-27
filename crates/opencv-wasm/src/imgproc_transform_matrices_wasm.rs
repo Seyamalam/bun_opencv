@@ -127,10 +127,7 @@ pub fn mat_invert_affine_transform(transform: &Mat) -> Result<Mat, JsError> {
 /// # Errors
 /// Returns an error for unsupported source depth or shape, or an invalid destination write.
 #[wasm_bindgen(js_name = matInvertAffineTransformInto)]
-pub fn mat_invert_affine_transform_into(
-    transform: &Mat,
-    destination: &Mat,
-) -> Result<(), JsError> {
+pub fn mat_invert_affine_transform_into(transform: &Mat, destination: &Mat) -> Result<(), JsError> {
     invert_affine_into_adapter(transform, destination).map_err(JsError::from)
 }
 
@@ -192,9 +189,7 @@ fn invert_affine_into_adapter(
     Ok(())
 }
 
-fn invert_affine_bytes(
-    transform: &Mat,
-) -> Result<(Vec<u8>, MatDepth), TransformMatrixWasmError> {
+fn invert_affine_bytes(transform: &Mat) -> Result<(Vec<u8>, MatDepth), TransformMatrixWasmError> {
     validate_floating_depth(transform)?;
     if transform.rows() != 2 || transform.columns() != 3 || transform.channels() != 1 {
         return Err(TransformMatrixWasmError::AffineMatrixShape {
@@ -214,8 +209,7 @@ fn invert_affine_bytes(
                         .expect("validated F32 affine chunks contain four bytes"),
                 );
             }
-            let result =
-                imgproc_transform_matrices::invert_affine_transform_f32(&coefficients);
+            let result = imgproc_transform_matrices::invert_affine_transform_f32(&coefficients);
             Ok((
                 result
                     .into_iter()
@@ -431,8 +425,7 @@ mod tests {
                 .into_iter()
                 .map(f64::to_bits)
                 .collect::<Vec<_>>(),
-            [0.5_f32, -0.0, -2.0, -0.0, 1.0 / 3.0, 2.0]
-                .map(|value| f64::from(value).to_bits())
+            [0.5_f32, -0.0, -2.0, -0.0, 1.0 / 3.0, 2.0].map(|value| f64::from(value).to_bits())
         );
     }
 
