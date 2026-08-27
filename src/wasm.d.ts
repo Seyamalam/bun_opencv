@@ -5,6 +5,11 @@ import type { WasmORBHandle } from "./orb.js";
 import type { WasmGFTTDetectorHandle } from "./gftt.js";
 import type { WasmMSERHandle } from "./mser.js";
 import type {
+  WasmTonemapDragoHandle,
+  WasmTonemapMantiukHandle,
+  WasmTonemapReinhardHandle,
+} from "./tonemap.js";
+import type {
   WasmAgastFeatureDetectorHandle,
   WasmFastFeatureDetectorHandle,
 } from "./feature-detectors.js";
@@ -171,6 +176,57 @@ declare module "#wasm" {
     setMaxArea(value: number): void;
     setMinArea(value: number): void;
     setPass2Only(value: boolean): void;
+  }
+
+  export class TonemapDrago implements WasmTonemapDragoHandle {
+    private constructor();
+    static create(
+      gamma?: number | null,
+      saturation?: number | null,
+      bias?: number | null,
+    ): TonemapDrago;
+    free(): void;
+    getBias(): number;
+    getGamma(): number;
+    getSaturation(): number;
+    setBias(value: number): void;
+    setGamma(value: number): void;
+    setSaturation(value: number): void;
+  }
+
+  export class TonemapMantiuk implements WasmTonemapMantiukHandle {
+    private constructor();
+    static create(
+      gamma?: number | null,
+      scale?: number | null,
+      saturation?: number | null,
+    ): TonemapMantiuk;
+    free(): void;
+    getGamma(): number;
+    getSaturation(): number;
+    getScale(): number;
+    setGamma(value: number): void;
+    setSaturation(value: number): void;
+    setScale(value: number): void;
+  }
+
+  export class TonemapReinhard implements WasmTonemapReinhardHandle {
+    private constructor();
+    static create(
+      gamma?: number | null,
+      intensity?: number | null,
+      lightAdaptation?: number | null,
+      colorAdaptation?: number | null,
+    ): TonemapReinhard;
+    free(): void;
+    getColorAdaptation(): number;
+    getGamma(): number;
+    getIntensity(): number;
+    getLightAdaptation(): number;
+    setColorAdaptation(value: number): void;
+    setGamma(value: number): void;
+    setIntensity(value: number): void;
+    setLightAdaptation(value: number): void;
   }
 
   export default function initialize(): Promise<void>;

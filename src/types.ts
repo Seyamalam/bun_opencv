@@ -10,6 +10,14 @@ import type { ORB, ORBOptions, ORB_ScoreTypeNamespace, WasmORBFactory } from "./
 import type { GFTTDetector, GFTTDetectorOptions, WasmGFTTDetectorFactory } from "./gftt.js";
 import type { MSER, MSEROptions, WasmMSERFactory } from "./mser.js";
 import type {
+  TonemapDrago,
+  TonemapMantiuk,
+  TonemapReinhard,
+  WasmTonemapDragoFactory,
+  WasmTonemapMantiukFactory,
+  WasmTonemapReinhardFactory,
+} from "./tonemap.js";
+import type {
   AgastFeatureDetector,
   AgastFeatureDetector_DetectorTypeNamespace,
   AgastFeatureDetectorOptions,
@@ -90,6 +98,9 @@ export interface OpenCvBackend {
   readonly KAZE: WasmKAZEFactory;
   readonly ORB: WasmORBFactory;
   readonly MSERConfig: WasmMSERFactory;
+  readonly TonemapDrago: WasmTonemapDragoFactory;
+  readonly TonemapMantiuk: WasmTonemapMantiukFactory;
+  readonly TonemapReinhard: WasmTonemapReinhardFactory;
   clipLine(
     rectangleX: number,
     rectangleY: number,
@@ -439,6 +450,14 @@ export interface OpenCv {
   createFastFeatureDetector(options?: FastFeatureDetectorOptions): FastFeatureDetector;
   createGFTTDetector(options?: GFTTDetectorOptions): GFTTDetector;
   createMSER(options?: MSEROptions): MSER;
+  createTonemapDrago(gamma?: number, saturation?: number, bias?: number): TonemapDrago;
+  createTonemapMantiuk(gamma?: number, scale?: number, saturation?: number): TonemapMantiuk;
+  createTonemapReinhard(
+    gamma?: number,
+    intensity?: number,
+    lightAdaptation?: number,
+    colorAdaptation?: number,
+  ): TonemapReinhard;
   determinant(source: Mat): number;
   convertScaleAbs(source: Mat, destination: Mat, alpha?: number, beta?: number): void;
   convertScaleAbsAlloc(source: Mat, alpha?: number, beta?: number): Mat;

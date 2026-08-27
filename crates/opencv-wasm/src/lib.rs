@@ -50,6 +50,8 @@ mod imgproc_transform_matrices;
 mod imgproc_transform_matrices_wasm;
 mod mat;
 mod mutable_storage;
+mod photo_tonemap;
+mod photo_tonemap_wasm;
 
 pub use mat::{Mat, MatDepth, mat_empty, mat_from_u8, mat_zeros_u8};
 

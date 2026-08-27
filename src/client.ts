@@ -13,6 +13,7 @@ import { GFTTDetector, validateGFTTDetectorOptions } from "./gftt.js";
 import type { GFTTDetectorOptions } from "./gftt.js";
 import { MSER, validateMSEROptions } from "./mser.js";
 import type { MSEROptions } from "./mser.js";
+import { TonemapDrago, TonemapMantiuk, TonemapReinhard } from "./tonemap.js";
 import {
   AgastFeatureDetector,
   AgastFeatureDetector_DetectorType,
@@ -293,6 +294,52 @@ class WasmOpenCv implements OpenCv {
         options.maxArea,
         options.pass2Only,
       ),
+    );
+  }
+
+  createTonemapDrago(
+    ...arguments_:
+      | []
+      | [gamma: number]
+      | [gamma: number, saturation: number]
+      | [gamma: number, saturation: number, bias: number]
+  ): TonemapDrago {
+    requireArityRange(arguments_.length, 0, 3, "TonemapDrago");
+    const gamma = arguments_.length >= 1 ? toWasmF32(arguments_[0]) : undefined;
+    const saturation = arguments_.length >= 2 ? toWasmF32(arguments_[1]) : undefined;
+    const bias = arguments_.length === 3 ? toWasmF32(arguments_[2]) : undefined;
+    return new TonemapDrago(this.#backend.TonemapDrago.create(gamma, saturation, bias));
+  }
+
+  createTonemapMantiuk(
+    ...arguments_:
+      | []
+      | [gamma: number]
+      | [gamma: number, scale: number]
+      | [gamma: number, scale: number, saturation: number]
+  ): TonemapMantiuk {
+    requireArityRange(arguments_.length, 0, 3, "TonemapMantiuk");
+    const gamma = arguments_.length >= 1 ? toWasmF32(arguments_[0]) : undefined;
+    const scale = arguments_.length >= 2 ? toWasmF32(arguments_[1]) : undefined;
+    const saturation = arguments_.length === 3 ? toWasmF32(arguments_[2]) : undefined;
+    return new TonemapMantiuk(this.#backend.TonemapMantiuk.create(gamma, scale, saturation));
+  }
+
+  createTonemapReinhard(
+    ...arguments_:
+      | []
+      | [gamma: number]
+      | [gamma: number, intensity: number]
+      | [gamma: number, intensity: number, lightAdaptation: number]
+      | [gamma: number, intensity: number, lightAdaptation: number, colorAdaptation: number]
+  ): TonemapReinhard {
+    requireArityRange(arguments_.length, 0, 4, "TonemapReinhard");
+    const gamma = arguments_.length >= 1 ? toWasmF32(arguments_[0]) : undefined;
+    const intensity = arguments_.length >= 2 ? toWasmF32(arguments_[1]) : undefined;
+    const lightAdaptation = arguments_.length >= 3 ? toWasmF32(arguments_[2]) : undefined;
+    const colorAdaptation = arguments_.length === 4 ? toWasmF32(arguments_[3]) : undefined;
+    return new TonemapReinhard(
+      this.#backend.TonemapReinhard.create(gamma, intensity, lightAdaptation, colorAdaptation),
     );
   }
 

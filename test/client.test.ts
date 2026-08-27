@@ -42,6 +42,12 @@ import type {
   WasmMatHandle,
   WasmORBFactory,
   WasmORBHandle,
+  WasmTonemapDragoFactory,
+  WasmTonemapDragoHandle,
+  WasmTonemapMantiukFactory,
+  WasmTonemapMantiukHandle,
+  WasmTonemapReinhardFactory,
+  WasmTonemapReinhardHandle,
 } from "../src/index.js";
 
 class CopyingMatHandle implements WasmMatHandle {
@@ -583,6 +589,102 @@ class CopyingORBHandle implements WasmORBHandle {
   }
 }
 
+class CopyingTonemapHandle
+  implements WasmTonemapDragoHandle, WasmTonemapMantiukHandle, WasmTonemapReinhardHandle
+{
+  #bias: number;
+  #colorAdaptation: number;
+  #freed = false;
+  #gamma: number;
+  #intensity: number;
+  #lightAdaptation: number;
+  #saturation: number;
+  #scale: number;
+
+  constructor(
+    state: {
+      readonly bias?: number;
+      readonly colorAdaptation?: number;
+      readonly gamma: number;
+      readonly intensity?: number;
+      readonly lightAdaptation?: number;
+      readonly saturation?: number;
+      readonly scale?: number;
+    },
+    readonly onFree: () => void,
+  ) {
+    this.#bias = state.bias ?? Math.fround(0.85);
+    this.#colorAdaptation = state.colorAdaptation ?? 0;
+    this.#gamma = state.gamma;
+    this.#intensity = state.intensity ?? 0;
+    this.#lightAdaptation = state.lightAdaptation ?? 1;
+    this.#saturation = state.saturation ?? 1;
+    this.#scale = state.scale ?? Math.fround(0.7);
+  }
+
+  free(): void {
+    if (this.#freed) return;
+    this.#freed = true;
+    this.onFree();
+  }
+
+  getBias(): number {
+    return this.#bias;
+  }
+
+  getColorAdaptation(): number {
+    return this.#colorAdaptation;
+  }
+
+  getGamma(): number {
+    return this.#gamma;
+  }
+
+  getIntensity(): number {
+    return this.#intensity;
+  }
+
+  getLightAdaptation(): number {
+    return this.#lightAdaptation;
+  }
+
+  getSaturation(): number {
+    return this.#saturation;
+  }
+
+  getScale(): number {
+    return this.#scale;
+  }
+
+  setBias(value: number): void {
+    this.#bias = value;
+  }
+
+  setColorAdaptation(value: number): void {
+    this.#colorAdaptation = value;
+  }
+
+  setGamma(value: number): void {
+    this.#gamma = value;
+  }
+
+  setIntensity(value: number): void {
+    this.#intensity = value;
+  }
+
+  setLightAdaptation(value: number): void {
+    this.#lightAdaptation = value;
+  }
+
+  setSaturation(value: number): void {
+    this.#saturation = value;
+  }
+
+  setScale(value: number): void {
+    this.#scale = value;
+  }
+}
+
 class CopyingAgastFeatureDetectorHandle implements WasmAgastFeatureDetectorHandle {
   #freed = false;
   #nonmaxSuppression: boolean;
@@ -870,6 +972,7 @@ class CopyingBackend implements OpenCvBackend {
   #kazeFreeCount = 0;
   #mserFreeCount = 0;
   #orbFreeCount = 0;
+  #tonemapFreeCount = 0;
   #logLevel = 3;
   #randomState = 0;
   readonly cartToPolarDegreeFlags: boolean[] = [];
@@ -1000,6 +1103,49 @@ class CopyingBackend implements OpenCvBackend {
       ),
   };
 
+  readonly TonemapDrago: WasmTonemapDragoFactory = {
+    create: (gamma, saturation, bias): WasmTonemapDragoHandle =>
+      new CopyingTonemapHandle(
+        {
+          bias: bias ?? Math.fround(0.85),
+          gamma: gamma ?? 1,
+          saturation: saturation ?? 1,
+        },
+        () => {
+          this.#tonemapFreeCount += 1;
+        },
+      ),
+  };
+
+  readonly TonemapMantiuk: WasmTonemapMantiukFactory = {
+    create: (gamma, scale, saturation): WasmTonemapMantiukHandle =>
+      new CopyingTonemapHandle(
+        {
+          gamma: gamma ?? 1,
+          saturation: saturation ?? 1,
+          scale: scale ?? Math.fround(0.7),
+        },
+        () => {
+          this.#tonemapFreeCount += 1;
+        },
+      ),
+  };
+
+  readonly TonemapReinhard: WasmTonemapReinhardFactory = {
+    create: (gamma, intensity, lightAdaptation, colorAdaptation): WasmTonemapReinhardHandle =>
+      new CopyingTonemapHandle(
+        {
+          colorAdaptation: colorAdaptation ?? 0,
+          gamma: gamma ?? 1,
+          intensity: intensity ?? 0,
+          lightAdaptation: lightAdaptation ?? 1,
+        },
+        () => {
+          this.#tonemapFreeCount += 1;
+        },
+      ),
+  };
+
   readonly AgastFeatureDetector: WasmAgastFeatureDetectorFactory = {
     create: (threshold, nonmaxSuppression, type): WasmAgastFeatureDetectorHandle =>
       new CopyingAgastFeatureDetectorHandle(
@@ -1026,6 +1172,10 @@ class CopyingBackend implements OpenCvBackend {
 
   get mserFreeCount(): number {
     return this.#mserFreeCount;
+  }
+
+  get tonemapFreeCount(): number {
+    return this.#tonemapFreeCount;
   }
 
   get gfttDetectorFreeCount(): number {
@@ -4204,6 +4354,78 @@ describe("OpenCv client", () => {
     expect(() => localClient.createMSER({ minArea: -2_147_483_649 })).toThrow(OpenCvInputError);
     expect(() => localClient.createMSER({ maxArea: 2_147_483_648 })).toThrow(OpenCvInputError);
   });
+
+  test("creates all tone-mapping state families from their pinned constructor defaults", () => {
+    const backend = new CopyingBackend();
+    const localClient = createOpenCv(backend);
+    const drago = localClient.createTonemapDrago();
+    const mantiuk = localClient.createTonemapMantiuk();
+    const reinhard = localClient.createTonemapReinhard();
+
+    expect([drago.getGamma(), drago.getSaturation(), drago.getBias()]).toEqual([
+      1,
+      1,
+      Math.fround(0.85),
+    ]);
+    expect([mantiuk.getGamma(), mantiuk.getScale(), mantiuk.getSaturation()]).toEqual([
+      1,
+      Math.fround(0.7),
+      1,
+    ]);
+    expect([
+      reinhard.getGamma(),
+      reinhard.getIntensity(),
+      reinhard.getLightAdaptation(),
+      reinhard.getColorAdaptation(),
+    ]).toEqual([1, 0, 1, 0]);
+
+    drago.delete();
+    mantiuk.delete();
+    reinhard.delete();
+    expect(backend.tonemapFreeCount).toBe(3);
+  });
+
+  // oxlint-disable anti-slop/no-reflect-apply, typescript/unbound-method -- This test exercises untyped JavaScript constructor-call shapes.
+  test("matches concrete Tonemap constructor arity and float coercion", () => {
+    const localClient = createOpenCv(new CopyingBackend());
+
+    expect(localClient.createTonemapDrago).toHaveLength(0);
+    expect(localClient.createTonemapMantiuk).toHaveLength(0);
+    expect(localClient.createTonemapReinhard).toHaveLength(0);
+
+    const drago = Reflect.apply(localClient.createTonemapDrago, localClient, [true, false, 1e40]);
+    const mantiuk = localClient.createTonemapMantiuk(0.25, 1.25, 2.25);
+    const reinhard = localClient.createTonemapReinhard(0.25, 1.25, 2.25, 3.25);
+    expect([drago.getGamma(), drago.getSaturation(), drago.getBias()]).toEqual([
+      1,
+      0,
+      Number.POSITIVE_INFINITY,
+    ]);
+    expect([mantiuk.getGamma(), mantiuk.getScale(), mantiuk.getSaturation()]).toEqual([
+      0.25, 1.25, 2.25,
+    ]);
+    expect([
+      reinhard.getGamma(),
+      reinhard.getIntensity(),
+      reinhard.getLightAdaptation(),
+      reinhard.getColorAdaptation(),
+    ]).toEqual([0.25, 1.25, 2.25, 3.25]);
+
+    expect(() => Reflect.apply(localClient.createTonemapDrago, localClient, [undefined])).toThrow(
+      new TypeError('Cannot convert "undefined" to float'),
+    );
+    expect(() =>
+      Reflect.apply(localClient.createTonemapMantiuk, localClient, [1, 2, 3, 4]),
+    ).toThrow(BindingError);
+    expect(() =>
+      Reflect.apply(localClient.createTonemapReinhard, localClient, [1, 2, 3, 4, 5]),
+    ).toThrow(BindingError);
+
+    drago.delete();
+    mantiuk.delete();
+    reinhard.delete();
+  });
+  // oxlint-enable anti-slop/no-reflect-apply, typescript/unbound-method
 
   test("owns a KAZE configuration with OpenCV 4.13 defaults", () => {
     const backend = new CopyingBackend();

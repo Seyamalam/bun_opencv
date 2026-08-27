@@ -44,6 +44,16 @@ export type {
 } from "./gftt.js";
 export { MSER, MSER_DEFAULTS } from "./mser.js";
 export type { MSEROptions, WasmMSERFactory, WasmMSERHandle } from "./mser.js";
+export { Tonemap, TonemapDrago, TonemapMantiuk, TonemapReinhard } from "./tonemap.js";
+export type {
+  WasmTonemapDragoFactory,
+  WasmTonemapDragoHandle,
+  WasmTonemapHandle,
+  WasmTonemapMantiukFactory,
+  WasmTonemapMantiukHandle,
+  WasmTonemapReinhardFactory,
+  WasmTonemapReinhardHandle,
+} from "./tonemap.js";
 export { BindingError, OpenCvInputError } from "./error.js";
 export type { EmbindEnumInput, EmbindEnumValue } from "./embind-enum.js";
 export {
