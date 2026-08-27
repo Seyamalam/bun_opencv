@@ -865,8 +865,11 @@ class WasmOpenCv implements OpenCv {
     );
   }
 
-  setIdentity(destination: Mat, value: Scalar = [1, 0, 0, 0]): void {
-    this.#backend.matSetIdentity(destination.handleForBackend(), validatedScalar(value, "value"));
+  setIdentity(...args: [destination: Mat] | [destination: Mat, value: Scalar]): void {
+    requireOverloadArity(args.length, 1, 2, "setIdentity");
+    const destinationHandle = matHandleForBinding(args[0]);
+    const value = args.length === 1 ? [1, 0, 0, 0] : args[1];
+    this.#backend.matSetIdentity(destinationHandle, scalarForBinding(value));
   }
 
   setLogLevel(level: LogLevel): LogLevel {
@@ -1170,7 +1173,8 @@ function toWasmI32(value: EmbindScalarInput): number {
   return value | 0;
 }
 
-function toWasmF64(value: EmbindScalarInput): number {
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- This parser is the JS-to-Embind double boundary.
+function toWasmF64(value: unknown): number {
   if (value === true) return 1;
   if (value === false) return 0;
   // oxlint-disable-next-line anti-slop/no-runtime-typeof -- This is the JS-to-Embind scalar parser boundary.
@@ -1291,6 +1295,27 @@ function validatedScalar(value: Scalar, name: string): Float64Array {
     [`${name}[3]`]: value[3],
   });
   return Float64Array.from(value);
+}
+
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- This parser is the JS-to-Embind Scalar boundary.
+function scalarForBinding(value: unknown): Float64Array {
+  const isObject =
+    value !== null &&
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- This is the JS-to-Embind Scalar boundary.
+    (typeof value === "object" || typeof value === "function");
+  // SAFETY: The object/function check above proves property access is valid at this binding boundary.
+  if (!isObject || (value as { length?: unknown }).length !== 4) {
+    throw new BindingError(`Cannot convert "${String(value)}" to Scalar`);
+  }
+  // SAFETY: Scalar conversion requires an array-like value with four indexed lanes.
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type, typescript/no-unsafe-type-assertion -- Each lane is parsed immediately as an Embind double.
+  const indexed = value as Record<number, unknown>;
+  return new Float64Array([
+    toWasmF64(indexed[0]),
+    toWasmF64(indexed[1]),
+    toWasmF64(indexed[2]),
+    toWasmF64(indexed[3]),
+  ]);
 }
 
 function validateBorderSize(value: number, name: string): void {

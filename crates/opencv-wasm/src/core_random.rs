@@ -203,7 +203,7 @@ pub(crate) fn set_identity(destination: &Mat, values: &[f64]) -> Result<(), Rand
         for channel in 0..channels {
             let value = values[if values.len() == 1 { 0 } else { channel }];
             let scalar = (index * row_scalars + index * channels) + channel;
-            encode_scalar(
+            encode_identity_scalar(
                 value,
                 destination.depth(),
                 &mut output[scalar * scalar_width..(scalar + 1) * scalar_width],
@@ -212,6 +212,20 @@ pub(crate) fn set_identity(destination: &Mat, values: &[f64]) -> Result<(), Rand
     }
     destination.write_compact_bytes(&output)?;
     Ok(())
+}
+
+fn encode_identity_scalar(value: f64, depth: MatDepth, output: &mut [u8]) {
+    if matches!(depth, MatDepth::F32 | MatDepth::F64) {
+        encode_scalar(value, depth, output);
+        return;
+    }
+    let converted =
+        if !value.is_finite() || value < f64::from(i32::MIN) || value > f64::from(i32::MAX) {
+            f64::from(i32::MIN)
+        } else {
+            value.round_ties_even()
+        };
+    encode_scalar(converted, depth, output);
 }
 
 fn validate_scalar_channels(values: &[f64], channels: usize) -> Result<(), RandomError> {
@@ -329,6 +343,50 @@ mod tests {
             set_identity(&destination, &[value]).expect("supported depth");
 
             assert_eq!(destination.compact_bytes(), expected, "depth {depth:?}");
+        }
+    }
+
+    #[test]
+    fn identity_uses_opencv_integer_conversion_sentinels() {
+        let cases = [
+            (MatDepth::U8, vec![0]),
+            (MatDepth::I8, i8::MIN.to_ne_bytes().to_vec()),
+            (MatDepth::U16, 0_u16.to_ne_bytes().to_vec()),
+            (MatDepth::I16, i16::MIN.to_ne_bytes().to_vec()),
+            (MatDepth::I32, i32::MIN.to_ne_bytes().to_vec()),
+        ];
+
+        for value in [f64::NAN, f64::INFINITY, 2_147_483_648.0] {
+            for (depth, expected) in &cases {
+                let destination =
+                    Mat::from_owned_bytes(vec![0; depth.byte_width()], 1, 1, 1, *depth)
+                        .expect("valid destination");
+                set_identity(&destination, &[value]).expect("supported identity value");
+                assert_eq!(
+                    destination.compact_bytes(),
+                    *expected,
+                    "depth {depth:?}, {value}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn identity_preserves_floating_nonfinite_values_and_signed_zero() {
+        for depth in [MatDepth::F32, MatDepth::F64] {
+            let destination =
+                Mat::from_owned_bytes(vec![0; 4 * depth.byte_width()], 2, 2, 1, depth)
+                    .expect("valid destination");
+            set_identity(&destination, &[-0.0]).expect("supported signed zero");
+            let bytes = destination.compact_bytes();
+            assert!(decode_one(&bytes[..depth.byte_width()], depth).is_sign_negative());
+            assert!(
+                !decode_one(&bytes[depth.byte_width()..2 * depth.byte_width()], depth)
+                    .is_sign_negative()
+            );
+
+            set_identity(&destination, &[f64::NAN]).expect("supported NaN");
+            assert!(decode_one(&destination.compact_bytes()[..depth.byte_width()], depth).is_nan());
         }
     }
 

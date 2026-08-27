@@ -2153,6 +2153,50 @@ describe("OpenCv client", () => {
     for (const matrix of [normal, second, first, identity]) matrix.dispose();
   });
 
+  test("matches the setIdentity binding and Scalar conversion contract", () => {
+    expect(client.setIdentity.bind(client)).toHaveLength(0);
+
+    const backend = new CopyingBackend();
+    let received: Float64Array | undefined;
+    backend.matSetIdentity = (_destination, value) => {
+      received = value;
+    };
+    const localClient = createOpenCv(backend);
+    const destination = localClient.zerosF64(2, 2, 4);
+    const arrayLike = {
+      0: true,
+      1: -0,
+      2: Number.POSITIVE_INFINITY,
+      3: Number.NaN,
+      length: 4,
+    };
+    // oxlint-disable-next-line anti-slop/no-reflect-apply, typescript/unbound-method -- The test exercises the untyped JavaScript binding boundary.
+    Reflect.apply(localClient.setIdentity, localClient, [destination, arrayLike]);
+    expect(received?.[0]).toBe(1);
+    expect(Object.is(received?.[1], -0)).toBeTrue();
+    expect(received?.[2]).toBe(Number.POSITIVE_INFINITY);
+    expect(Number.isNaN(received?.[3])).toBeTrue();
+
+    expect(() => {
+      // oxlint-disable-next-line anti-slop/no-reflect-apply, typescript/unbound-method -- The test exercises invalid JavaScript arity.
+      Reflect.apply(localClient.setIdentity, localClient, []);
+    }).toThrow(BindingError);
+    expect(() =>
+      // oxlint-disable-next-line anti-slop/no-reflect-apply, typescript/unbound-method -- The test exercises invalid JavaScript arity.
+      Reflect.apply(localClient.setIdentity, localClient, [destination, [1, 2, 3, 4], "extra"]),
+    ).toThrow(BindingError);
+    expect(() => {
+      // oxlint-disable-next-line anti-slop/no-reflect-apply, typescript/unbound-method -- The test exercises an invalid runtime Scalar.
+      Reflect.apply(localClient.setIdentity, localClient, [destination, [1, 2, 3]]);
+    }).toThrow(BindingError);
+    expect(() =>
+      // oxlint-disable-next-line anti-slop/no-reflect-apply, typescript/unbound-method -- The test exercises an invalid runtime Scalar lane.
+      Reflect.apply(localClient.setIdentity, localClient, [destination, [1, 2, "3", 4]]),
+    ).toThrow(TypeError);
+
+    destination.dispose();
+  });
+
   test("controls logging and computes optimal DFT sizes", () => {
     const initial = client.getLogLevel();
     expect(client.setLogLevel(5)).toBe(initial);
