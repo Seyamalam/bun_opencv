@@ -57,6 +57,7 @@ interface AuditedBindingForm {
 
 const AUDITED_BINDING_FORMS: Readonly<Record<string, AuditedBindingForm>> = Object.freeze({
   "core.function.add-weighted": { overloadCount: 2, runtimeArity: 0 },
+  "core.function.bitwise-not": { overloadCount: 2, runtimeArity: 0 },
   "core.function.cart-to-polar": { overloadCount: 2, runtimeArity: 0 },
   "core.function.convert-scale-abs": { overloadCount: 3, runtimeArity: 0 },
   "core.function.count-non-zero": { overloadCount: 1, runtimeArity: 1 },

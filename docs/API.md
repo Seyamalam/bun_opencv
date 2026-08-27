@@ -62,11 +62,15 @@ The following methods accept Rust-owned U8 `Mat` values and return a new Rust-ow
 
 - `add(left, right)` and `subtract(left, right)` use unsigned saturation.
 - `absdiff(left, right)`, `min(left, right)`, and `max(left, right)` operate element by element.
-- `bitwiseAnd(left, right)`, `bitwiseOr(left, right)`, `bitwiseXor(left, right)`, and `bitwiseNot(source)` operate on every byte.
+- `bitwiseAnd(left, right)`, `bitwiseOr(left, right)`, and `bitwiseXor(left, right)` operate on every byte.
 - `compareEqual(left, right)` returns 255 for equal elements and 0 otherwise.
 - `inRange(source, lowerBound, upperBound)` applies inclusive per-channel bounds and returns a one-channel 255/0 mask.
 
 Multi-input operations require identical rows, columns, and channels. These methods are working U8 slices, not yet complete OpenCV.js families; masks, scalar operands, optional destinations, and other depth forms remain tracked by the parity ledger.
+
+`bitwiseNot(source, destination)` and `bitwiseNot(source, destination, mask)` match the pinned OpenCV.js destination forms and return `undefined`. They invert every stored bit for all seven scalar depths and any channel count. A nonempty mask must be single-channel U8 or I8 with the source dimensions; every nonzero mask byte selects the corresponding pixel across all channels. Compatible destinations preserve unselected pixels, while fresh or replaced destinations initialize them to zero. `bitwiseNotAlloc(source)` is the package's allocating convenience.
+
+The browser fixture covers raw floating-point bits, typed empties, strided matrices, destination replacement, exact aliases, live unmasked overlapping regions, masked overlaps, argument conversion order, invalid masks, and deleted handles.
 
 ### Matrix layout operations
 

@@ -50,6 +50,7 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - A fully implemented `createHanningWindow` family with exact destination-first dispatch, structural Size and type conversion, F32/F64 destination replacement, compatible ROI writes, invalid-input preservation, and bit-exact asymmetric window arithmetic. The totals are now 45 partial, 84 implemented, and 129 supported families.
 - Fully implemented `mean` and `minMaxLoc` families with exact optional-mask dispatch, all scalar depths, channel rules, compact and strided matrices, empty-header sentinels, row-major ties, and floating-point edge behavior. The totals are now 43 partial, 86 implemented, and 129 supported families.
 - A fully implemented `trace` family with exact one-argument dispatch, all scalar depths, four-lane diagonal sums, rectangular and strided matrices, typed empties, F32 widening, and pinned floating-point accumulation. The totals are now 42 partial, 87 implemented, and 129 supported families.
+- A fully implemented `bitwiseNot` family with exact destination overloads, all scalar depths, optional masks, typed empties, strided matrices, raw floating-point bits, aliases, and pinned live-overlap behavior. The totals are now 41 partial, 88 implemented, and 129 supported families.
 - Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
 
 ### Planned

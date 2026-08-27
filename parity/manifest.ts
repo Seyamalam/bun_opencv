@@ -1260,13 +1260,14 @@ export const PARITY_MANIFEST = {
       implementationOrigin: "original",
       method: "bitwiseNot",
       module: "core",
-      notes: "U8 matrix inversion without a mask or caller-provided destination.",
+      notes:
+        "Exact two- and three-argument browser contract with caller-owned destinations, optional U8/I8 masks, all scalar depths and channel counts, typed empties, raw floating-point bits, strided matrices, aliases, and live unmasked overlapping regions.",
       patentReview: "required",
       sources: [CORE_ARRAY_SOURCE],
-      status: "partial",
+      status: "implemented",
       upstream: "cv.bitwise_not",
       upstreamId: "core.function.bitwise-not",
-      wasmExport: "matBitwiseNotU8",
+      wasmExport: "matBitwiseNotInto",
     },
     {
       implementationOrigin: "original",
