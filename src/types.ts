@@ -160,6 +160,7 @@ export interface OpenCvBackend {
     scale: number,
   ): WasmMatHandle;
   matInvertAffineTransform(transform: WasmMatHandle): WasmMatHandle;
+  matInvertAffineTransformInto(transform: WasmMatHandle, destination: WasmMatHandle): void;
   matInvertInto(source: WasmMatHandle, destination: WasmMatHandle, method: number): number;
   matIsContourConvex(contour: WasmMatHandle): boolean;
   matSplit(source: WasmMatHandle): WasmMatHandle[];
@@ -456,7 +457,8 @@ export interface OpenCv {
   matFromU8(rows: number, columns: number, channels: number, data: Uint8Array): Mat;
   inRange(source: Mat, lowerBound: Mat, upperBound: Mat): Mat;
   insertChannel(source: Mat, destination: Mat, channel: number): void;
-  invertAffineTransform(transform: Mat): Mat;
+  invertAffineTransform(transform: Mat, destination: Mat): void;
+  invertAffineTransformAlloc(transform: Mat): Mat;
   isContourConvex(contour: Mat): boolean;
   invert(source: Mat, destination: Mat, method?: DecompositionMethod): number;
   log(source: Mat, destination: Mat): void;

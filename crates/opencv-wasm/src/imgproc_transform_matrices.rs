@@ -105,41 +105,52 @@ pub(crate) fn affine_transform(
     ])
 }
 
-/// Inverts a finite, nonsingular 2-by-3 affine matrix.
+/// Inverts a 2-by-3 affine matrix using the observed floating-point operation order.
 pub(crate) fn invert_affine_transform(
     transform: &[f64; 6],
 ) -> Result<[f64; 6], TransformMatrixError> {
-    validate_finite(transform.iter().copied())?;
     let [a, b, translation_x, d, e, translation_y] = *transform;
-    let scale = [a, b, d, e]
-        .into_iter()
-        .fold(0.0_f64, |largest, value| largest.max(value.abs()));
-    if scale == 0.0 {
-        return Err(TransformMatrixError::DegenerateGeometry);
-    }
-    let normalized_a = a / scale;
-    let normalized_b = b / scale;
-    let normalized_d = d / scale;
-    let normalized_e = e / scale;
-    let normalized_determinant = normalized_a.mul_add(normalized_e, -normalized_b * normalized_d);
-    if normalized_determinant.abs() <= f64::EPSILON * 8.0 {
-        return Err(TransformMatrixError::DegenerateGeometry);
-    }
-    let denominator = scale * normalized_determinant;
-    let inverse_a = normalized_e / denominator;
-    let inverse_b = -normalized_b / denominator;
-    let inverse_d = -normalized_d / denominator;
-    let inverse_e = normalized_a / denominator;
-    let result = [
+    let determinant = a * e - b * d;
+    let inverse_determinant = if determinant != 0.0 {
+        1.0 / determinant
+    } else {
+        0.0
+    };
+    let inverse_a = e * inverse_determinant;
+    let inverse_b = -b * inverse_determinant;
+    let inverse_d = -d * inverse_determinant;
+    let inverse_e = a * inverse_determinant;
+    Ok([
         inverse_a,
         inverse_b,
-        (-inverse_a).mul_add(translation_x, -inverse_b * translation_y),
+        -inverse_a * translation_x - inverse_b * translation_y,
         inverse_d,
         inverse_e,
-        (-inverse_d).mul_add(translation_x, -inverse_e * translation_y),
-    ];
-    validate_result(&result)?;
-    Ok(result)
+        -inverse_d * translation_x - inverse_e * translation_y,
+    ])
+}
+
+/// F32 counterpart of [`invert_affine_transform`] that preserves source-depth arithmetic.
+pub(crate) fn invert_affine_transform_f32(transform: &[f32; 6]) -> [f32; 6] {
+    let [a, b, translation_x, d, e, translation_y] = *transform;
+    let determinant = a * e - b * d;
+    let inverse_determinant = if determinant != 0.0_f32 {
+        1.0_f32 / determinant
+    } else {
+        0.0_f32
+    };
+    let inverse_a = e * inverse_determinant;
+    let inverse_b = -b * inverse_determinant;
+    let inverse_d = -d * inverse_determinant;
+    let inverse_e = a * inverse_determinant;
+    [
+        inverse_a,
+        inverse_b,
+        -inverse_a * translation_x - inverse_b * translation_y,
+        inverse_d,
+        inverse_e,
+        -inverse_d * translation_x - inverse_e * translation_y,
+    ]
 }
 
 /// Finds a 3-by-3 projective map between four point correspondences.
@@ -367,6 +378,35 @@ mod tests {
     }
 
     #[test]
+    fn affine_inverse_matches_pinned_source_depth_arithmetic() {
+        let inverse = invert_affine_transform(&[1.25, -0.5, 3.75, 2.5, 4.25, -1.5])
+            .expect("invertible affine matrix");
+        assert_eq!(
+            inverse.map(f64::to_bits),
+            [
+                0x3FE4_B94B_94B9_4B95,
+                0x3FB3_8138_1381_3814,
+                0xC002_83A8_3A83_A83B,
+                0xBFD8_6186_1861_8619,
+                0x3FC8_6186_1861_8619,
+                0x3FFB_6DB6_DB6D_B6DC,
+            ]
+        );
+        assert_eq!(
+            invert_affine_transform_f32(&[2.0, 0.0, 4.0, 0.0, 3.0, -6.0])
+                .map(f32::to_bits),
+            [
+                0x3F00_0000,
+                0x8000_0000,
+                0xC000_0000,
+                0x8000_0000,
+                0x3EAA_AAAB,
+                0x4000_0000,
+            ]
+        );
+    }
+
+    #[test]
     fn four_point_correspondences_determine_a_projective_matrix() {
         let source = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
         let destination = [[1.0, 2.0], [2.0, 7.0 / 6.0], [2.0, 19.0 / 7.0], [1.2, 4.0]];
@@ -381,11 +421,23 @@ mod tests {
     }
 
     #[test]
-    fn invalid_numeric_inputs_and_degenerate_geometry_are_rejected() {
+    fn singular_and_non_finite_affine_inverses_follow_the_runtime_contract() {
         assert_eq!(
-            invert_affine_transform(&[1.0, 2.0, 0.0, 2.0, 4.0, 0.0]),
-            Err(TransformMatrixError::DegenerateGeometry)
+            invert_affine_transform(&[1.0, 2.0, 3.0, 2.0, 4.0, 6.0])
+                .expect("singular matrices return zeros")
+                .map(f64::to_bits),
+            [0.0, -0.0, 0.0, -0.0, 0.0, 0.0].map(f64::to_bits)
         );
+        assert!(
+            invert_affine_transform(&[f64::NAN, 0.0, 1.0, 0.0, 1.0, 2.0])
+                .expect("NaN values propagate")
+                .into_iter()
+                .all(f64::is_nan)
+        );
+    }
+
+    #[test]
+    fn invalid_perspective_geometry_is_rejected() {
 
         let source = [[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]];
         let destination = [[0.0, 0.0], [1.0, 1.0], [2.0, 1.0], [3.0, 2.0]];

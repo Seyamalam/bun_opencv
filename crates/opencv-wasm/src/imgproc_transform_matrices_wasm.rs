@@ -108,16 +108,30 @@ pub fn mat_get_affine_transform(source: &Mat, destination: &Mat) -> Result<Mat, 
     affine_adapter(source, destination).map_err(JsError::from)
 }
 
-/// Allocates the inverse of a 2x3 F32 or F64 affine matrix as F64.
+/// Allocates the inverse of a 2x3 F32 or F64 affine matrix at the source depth.
 ///
 /// Strided single-channel regions are supported.
 ///
 /// # Errors
-/// Returns an error for unsupported depth or shape, non-finite coefficients, or a singular linear
-/// part.
+/// Returns an error for unsupported depth or shape.
 #[wasm_bindgen(js_name = matInvertAffineTransform)]
 pub fn mat_invert_affine_transform(transform: &Mat) -> Result<Mat, JsError> {
     invert_affine_adapter(transform).map_err(JsError::from)
+}
+
+/// Writes the inverse of a 2x3 F32 or F64 affine matrix into a mutable destination.
+///
+/// The destination is rebound when its shape or depth differs. Compatible regions are written
+/// through, and exact in-place operation is supported.
+///
+/// # Errors
+/// Returns an error for unsupported source depth or shape, or an invalid destination write.
+#[wasm_bindgen(js_name = matInvertAffineTransformInto)]
+pub fn mat_invert_affine_transform_into(
+    transform: &Mat,
+    destination: &Mat,
+) -> Result<(), JsError> {
+    invert_affine_into_adapter(transform, destination).map_err(JsError::from)
 }
 
 /// Allocates the 3x3 F64 projective map between four source and destination points.
@@ -165,6 +179,22 @@ fn decode_affine_points(matrix: &Mat) -> Result<[[f64; 2]; 3], TransformMatrixWa
 }
 
 fn invert_affine_adapter(transform: &Mat) -> Result<Mat, TransformMatrixWasmError> {
+    let (bytes, depth) = invert_affine_bytes(transform)?;
+    Ok(Mat::from_owned_bytes(bytes, 2, 3, 1, depth)?)
+}
+
+fn invert_affine_into_adapter(
+    transform: &Mat,
+    destination: &Mat,
+) -> Result<(), TransformMatrixWasmError> {
+    let (bytes, depth) = invert_affine_bytes(transform)?;
+    destination.write_output(bytes, 2, 3, 1, depth)?;
+    Ok(())
+}
+
+fn invert_affine_bytes(
+    transform: &Mat,
+) -> Result<(Vec<u8>, MatDepth), TransformMatrixWasmError> {
     validate_floating_depth(transform)?;
     if transform.rows() != 2 || transform.columns() != 3 || transform.channels() != 1 {
         return Err(TransformMatrixWasmError::AffineMatrixShape {
@@ -173,12 +203,43 @@ fn invert_affine_adapter(transform: &Mat) -> Result<Mat, TransformMatrixWasmErro
             channels: transform.channels(),
         });
     }
-    let values = decode_floating(transform)?;
-    let transform: [f64; 6] = values
-        .try_into()
-        .expect("validated affine matrix contains six coefficients");
-    let result = imgproc_transform_matrices::invert_affine_transform(&transform)?;
-    f64_matrix(&result, 2, 3)
+    let bytes = transform.compact_bytes();
+    match transform.depth() {
+        MatDepth::F32 => {
+            let mut coefficients = [0.0_f32; 6];
+            for (coefficient, chunk) in coefficients.iter_mut().zip(bytes.chunks_exact(4)) {
+                *coefficient = f32::from_ne_bytes(
+                    chunk
+                        .try_into()
+                        .expect("validated F32 affine chunks contain four bytes"),
+                );
+            }
+            let result =
+                imgproc_transform_matrices::invert_affine_transform_f32(&coefficients);
+            Ok((
+                result
+                    .into_iter()
+                    .flat_map(f32::to_ne_bytes)
+                    .collect::<Vec<_>>(),
+                MatDepth::F32,
+            ))
+        }
+        MatDepth::F64 => {
+            let values = decode_floating(transform)?;
+            let coefficients: [f64; 6] = values
+                .try_into()
+                .expect("validated affine matrix contains six coefficients");
+            let result = imgproc_transform_matrices::invert_affine_transform(&coefficients)?;
+            Ok((
+                result
+                    .into_iter()
+                    .flat_map(f64::to_ne_bytes)
+                    .collect::<Vec<_>>(),
+                MatDepth::F64,
+            ))
+        }
+        depth => Err(TransformMatrixWasmError::FloatingPointInputRequired(depth)),
+    }
 }
 
 fn perspective_adapter(source: &Mat, destination: &Mat) -> Result<Mat, TransformMatrixWasmError> {
@@ -363,7 +424,60 @@ mod tests {
 
         let result = invert_affine_adapter(&transform).expect("invertible matrix");
 
-        assert_close(&result, &[0.5, 0.0, -2.0, 0.0, 1.0 / 3.0, 2.0], 1.0e-13);
+        assert_eq!(result.depth(), MatDepth::F32);
+        assert_eq!(
+            decode_floating(&result)
+                .expect("F32 output")
+                .into_iter()
+                .map(f64::to_bits)
+                .collect::<Vec<_>>(),
+            [0.5_f32, -0.0, -2.0, -0.0, 1.0 / 3.0, 2.0]
+                .map(|value| f64::from(value).to_bits())
+        );
+    }
+
+    #[test]
+    fn inverse_adapter_mutates_regions_rebinds_and_supports_exact_aliasing() {
+        let source = f64_mat(&[2.0, 0.0, 4.0, 0.0, 3.0, -6.0], 2, 3, 1);
+        let parent = f64_mat(&[99.0; 15], 3, 5, 1);
+        let region = parent.roi(0, 1, 2, 3).expect("destination region");
+        invert_affine_into_adapter(&source, &region).expect("compatible region write");
+        assert_close(&region, &[0.5, -0.0, -2.0, -0.0, 1.0 / 3.0, 2.0], 0.0);
+        assert_eq!(
+            decode_floating(&parent).expect("parent remains attached"),
+            vec![
+                99.0,
+                0.5,
+                -0.0,
+                -2.0,
+                99.0,
+                99.0,
+                -0.0,
+                1.0 / 3.0,
+                2.0,
+                99.0,
+                99.0,
+                99.0,
+                99.0,
+                99.0,
+                99.0,
+            ]
+        );
+
+        invert_affine_into_adapter(&source, &source).expect("exact in-place write");
+        assert_close(&source, &[0.5, -0.0, -2.0, -0.0, 1.0 / 3.0, 2.0], 0.0);
+
+        let replacement = f32_mat(&[9.0], 1, 1, 1);
+        invert_affine_into_adapter(&source, &replacement).expect("destination replacement");
+        assert_eq!(
+            (
+                replacement.rows(),
+                replacement.columns(),
+                replacement.channels(),
+                replacement.depth()
+            ),
+            (2, 3, 1, MatDepth::F64)
+        );
     }
 
     #[test]

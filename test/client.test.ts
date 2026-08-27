@@ -1562,7 +1562,7 @@ class CopyingBackend implements OpenCvBackend {
   }
 
   matInvertAffineTransform(transform: WasmMatHandle): WasmMatHandle {
-    const values = transform.toFloat64Array();
+    const values = transform.depth === 5 ? transform.toFloat32Array() : transform.toFloat64Array();
     const a = values[0] ?? 0;
     const b = values[1] ?? 0;
     const c = values[2] ?? 0;
@@ -1574,18 +1574,22 @@ class CopyingBackend implements OpenCvBackend {
     const inverseB = -b / determinant;
     const inverseD = -d / determinant;
     const inverseE = a / determinant;
-    return f64Handle(
-      2,
-      3,
-      [
-        inverseA,
-        inverseB,
-        -(inverseA * c + inverseB * f),
-        inverseD,
-        inverseE,
-        -(inverseD * c + inverseE * f),
-      ].map(cleanTiny),
-    );
+    const output = [
+      inverseA,
+      inverseB,
+      -(inverseA * c + inverseB * f),
+      inverseD,
+      inverseE,
+      -(inverseD * c + inverseE * f),
+    ].map(cleanTiny);
+    return transform.depth === 5
+      ? new CopyingMatHandle(2, 3, 1, copyViewBytes(new Float32Array(output)), 5)
+      : f64Handle(2, 3, output);
+  }
+
+  matInvertAffineTransformInto(transform: WasmMatHandle, destination: WasmMatHandle): void {
+    const output = this.matInvertAffineTransform(transform);
+    destination.copyFromBytes(output.toUint8Array());
   }
 
   matInvertInto(source: WasmMatHandle, destination: WasmMatHandle, _method: number): number {
@@ -2494,8 +2498,12 @@ describe("OpenCv client", () => {
     const affine = client.getAffineTransform(affineSource, affineDestination);
     expect(Array.from(affine.toFloat64Array())).toEqual([2, 0, 2, 0, 3, 3]);
 
-    const inverse = client.invertAffineTransform(affine);
+    const inverse = client.zerosF64(2, 3, 1);
+    expect(client.invertAffineTransform(affine, inverse)).toBeUndefined();
     expect(Array.from(inverse.toFloat64Array())).toEqual([0.5, 0, -1, 0, 1 / 3, -1]);
+
+    const inverseAlloc = client.invertAffineTransformAlloc(affine);
+    expect(Array.from(inverseAlloc.toFloat64Array())).toEqual([0.5, 0, -1, 0, 1 / 3, -1]);
 
     const perspectiveSource = client.matFromF64(
       4,
@@ -2515,6 +2523,7 @@ describe("OpenCv client", () => {
       perspective,
       perspectiveDestination,
       perspectiveSource,
+      inverseAlloc,
       inverse,
       affine,
       affineDestination,
@@ -2523,6 +2532,34 @@ describe("OpenCv client", () => {
     ]) {
       matrix.dispose();
     }
+  });
+
+  test("matches invertAffineTransform destination and arity contracts", () => {
+    expect(client.invertAffineTransform.bind(client)).toHaveLength(2);
+    const source = client.matFromF32(2, 3, 1, new Float32Array([2, 0, 4, 0, 3, -6]));
+    const destination = client.zerosF32(2, 3, 1);
+    client.invertAffineTransform(source, destination);
+    expect(destination.depth).toBe("f32");
+    expect(Array.from(destination.toFloat32Array())).toEqual([
+      0.5,
+      0,
+      -2,
+      0,
+      Math.fround(1 / 3),
+      2,
+    ]);
+
+    expect(() => {
+      // oxlint-disable-next-line anti-slop/no-reflect-apply, typescript/unbound-method -- The test exercises invalid JavaScript arity.
+      Reflect.apply(client.invertAffineTransform, client, [source]);
+    }).toThrow(BindingError);
+    expect(() => {
+      // oxlint-disable-next-line anti-slop/no-reflect-apply, typescript/unbound-method -- The test exercises invalid JavaScript arity.
+      Reflect.apply(client.invertAffineTransform, client, [source, destination, 1]);
+    }).toThrow(BindingError);
+
+    destination.dispose();
+    source.dispose();
   });
 
   test("matches getAffineTransform exact arity", () => {

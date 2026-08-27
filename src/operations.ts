@@ -92,7 +92,7 @@ export const OPENCV_OPERATIONS = [
   { method: "hconcat", wasmExport: "matHconcat2" },
   { method: "inRange", wasmExport: "matInRangeU8" },
   { method: "invert", wasmExport: "matInvertInto" },
-  { method: "invertAffineTransform", wasmExport: "matInvertAffineTransform" },
+  { method: "invertAffineTransform", wasmExport: "matInvertAffineTransformInto" },
   { method: "isContourConvex", wasmExport: "matIsContourConvex" },
   { method: "log", wasmExport: "matLogInto" },
   { method: "lut", wasmExport: "matLut" },

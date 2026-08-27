@@ -557,7 +557,15 @@ class WasmOpenCv implements OpenCv {
     );
   }
 
-  invertAffineTransform(transform: Mat): Mat {
+  invertAffineTransform(transform: Mat, destination: Mat): void {
+    requireExactArity(arguments.length, 2, "invertAffineTransform");
+    this.#backend.matInvertAffineTransformInto(
+      matHandleForBinding(transform),
+      matHandleForBinding(destination),
+    );
+  }
+
+  invertAffineTransformAlloc(transform: Mat): Mat {
     return new Mat(this.#backend.matInvertAffineTransform(transform.handleForBackend()));
   }
 
