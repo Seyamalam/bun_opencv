@@ -5,6 +5,7 @@ use std::{error::Error, fmt};
 pub(crate) const MORPH_RECT: i32 = 0;
 pub(crate) const MORPH_CROSS: i32 = 1;
 pub(crate) const MORPH_ELLIPSE: i32 = 2;
+pub(crate) const MORPH_DIAMOND: i32 = 3;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum HelperError {
@@ -277,7 +278,10 @@ pub(crate) fn structuring_element(
     if rows == 0 || columns == 0 {
         return Err(HelperError::EmptySize);
     }
-    if !matches!(shape, MORPH_RECT | MORPH_CROSS | MORPH_ELLIPSE) {
+    if !matches!(
+        shape,
+        MORPH_RECT | MORPH_CROSS | MORPH_ELLIPSE | MORPH_DIAMOND
+    ) {
         return Err(HelperError::InvalidShape(shape));
     }
     let normalized_anchor_x = normalize_anchor(anchor_x, columns);
@@ -315,6 +319,7 @@ pub(crate) fn structuring_element(
             }
         }
         MORPH_ELLIPSE => fill_ellipse(&mut bytes, columns, rows),
+        MORPH_DIAMOND => fill_diamond(&mut bytes, columns, rows),
         _ => unreachable!("shape was validated"),
     }
 
@@ -323,6 +328,20 @@ pub(crate) fn structuring_element(
         rows,
         columns,
     })
+}
+
+fn fill_diamond(bytes: &mut [u8], columns: u32, rows: u32) {
+    let center_x = columns / 2;
+    let center_y = rows / 2;
+    let columns_usize = columns as usize;
+    for row in 0..rows {
+        let vertical_distance = row.abs_diff(center_y);
+        let half_width = center_x.saturating_sub(vertical_distance);
+        let first = center_x - half_width;
+        let last = (center_x + half_width).min(columns - 1);
+        let start = row as usize * columns_usize;
+        bytes[start + first as usize..=start + last as usize].fill(1);
+    }
 }
 
 fn normalize_anchor(value: i32, size: u32) -> Option<u32> {
@@ -379,6 +398,14 @@ mod tests {
             ellipse.bytes,
             [
                 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0
+            ]
+        );
+
+        let diamond = structuring_element(MORPH_DIAMOND, 5, 5, -1, -1).expect("valid diamond");
+        assert_eq!(
+            diamond.bytes,
+            [
+                0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0
             ]
         );
     }

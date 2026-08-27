@@ -59,8 +59,8 @@ export interface Size {
 /** Integer rectangle with an inclusive pixel extent. */
 export interface Rect extends Size, Point {}
 
-/** Structuring-element kind: rectangle, cross, or ellipse. */
-export type StructuringElementKind = 0 | 1 | 2;
+/** Structuring-element kind: rectangle, cross, ellipse, or diamond. */
+export type StructuringElementKind = 0 | 1 | 2 | 3;
 
 /** Floating-point depths supported by Hanning windows. */
 export type HanningWindowDepth = "f32" | "f64";

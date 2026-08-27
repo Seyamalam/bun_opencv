@@ -2457,6 +2457,32 @@ describe("OpenCv client", () => {
     kernel.dispose();
   });
 
+  test("matches getStructuringElement overload and integer conversion contracts", () => {
+    expect(client.getStructuringElement.bind(client)).toHaveLength(0);
+    // oxlint-disable-next-line anti-slop/no-reflect-apply, typescript/unbound-method -- The test exercises the untyped JavaScript binding boundary.
+    const converted = Reflect.apply(client.getStructuringElement, client, [
+      true,
+      { width: 3.9, height: 2.9 },
+      { x: true, y: false },
+    ]);
+    expect([converted.rows, converted.columns]).toEqual([2, 3]);
+    converted.dispose();
+
+    expect(() => {
+      // oxlint-disable-next-line anti-slop/no-reflect-apply, typescript/unbound-method -- The test exercises invalid JavaScript arity.
+      Reflect.apply(client.getStructuringElement, client, [0]);
+    }).toThrow(BindingError);
+    expect(() => {
+      // oxlint-disable-next-line anti-slop/no-reflect-apply, typescript/unbound-method -- The test exercises invalid JavaScript arity.
+      Reflect.apply(client.getStructuringElement, client, [
+        0,
+        { width: 3, height: 3 },
+        { x: 1, y: 1 },
+        0,
+      ]);
+    }).toThrow(BindingError);
+  });
+
   test("constructs affine and perspective matrices", () => {
     const rotation = client.getRotationMatrix2D({ x: 1, y: 2 }, 90, 1);
     expect(Array.from(rotation.toFloat64Array())).toEqual([

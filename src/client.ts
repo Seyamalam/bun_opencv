@@ -461,12 +461,17 @@ class WasmOpenCv implements OpenCv {
   }
 
   getStructuringElement(
-    kind: StructuringElementKind,
-    size: Size,
-    anchor: Point = { x: -1, y: -1 },
+    ...args:
+      | [kind: StructuringElementKind, size: Size]
+      | [kind: StructuringElementKind, size: Size, anchor: Point]
   ): Mat {
-    validateMinimumSize(size, 1, "structuring element");
-    validateIntegerPoint(anchor, "anchor");
+    requireOverloadArity(args.length, 2, 3, "getStructuringElement");
+    const kind = toWasmI32(args[0]);
+    const size = size2iForBinding(args[1]);
+    const anchor = args.length === 2 ? { x: -1, y: -1 } : point2iForBinding(args[2]);
+    if (size.width < 1 || size.height < 1) {
+      throw new OpenCvInputError("structuring element dimensions must be at least 1");
+    }
     return new Mat(
       this.#backend.getStructuringElement(kind, size.width, size.height, anchor.x, anchor.y),
     );
@@ -1208,6 +1213,41 @@ function point2fForBinding(value: EmbindPointInput): Point {
   const x = toWasmF32(value.x);
   const y = toWasmF32(value.y);
   return { x, y };
+}
+
+function point2iForBinding(value: Point): Point {
+  const isObject =
+    value !== null &&
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- This is the JS-to-Embind Point boundary.
+    (typeof value === "object" || typeof value === "function");
+  if (!isObject) {
+    throw new BindingError(`Cannot convert "${String(value)}" to Point`);
+  }
+  if (!("x" in value)) throw new BindingError("Point is missing field x");
+  if (!("y" in value)) throw new BindingError("Point is missing field y");
+  // SAFETY: The field checks above prove both binding fields exist; each field is parsed next.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- This assertion models the untyped Embind value-object boundary.
+  const fields = value as { readonly x: EmbindScalarInput; readonly y: EmbindScalarInput };
+  return { x: toWasmI32(fields.x), y: toWasmI32(fields.y) };
+}
+
+function size2iForBinding(value: Size): Size {
+  const isObject =
+    value !== null &&
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- This is the JS-to-Embind Size boundary.
+    (typeof value === "object" || typeof value === "function");
+  if (!isObject) {
+    throw new BindingError(`Cannot convert "${String(value)}" to Size`);
+  }
+  if (!("width" in value)) throw new BindingError("Size is missing field width");
+  if (!("height" in value)) throw new BindingError("Size is missing field height");
+  // SAFETY: The field checks above prove both binding fields exist; each field is parsed next.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- This assertion models the untyped Embind value-object boundary.
+  const fields = value as {
+    readonly width: EmbindScalarInput;
+    readonly height: EmbindScalarInput;
+  };
+  return { width: toWasmI32(fields.width), height: toWasmI32(fields.height) };
 }
 
 function isEmbindPointObject(value: EmbindPointInput): value is EmbindPointObject {

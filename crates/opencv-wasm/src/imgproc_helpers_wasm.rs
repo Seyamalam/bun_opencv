@@ -55,7 +55,7 @@ impl From<MatError> for HelperWasmError {
 
 /// Creates a single-channel U8 structuring kernel.
 ///
-/// Supported shape codes are 0 for rectangle, 1 for cross, and 2 for ellipse. An anchor
+/// Supported shape codes are 0 for rectangle, 1 for cross, 2 for ellipse, and 3 for diamond. An anchor
 /// coordinate of -1 selects that dimension's center. The anchor changes the cross intersection;
 /// rectangle and ellipse geometry remain centered. This partial binding accepts positive kernel
 /// dimensions whose compact U8 result fits the WASM matrix limit.
