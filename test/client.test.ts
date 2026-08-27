@@ -2499,6 +2499,24 @@ describe("OpenCv client", () => {
     }
   });
 
+  test("matches getAffineTransform exact arity", () => {
+    expect(client.getAffineTransform.bind(client)).toHaveLength(2);
+    const source = client.matFromF32(3, 2, 1, new Float32Array([0, 0, 1, 0, 0, 1]));
+    const destination = client.matFromF32(3, 2, 1, new Float32Array([2, 3, 4, 3, 2, 6]));
+
+    expect(() => {
+      // oxlint-disable-next-line anti-slop/no-reflect-apply, typescript/unbound-method -- The test exercises invalid JavaScript arity.
+      Reflect.apply(client.getAffineTransform, client, [source]);
+    }).toThrow(BindingError);
+    expect(() => {
+      // oxlint-disable-next-line anti-slop/no-reflect-apply, typescript/unbound-method -- The test exercises invalid JavaScript arity.
+      Reflect.apply(client.getAffineTransform, client, [source, destination, 1]);
+    }).toThrow(BindingError);
+
+    destination.dispose();
+    source.dispose();
+  });
+
   test("matches getRotationMatrix2D binding contracts", () => {
     type JavascriptBindingValue =
       boolean | number | bigint | string | symbol | object | null | undefined;

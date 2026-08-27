@@ -423,11 +423,11 @@ class WasmOpenCv implements OpenCv {
   }
 
   getAffineTransform(source: Mat, destination: Mat): Mat {
+    requireExactArity(arguments.length, 2, "getAffineTransform");
+    const sourceHandle = matHandleForBinding(source);
+    const destinationHandle = matHandleForBinding(destination);
     return new Mat(
-      this.#backend.matGetAffineTransform(
-        source.handleForBackend(),
-        destination.handleForBackend(),
-      ),
+      this.#backend.matGetAffineTransform(sourceHandle, destinationHandle),
     );
   }
 
