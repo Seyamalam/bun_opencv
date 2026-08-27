@@ -1692,10 +1692,10 @@ export const PARITY_MANIFEST = {
       method: "trace",
       module: "core",
       notes:
-        "All scalar depths with channel-zero scalar output; full multi-channel Scalar behavior remains.",
+        "Exact one-argument browser contract across all scalar depths, one through four channels, rectangular and strided matrices, typed empties, and floating-point accumulation edge values.",
       patentReview: "required",
       sources: [CORE_ARRAY_SOURCE],
-      status: "partial",
+      status: "implemented",
       upstream: "cv.trace",
       upstreamId: "core.function.trace",
       wasmExport: "matTrace",

@@ -257,11 +257,13 @@ The decomposition method defaults to `0` for LU. Method `3` selects Cholesky and
 - `sum(source)` returns a four-number scalar and supports up to four channels. It is an extra convenience beyond the pinned 488-family browser ledger.
 - `mean(source)` and `mean(source, mask)` return a four-number scalar for one through four channels. A U8 single-channel mask selects pixels by non-zero values.
 - `minMaxLoc(source)` and `minMaxLoc(source, mask)` return extrema with their first row-major coordinates for a single-channel source. An all-zero mask returns zero extrema at `(-1, -1)`.
-- `trace(source)` returns the channel-zero diagonal sum.
+- `trace(source)` returns four diagonal-sum lanes for one through four channels.
 
 Reducers compact non-contiguous regions before decoding values. `countNonZero` returns zero for an empty matrix, excludes both signs of zero, and counts NaN, infinities, and subnormal values as non-zero. Floating-point sums, means, and traces propagate NaN. `minMaxLoc` skips NaN; an all-NaN selection returns zero extrema at `(-1, -1)`. A fresh canonical empty header uses `(0, 0)`, while typed empty layouts use `(-1, -1)`.
 
 The pinned browser fixture verifies the complete `mean` and `minMaxLoc` contracts, including optional masks, every scalar depth, channel limits, empty headers, compact and strided inputs, tie locations, floating-point edge values, argument errors, and deleted handles.
+
+The same fixture verifies the complete `trace` contract across every scalar depth, one through four channels, rectangular and strided inputs, typed empties, exact accumulation order, floating-point edge values, argument errors, and deleted handles.
 
 ### AKAZE configuration
 

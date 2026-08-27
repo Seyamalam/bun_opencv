@@ -25,7 +25,7 @@ Desktop modules that the official OpenCV.js build disables are outside this pari
 
 ## Fully implemented families
 
-Eighty-six families meet the full-family definition. Current full parity is 86 of 488, or 17.62%.
+Eighty-seven families meet the full-family definition. Current full parity is 87 of 488, or 17.83%.
 
 | Package methods                                                                                                   | OpenCV.js families                              | Verified contract                                                           |
 | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------- |
@@ -72,12 +72,13 @@ Eighty-six families meet the full-family definition. Current full parity is 86 o
 | `flip`                                                                                                            | `cv.flip`                                       | Exact all-depth OutputArray, signed codes, aliasing, errors, and lifetime   |
 | `countNonZero`                                                                                                    | `cv.countNonZero`                               | Exact all-depth scalar reduction, empty, ROI, errors, and lifetime          |
 | `mean`, `minMaxLoc`                                                                                               | `cv.mean`, `cv.minMaxLoc`                       | Exact optional masks, depths, channels, empties, numeric edges, and ROI     |
+| `trace`                                                                                                           | `cv.trace`                                      | Exact four-lane diagonal Scalar, depths, empties, ROI, and numeric edges    |
 | `repeat`                                                                                                          | `cv.repeat`                                     | Exact all-depth OutputArray, counts, empty, aliasing, and lifetime          |
 | `rotate`                                                                                                          | `cv.rotate`                                     | Exact all-depth OutputArray, codes, empty, aliasing, and lifetime           |
 
 ## Working partial families
 
-Forty-three families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 129 families in total.
+Forty-two families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 129 families in total.
 
 | Package methods                                       | OpenCV.js families                                                    | Current limit                                            |
 | ----------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------- |
@@ -90,7 +91,6 @@ Forty-three families have useful original Rust/WASM slices but do not meet the f
 | `lut`                                                 | `cv.LUT`                                                              | Byte sources and every table depth                       |
 | `norm`, `normalize`                                   | `cv.norm`, `cv.normalize`                                             | All depths, masks, and major norm modes                  |
 | `meanStdDev`, `reduce`                                | `cv.meanStdDev`, `cv.reduce`                                          | All depths and mutable outputs                           |
-| `trace`                                               | `cv.trace`                                                            | Multi-channel Scalar return remains                      |
 | `mixChannels`                                         | `cv.mixChannels`                                                      | One source and destination; MatVector remains            |
 | `randu`, `randn`, `setRNGSeed`                        | Matching `cv` random families                                         | Package RNG sequences differ from OpenCV                 |
 | `getLogLevel`, `setLogLevel`                          | Matching `cv` logging families                                        | Log bindings stay absent from upstream browser artifact. |
@@ -118,6 +118,8 @@ The fixture exposes the direct `AKAZE` constructor and all 15 instance methods. 
 The fixture passes the complete pinned browser contract for `getOptimalDFTSize`. It checks exact arity, Embind signed i32 coercion and errors, negative and zero inputs, smooth-size results, the exclusive `2,125,764,000` upper sentinel, and the remaining signed i32 boundary. Exhaustive Rust tests additionally verify minimality and every representable 2-, 3-, and 5-smooth boundary. This family counts as implemented.
 
 The fixture passes the complete pinned browser contracts for `mean` and `minMaxLoc`. It verifies both optional-mask overloads, all scalar depths, the channel limits, compact and strided matrices, mask validation, canonical and typed empty headers, first row-major ties, non-finite values, signed zero, invalid inputs, and deleted handles.
+
+The fixture passes the complete pinned browser contract for `trace`. It verifies exact arity, every scalar depth, one through four channel lanes, rectangular and strided matrices, typed empties, F32 widening, F64 accumulation order, signed zero, non-finite values, invalid inputs, and deleted handles.
 
 The fixture exposes the direct `KAZE` constructor and all 13 instance methods. Its complete matrix checks exact arity, defaults, return values, scalar coercion, shared diffusivity singleton identity, structural enum setter behavior, raw unknown wire values, deletion, repeat deletion, and calls after deletion. All 13 instance methods pass and count as implemented. The config-listed static `KAZE.create` binding is absent from the artifact, so the package factory remains partial.
 
