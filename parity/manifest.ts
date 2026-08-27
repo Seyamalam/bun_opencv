@@ -1478,13 +1478,13 @@ export const PARITY_MANIFEST = {
       method: "invertAffineTransform",
       module: "imgproc",
       notes:
-        "Finite nonsingular 2x3 single-channel F32 or F64 matrices, including strided regions, allocate F64 inverses; other input shapes, mutable output, and differential fixtures remain.",
+        "Matches the exact two-Mat mutable binding for 2x3 single-channel F32/F64 inputs, source-depth arithmetic and output, destination replacement, compatible ROI writes, exact aliasing, singular signed zeros, non-finite propagation, and invalid-input behavior.",
       patentReview: "required",
       sources: [IMGPROC_SOURCE],
-      status: "partial",
+      status: "implemented",
       upstream: "cv.invertAffineTransform",
       upstreamId: "imgproc.function.invert-affine-transform",
-      wasmExport: "matInvertAffineTransform",
+      wasmExport: "matInvertAffineTransformInto",
     },
     {
       implementationOrigin: "original",

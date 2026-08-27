@@ -21,7 +21,7 @@ The roadmap gives release order. This file lists concrete work that can be picke
 - [x] Add deterministic TypeScript disposal for WASM matrix handles.
 - [x] Add signed integer and floating-point matrix depths.
 - [ ] Add reusable output buffers and in-WASM operation pipelines.
-- [ ] Expand differential fixtures to cover all 47 partial operation families.
+- [ ] Expand differential fixtures to cover all 46 partial operation families.
 - [x] Verify and promote all 13 GFTT detector instance methods against the pinned browser call-contract matrix.
 - [x] Verify and promote the five primitive AGAST and five primitive FAST instance methods against the pinned browser call-contract matrix.
 - [x] Verify and promote the 11 non-enum KAZE instance methods against the pinned browser call-contract matrix.
@@ -34,6 +34,7 @@ The roadmap gives release order. This file lists concrete work that can be picke
 - [x] Verify and promote `setIdentity` against the pinned browser contract.
 - [x] Verify and promote `getAffineTransform` against the pinned browser contract.
 - [x] Verify and promote `getStructuringElement` against the pinned browser contract.
+- [x] Verify and promote `invertAffineTransform` against the pinned browser contract.
 - [ ] Pin the exact OpenCV reference version used to create fixtures.
 - [ ] Decide whether grayscale should match OpenCV's integer rounding byte for byte.
 - [ ] Add fuzz or property tests for dimensions, buffer lengths, and resize mappings.
@@ -54,4 +55,4 @@ The roadmap gives release order. This file lists concrete work that can be picke
 - [ ] Specify border modes before adding convolution.
 - [ ] Specify channel order and output format for general color conversion.
 - [x] Add operation-specific parity fixtures before marking the first entries implemented.
-- [ ] Add operation-specific parity fixtures before marking another entry implemented. Current checkpoint: 82 of 488 families, or 16.80%.
+- [ ] Add operation-specific parity fixtures before marking another entry implemented. Current checkpoint: 83 of 488 families, or 17.01%.

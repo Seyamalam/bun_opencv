@@ -194,7 +194,7 @@ pointPolygonTest(contour: Mat, point: Point, measureDistance: boolean): number;
 ### Image-processing helpers
 
 ```ts
-type StructuringElementKind = 0 | 1 | 2;
+type StructuringElementKind = 0 | 1 | 2 | 3;
 type HanningWindowDepth = "f32" | "f64";
 
 getStructuringElement(kind: StructuringElementKind, size: Size, anchor?: Point): Mat;
@@ -223,7 +223,8 @@ clipLine(rectangle: Rect, start: Point, end: Point): readonly [Point, Point] | u
 ```ts
 getRotationMatrix2D(center: Point, angleDegrees: number, scale: number): Mat;
 getAffineTransform(source: Mat, destination: Mat): Mat;
-invertAffineTransform(transform: Mat): Mat;
+invertAffineTransform(transform: Mat, destination: Mat): void;
+invertAffineTransformAlloc(transform: Mat): Mat;
 getPerspectiveTransform(source: Mat, destination: Mat): Mat;
 ```
 
@@ -231,13 +232,13 @@ getPerspectiveTransform(source: Mat, destination: Mat): Mat;
 
 `getAffineTransform` reads three source and destination points from continuous F32 matrices. Each point set may be `3x2C1`, `3x1C2`, or `1x3C2`. It returns a fresh 2x3 single-channel F64 matrix. Collinear source points produce six zeros, and non-finite coordinates propagate through the result.
 
-`invertAffineTransform` accepts a finite, nonsingular `2x3C1` F32 or F64 matrix, including a strided region, and returns a `2x3C1` F64 inverse.
+`invertAffineTransform` accepts exactly two Mat arguments. The source must be `2x3C1` at F32 or F64 depth and may be a strided region. The destination is replaced when its layout differs and written through when it is a compatible region. Exact in-place operation is supported. Output depth and arithmetic match the source. Singular matrices produce the pinned signed-zero coefficients, while NaN and infinity propagate through the observed arithmetic. `invertAffineTransformAlloc` is the package-specific allocating convenience.
 
 `getPerspectiveTransform` reads four source and destination points. Each point set may be `4x2C1`, `4x1C2`, or `1x4C2` at F32 or F64 depth. Strided regions are supported. It uses one scaled partial-pivoting solver, fixes the lower-right output coefficient to one, and returns a `3x3C1` F64 matrix. It rejects non-finite values, degenerate point configurations, and transforms that cannot use that normalization.
 
-All four constructors allocate their results. `getRotationMatrix2D` passes its complete pinned browser contract. Mutable destination forms and complete browser differential fixtures remain for the other three families.
+The three `get*Transform` constructors allocate their results. `invertAffineTransform` uses the upstream mutable destination contract, with an allocating package convenience. `getRotationMatrix2D`, `getAffineTransform`, and `invertAffineTransform` pass their complete pinned browser contracts. Complete differential fixtures remain for `getPerspectiveTransform`.
 
-The pinned OpenCV.js 4.13.0 browser fixture passes the complete audited contracts for all five contour methods, `getRotationMatrix2D`, `getAffineTransform`, and `getStructuringElement`. The audits cover exact overloads, structural value-object conversion, numeric edge behavior, output metadata, source preservation, and independent result ownership.
+The pinned OpenCV.js 4.13.0 browser fixture passes the complete audited contracts for all five contour methods, `getRotationMatrix2D`, `getAffineTransform`, `invertAffineTransform`, and `getStructuringElement`. The audits cover exact overloads, structural value-object conversion, numeric edge behavior, mutable outputs, aliasing, source preservation, and result metadata.
 
 ### Dense matrix algebra
 

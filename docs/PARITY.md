@@ -25,7 +25,7 @@ Desktop modules that the official OpenCV.js build disables are outside this pari
 
 ## Fully implemented families
 
-Eighty-two families meet the full-family definition. Current full parity is 82 of 488, or 16.80%.
+Eighty-three families meet the full-family definition. Current full parity is 83 of 488, or 17.01%.
 
 | Package methods                                                                                                   | OpenCV.js families                              | Verified contract                                                           |
 | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------- |
@@ -63,6 +63,7 @@ Eighty-two families meet the full-family definition. Current full parity is 82 o
 | `isContourConvex`, `pointPolygonTest`                                                                             | Matching `cv` polygon-query families            | Exact strict convexity, Point2f, small contours, distance, errors, and ROI  |
 | `getRotationMatrix2D`                                                                                             | `cv.getRotationMatrix2D`                        | Exact Point2f, F64 conversion, coefficients, and independent ownership      |
 | `getAffineTransform`                                                                                              | `cv.getAffineTransform`                         | Exact F32 point layouts, LU arithmetic, singular zeros, errors, and output  |
+| `invertAffineTransform`                                                                                           | `cv.invertAffineTransform`                      | Exact F32/F64 mutable output, depth arithmetic, aliasing, ROI, and errors   |
 | `getStructuringElement`                                                                                           | `cv.getStructuringElement`                      | Exact overloads, integer conversion, four kernel kinds, anchors, and errors |
 | `determinant`                                                                                                     | `cv.determinant`                                | Exact F32/F64 square-matrix arithmetic, errors, ROI, and preservation       |
 | `setIdentity`                                                                                                     | `cv.setIdentity`                                | Exact overloads, Scalar conversion, all depths, empties, ROI, and aliases   |
@@ -74,7 +75,7 @@ Eighty-two families meet the full-family definition. Current full parity is 82 o
 
 ## Working partial families
 
-Forty-seven families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 129 families in total.
+Forty-six families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 129 families in total.
 
 | Package methods                                       | OpenCV.js families                                                    | Current limit                                            |
 | ----------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------- |
@@ -95,7 +96,7 @@ Forty-seven families have useful original Rust/WASM slices but do not meet the f
 | `invert`, `solve`                                     | `cv.invert`, `cv.solve`                                               | Selected dense single-channel methods                    |
 | `createHanningWindow`                                 | `cv.createHanningWindow`                                              | Selected F32/F64 window forms                            |
 | `ellipse2Poly`, `clipLine`                            | Matching `cv` integer geometry helpers                                | Selected integer argument and return forms               |
-| `invertAffineTransform`, `getPerspectiveTransform`    | Matching `cv` transform matrix families                               | Selected F32/F64 inputs with F64 output                  |
+| `getPerspectiveTransform`                             | `cv.getPerspectiveTransform`                                          | Selected F32/F64 inputs with F64 output                  |
 | `createAKAZE`                                         | `cv.AKAZE.create`                                                     | Static factory is absent from the pinned artifact        |
 | `createKAZE`                                          | `cv.KAZE.create`                                                      | Static factory is absent from the pinned artifact        |
 | `createAgastFeatureDetector`                          | `cv.AgastFeatureDetector.create`                                      | Static factory is absent from the pinned artifact        |
