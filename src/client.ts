@@ -119,8 +119,21 @@ class WasmOpenCv implements OpenCv {
     );
   }
 
-  bitwiseNot(source: Mat): Mat {
-    return new Mat(this.#backend.matBitwiseNotU8(source.handleForBackend()));
+  bitwiseNot(
+    ...arguments_: [source: Mat, destination: Mat] | [source: Mat, destination: Mat, mask: Mat]
+  ): void {
+    requireOverloadArity(arguments_.length, 2, 3, "bitwise_not");
+    const source = matHandleForBinding(arguments_[0]);
+    const destination = matHandleForBinding(arguments_[1]);
+    if (arguments_.length === 2) {
+      this.#backend.matBitwiseNotInto(source, destination);
+      return;
+    }
+    this.#backend.matBitwiseNotMaskedInto(source, destination, matHandleForBinding(arguments_[2]));
+  }
+
+  bitwiseNotAlloc(source: Mat): Mat {
+    return new Mat(this.#backend.matBitwiseNot(source.handleForBackend()));
   }
 
   bitwiseOr(left: Mat, right: Mat): Mat {

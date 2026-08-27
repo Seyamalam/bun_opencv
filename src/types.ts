@@ -146,6 +146,13 @@ export interface OpenCvBackend {
   matAbsdiffU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matAddU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matBitwiseAndU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
+  matBitwiseNot(source: WasmMatHandle): WasmMatHandle;
+  matBitwiseNotInto(source: WasmMatHandle, destination: WasmMatHandle): void;
+  matBitwiseNotMaskedInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    mask: WasmMatHandle,
+  ): void;
   matBitwiseNotU8(source: WasmMatHandle): WasmMatHandle;
   matBitwiseOrU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
   matBitwiseXorU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle;
@@ -404,7 +411,9 @@ export interface OpenCv {
   ): void;
   addWeightedAlloc(a: Mat, alpha: number, b: Mat, beta: number, gamma: number): Mat;
   bitwiseAnd(left: Mat, right: Mat): Mat;
-  bitwiseNot(source: Mat): Mat;
+  bitwiseNot(source: Mat, destination: Mat): void;
+  bitwiseNot(source: Mat, destination: Mat, mask: Mat): void;
+  bitwiseNotAlloc(source: Mat): Mat;
   bitwiseOr(left: Mat, right: Mat): Mat;
   bitwiseXor(left: Mat, right: Mat): Mat;
   arcLength(contour: Mat, closed: boolean): number;

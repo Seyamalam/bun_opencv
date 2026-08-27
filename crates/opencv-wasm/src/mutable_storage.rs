@@ -281,6 +281,40 @@ impl MutableStorage {
         Ok(())
     }
 
+    pub(crate) fn write_bitwise_not_from_shared(
+        &self,
+        source: &Self,
+    ) -> Result<(), MutableStorageError> {
+        if !self.shares_allocation_with(source)
+            || self.rows != source.rows
+            || self.row_bytes != source.row_bytes
+        {
+            return Err(MutableStorageError::IncorrectBufferLength {
+                expected: source.row_bytes,
+                actual: self.row_bytes,
+            });
+        }
+
+        let mut data = self.data.borrow_mut();
+        let mut input = [0; 2];
+        for row in 0..self.rows {
+            let source_row = source.offset + row * source.row_stride;
+            let destination_row = self.offset + row * self.row_stride;
+            let mut byte = 0;
+            while byte + 1 < self.row_bytes {
+                input.copy_from_slice(&data[source_row + byte..source_row + byte + 2]);
+                data[destination_row + byte] = !input[0];
+                data[destination_row + byte + 1] = !input[1];
+                byte += 2;
+            }
+            if byte < self.row_bytes {
+                let input = data[source_row + byte];
+                data[destination_row + byte] = !input;
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) fn write_binary_scalars_from_shared(
         &self,
         first: &Self,

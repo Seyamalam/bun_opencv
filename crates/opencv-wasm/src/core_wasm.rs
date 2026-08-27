@@ -6,8 +6,8 @@ use wasm_bindgen::prelude::*;
 
 use crate::{
     core_ops::{
-        CoreOpError, absdiff_u8, add_u8, bitwise_and_u8, bitwise_not_u8, bitwise_or_u8,
-        bitwise_xor_u8, compare_eq_u8, count_non_zero_u8, in_range_u8, max_u8, min_u8, subtract_u8,
+        absdiff_u8, add_u8, bitwise_and_u8, bitwise_not_u8, bitwise_or_u8, bitwise_xor_u8,
+        compare_eq_u8, count_non_zero_u8, in_range_u8, max_u8, min_u8, subtract_u8, CoreOpError,
     },
     mat::{Mat, MatDepth, MatError},
 };
@@ -56,6 +56,12 @@ enum CoreWasmError {
         expected: u16,
         actual: u16,
     },
+    InvalidMaskDepth {
+        actual: MatDepth,
+    },
+    InvalidMaskChannels {
+        actual: u16,
+    },
     CountOverflow,
     Kernel(CoreOpError),
     Matrix(MatError),
@@ -82,6 +88,14 @@ impl fmt::Display for CoreWasmError {
                 formatter,
                 "matrix has {actual} channel(s); expected {expected} channel(s)"
             ),
+            Self::InvalidMaskDepth { actual } => write!(
+                formatter,
+                "bitwise masks require U8 or I8 depth; received {actual:?}"
+            ),
+            Self::InvalidMaskChannels { actual } => write!(
+                formatter,
+                "bitwise masks require one channel; received {actual}"
+            ),
             Self::CountOverflow => {
                 formatter.write_str("non-zero element count exceeds the WASM integer limit")
             }
@@ -99,6 +113,8 @@ impl Error for CoreWasmError {
             Self::IncorrectDepth { .. }
             | Self::ShapeMismatch { .. }
             | Self::IncorrectChannelCount { .. }
+            | Self::InvalidMaskDepth { .. }
+            | Self::InvalidMaskChannels { .. }
             | Self::CountOverflow => None,
         }
     }
@@ -186,6 +202,38 @@ pub fn mat_bitwise_not_u8(source: &Mat) -> Result<Mat, JsError> {
     apply_unary_u8(source, bitwise_not_u8).map_err(JsError::from)
 }
 
+/// Inverts every stored bit while preserving the source matrix metadata.
+///
+/// # Errors
+/// Returns an error when matrix metadata and storage are inconsistent.
+#[wasm_bindgen(js_name = matBitwiseNot)]
+pub fn mat_bitwise_not(source: &Mat) -> Result<Mat, JsError> {
+    apply_bitwise_not(source).map_err(JsError::from)
+}
+
+/// Writes an all-depth bitwise inversion into a caller-owned destination.
+///
+/// # Errors
+/// Returns an error when matrix metadata, storage, or destination writes are invalid.
+#[wasm_bindgen(js_name = matBitwiseNotInto)]
+pub fn mat_bitwise_not_into(source: &Mat, destination: &Mat) -> Result<(), JsError> {
+    apply_bitwise_not_into(source, destination, None).map_err(JsError::from)
+}
+
+/// Writes an all-depth bitwise inversion for pixels selected by an 8-bit mask.
+///
+/// # Errors
+/// Returns an error for an invalid mask or destination write.
+#[wasm_bindgen(js_name = matBitwiseNotMaskedInto)]
+pub fn mat_bitwise_not_masked_into(
+    source: &Mat,
+    destination: &Mat,
+    mask: &Mat,
+) -> Result<(), JsError> {
+    let mask = bitwise_mask(source, mask).map_err(JsError::from)?;
+    apply_bitwise_not_into(source, destination, mask.as_deref()).map_err(JsError::from)
+}
+
 /// Selects the smaller corresponding U8 matrix element.
 ///
 /// # Errors
@@ -251,6 +299,106 @@ fn apply_binary_u8(left: &Mat, right: &Mat, kernel: BinaryKernel) -> Result<Mat,
 fn apply_unary_u8(source: &Mat, kernel: fn(&[u8]) -> Vec<u8>) -> Result<Mat, CoreWasmError> {
     validate_u8(source, "source")?;
     matrix_from_u8(kernel(&source.compact_bytes()), MatShape::of(source))
+}
+
+fn apply_bitwise_not(source: &Mat) -> Result<Mat, CoreWasmError> {
+    let output = bitwise_not_u8(&source.compact_bytes());
+    Mat::from_owned_bytes(
+        output,
+        source.rows(),
+        source.columns(),
+        source.channels(),
+        source.depth(),
+    )
+    .map_err(CoreWasmError::from)
+}
+
+fn apply_bitwise_not_into(
+    source: &Mat,
+    destination: &Mat,
+    mask: Option<&[u8]>,
+) -> Result<(), CoreWasmError> {
+    if source.rows() == 0 || source.columns() == 0 {
+        if !source.is_continuous()
+            && source.rows() == 0
+            && source.columns() == 0
+            && source.channels() == 1
+            && source.depth() == MatDepth::U8
+        {
+            destination.write_output(Vec::new(), 0, 0, 1, MatDepth::U8)?;
+        } else {
+            destination.write_empty_layout(
+                source.rows(),
+                source.columns(),
+                source.channels(),
+                source.depth(),
+                true,
+            )?;
+        }
+        return Ok(());
+    }
+
+    if mask.is_none() && destination.try_write_shared_bitwise_not(source)? {
+        return Ok(());
+    }
+
+    let source_bytes = source.compact_bytes();
+    let compatible = destination.rows() == source.rows()
+        && destination.columns() == source.columns()
+        && destination.channels() == source.channels()
+        && destination.depth() == source.depth();
+    let mut output = if compatible {
+        destination.compact_bytes()
+    } else {
+        vec![0; source_bytes.len()]
+    };
+    let pixel_bytes = usize::from(source.channels()) * source.depth().byte_width();
+    for (pixel, source_pixel) in source_bytes.chunks_exact(pixel_bytes).enumerate() {
+        if mask.is_some_and(|values| values[pixel] == 0) {
+            continue;
+        }
+        let first = pixel * pixel_bytes;
+        for (target, value) in output[first..first + pixel_bytes]
+            .iter_mut()
+            .zip(source_pixel)
+        {
+            *target = !value;
+        }
+    }
+    destination.write_output(
+        output,
+        source.rows(),
+        source.columns(),
+        source.channels(),
+        source.depth(),
+    )?;
+    Ok(())
+}
+
+fn bitwise_mask(source: &Mat, mask: &Mat) -> Result<Option<Vec<u8>>, CoreWasmError> {
+    if mask.byte_length() == 0 {
+        return Ok(None);
+    }
+    if !matches!(mask.depth(), MatDepth::U8 | MatDepth::I8) {
+        return Err(CoreWasmError::InvalidMaskDepth {
+            actual: mask.depth(),
+        });
+    }
+    if mask.channels() != 1 {
+        return Err(CoreWasmError::InvalidMaskChannels {
+            actual: mask.channels(),
+        });
+    }
+    validate_shape(
+        MatShape {
+            rows: source.rows(),
+            columns: source.columns(),
+            channels: 1,
+        },
+        mask,
+        "mask",
+    )?;
+    Ok(Some(mask.compact_bytes()))
 }
 
 fn apply_in_range_u8(
@@ -406,6 +554,96 @@ mod tests {
         assert!(output.is_continuous());
         assert_eq!(output.compact_bytes()[0], 255);
         assert_eq!(output.compact_bytes()[11], 244);
+    }
+
+    #[test]
+    fn bitwise_not_preserves_all_depth_bits_and_masked_destinations() {
+        let source = Mat::from_owned_bytes(
+            vec![0x00, 0x80, 0x34, 0x12, 0xFF, 0x7F, 0xAA, 0x55],
+            1,
+            1,
+            1,
+            MatDepth::F64,
+        )
+        .expect("valid F64 raw bits");
+        let inverted = apply_bitwise_not(&source).expect("all-depth inversion");
+        assert_eq!(inverted.depth(), MatDepth::F64);
+        assert_eq!(
+            inverted.compact_bytes(),
+            [0xFF, 0x7F, 0xCB, 0xED, 0x00, 0x80, 0x55, 0xAA]
+        );
+
+        let source = u8_matrix(vec![1, 2, 3, 4, 5, 6], 2, 3, 1);
+        let mask = Mat::from_owned_bytes(vec![1, 0, 2, 0, 3, 0], 2, 3, 1, MatDepth::I8)
+            .expect("valid signed mask");
+        let mask_bytes = bitwise_mask(&source, &mask).expect("valid mask");
+        let populated = u8_matrix(vec![99, 98, 97, 96, 95, 94], 2, 3, 1);
+        apply_bitwise_not_into(&source, &populated, mask_bytes.as_deref())
+            .expect("compatible masked destination");
+        assert_eq!(populated.compact_bytes(), [254, 98, 252, 96, 250, 94]);
+
+        let fresh = crate::mat::mat_empty();
+        apply_bitwise_not_into(&source, &fresh, mask_bytes.as_deref())
+            .expect("fresh masked destination");
+        assert_eq!(fresh.compact_bytes(), [254, 0, 252, 0, 250, 0]);
+
+        let alias_mask = u8_matrix(vec![1, 0, 3, 0, 5, 0], 2, 3, 1);
+        let mask_bytes = bitwise_mask(&alias_mask, &alias_mask).expect("aliased mask");
+        apply_bitwise_not_into(&alias_mask, &alias_mask, mask_bytes.as_deref())
+            .expect("fully aliased operation");
+        assert_eq!(alias_mask.compact_bytes(), [254, 0, 252, 0, 250, 0]);
+    }
+
+    #[test]
+    fn bitwise_not_propagates_typed_empties_and_validates_nonempty_masks() {
+        let typed = Mat::empty_with_layout(0, 3, 2, MatDepth::I16, true).expect("typed empty");
+        let destination = crate::mat::mat_empty();
+        apply_bitwise_not_into(&typed, &destination, None).expect("typed empty inversion");
+        assert_eq!(
+            (
+                destination.rows(),
+                destination.columns(),
+                destination.channels(),
+                destination.depth(),
+                destination.is_continuous(),
+            ),
+            (0, 3, 2, MatDepth::I16, true)
+        );
+
+        let source = u8_matrix(vec![1, 2, 3, 4], 2, 2, 1);
+        let invalid_depth =
+            Mat::from_owned_bytes(vec![0; 8], 2, 2, 1, MatDepth::U16).expect("U16 mask");
+        assert_eq!(
+            bitwise_mask(&source, &invalid_depth),
+            Err(CoreWasmError::InvalidMaskDepth {
+                actual: MatDepth::U16,
+            })
+        );
+        let empty_wrong_metadata =
+            Mat::empty_with_layout(0, 2, 3, MatDepth::F64, true).expect("typed empty mask");
+        assert_eq!(bitwise_mask(&source, &empty_wrong_metadata), Ok(None));
+    }
+
+    #[test]
+    fn bitwise_not_matches_two_byte_live_traversal_for_overlapping_regions() {
+        let parent = u8_matrix(
+            vec![1, 38, 75, 112, 149, 186, 223, 4, 41, 78, 115, 152],
+            2,
+            6,
+            1,
+        );
+        let source = parent.roi(0, 0, 2, 4).expect("valid source region");
+        let destination = parent
+            .roi(0, 1, 2, 4)
+            .expect("valid destination region");
+
+        apply_bitwise_not_into(&source, &destination, None)
+            .expect("valid overlapping bitwise inversion");
+
+        assert_eq!(
+            parent.compact_bytes(),
+            [1, 254, 217, 38, 143, 186, 223, 32, 251, 4, 177, 152]
+        );
     }
 
     #[test]

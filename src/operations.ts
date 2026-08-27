@@ -60,7 +60,7 @@ export const OPENCV_OPERATIONS = [
   { method: "addWeighted", wasmExport: "matAddWeighted" },
   { method: "arcLength", wasmExport: "matArcLength" },
   { method: "bitwiseAnd", wasmExport: "matBitwiseAndU8" },
-  { method: "bitwiseNot", wasmExport: "matBitwiseNotU8" },
+  { method: "bitwiseNot", wasmExport: "matBitwiseNotInto" },
   { method: "bitwiseOr", wasmExport: "matBitwiseOrU8" },
   { method: "bitwiseXor", wasmExport: "matBitwiseXorU8" },
   { method: "boundingRect", wasmExport: "matBoundingRect" },

@@ -34,22 +34,43 @@ import type {
 } from "../src/index.js";
 
 class CopyingMatHandle implements WasmMatHandle {
-  readonly byteLength: number;
-  readonly isContinuous: boolean;
-  readonly rowStride: number;
+  byteLength: number;
+  channels: number;
+  columns: number;
+  data: Uint8Array;
+  depth: number;
+  isContinuous: boolean;
+  rowStride: number;
+  rows: number;
 
   constructor(
-    readonly rows: number,
-    readonly columns: number,
-    readonly channels: number,
-    readonly data: Uint8Array,
-    readonly depth = 0,
+    rows: number,
+    columns: number,
+    channels: number,
+    data: Uint8Array,
+    depth = 0,
     emptyIsContinuous = true,
   ) {
+    this.rows = rows;
+    this.columns = columns;
+    this.channels = channels;
+    this.data = data;
+    this.depth = depth;
     const byteWidth = depthByteWidth(depth);
     this.byteLength = rows * columns * channels * byteWidth;
     this.isContinuous = rows > 0 && columns > 0 ? true : emptyIsContinuous;
     this.rowStride = columns * channels * byteWidth;
+  }
+
+  replaceFrom(source: WasmMatHandle, data: Uint8Array): void {
+    this.rows = source.rows;
+    this.columns = source.columns;
+    this.channels = source.channels;
+    this.depth = source.depth;
+    this.data = new Uint8Array(data);
+    this.byteLength = data.byteLength;
+    this.isContinuous = source.rows > 0 && source.columns > 0 ? true : source.isContinuous;
+    this.rowStride = source.columns * source.channels * depthByteWidth(source.depth);
   }
 
   free(): void {}
@@ -1451,12 +1472,59 @@ class CopyingBackend implements OpenCvBackend {
     return unaryU8(source, (value) => ~value & 255);
   }
 
+  matBitwiseNot(source: WasmMatHandle): WasmMatHandle {
+    return new CopyingMatHandle(
+      source.rows,
+      source.columns,
+      source.channels,
+      source.toUint8Array().map((value) => ~value & 255),
+      source.depth,
+      source.isContinuous,
+    );
+  }
+
+  matBitwiseNotInto(source: WasmMatHandle, destination: WasmMatHandle): void {
+    this.#bitwiseNotInto(source, destination);
+  }
+
+  matBitwiseNotMaskedInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    mask: WasmMatHandle,
+  ): void {
+    this.#bitwiseNotInto(source, destination, mask);
+  }
+
   matBitwiseOrU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle {
     return binaryU8(left, right, (leftValue, rightValue) => leftValue | rightValue);
   }
 
   matBitwiseXorU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle {
     return binaryU8(left, right, (leftValue, rightValue) => leftValue ^ rightValue);
+  }
+
+  #bitwiseNotInto(source: WasmMatHandle, destination: WasmMatHandle, mask?: WasmMatHandle): void {
+    const sourceBytes = source.toUint8Array();
+    const compatible =
+      destination.rows === source.rows &&
+      destination.columns === source.columns &&
+      destination.channels === source.channels &&
+      destination.depth === source.depth;
+    const output = compatible ? destination.toUint8Array() : new Uint8Array(sourceBytes.length);
+    const maskBytes = mask?.byteLength === 0 ? undefined : mask?.toUint8Array();
+    const pixelBytes = source.channels * depthByteWidth(source.depth);
+    for (let pixel = 0; pixel < source.rows * source.columns; pixel += 1) {
+      if (maskBytes !== undefined && byteAt(maskBytes, pixel) === 0) continue;
+      const first = pixel * pixelBytes;
+      for (let offset = 0; offset < pixelBytes; offset += 1) {
+        output[first + offset] = ~byteAt(sourceBytes, first + offset) & 255;
+      }
+    }
+    if (destination instanceof CopyingMatHandle) {
+      destination.replaceFrom(source, output);
+      return;
+    }
+    destination.copyFromBytes(output);
   }
 
   matCompareEqU8(left: WasmMatHandle, right: WasmMatHandle): WasmMatHandle {
@@ -2861,7 +2929,7 @@ describe("OpenCv client", () => {
     const subtracted = client.subtract(left, right);
     const difference = client.absdiff(left, right);
     const equal = client.compareEqual(left, right);
-    const inverted = client.bitwiseNot(left);
+    const inverted = client.bitwiseNotAlloc(left);
 
     expect(added.toUint8Array()).toEqual(new Uint8Array([255, 7, 6]));
     expect(subtracted.toUint8Array()).toEqual(new Uint8Array([240, 0, 0]));
@@ -2905,6 +2973,35 @@ describe("OpenCv client", () => {
     expect(() => client.countNonZero(source)).toThrow(
       new BindingError("Cannot pass deleted object as a pointer of type Mat"),
     );
+  });
+
+  test("matches bitwiseNot destination and mask contracts", () => {
+    expect(client.bitwiseNot.length).toBe(0);
+
+    const source = client.matFromU8(2, 2, 1, new Uint8Array([0, 1, 2, 3]));
+    const mask = client.matFromI8(2, 2, 1, new Int8Array([1, 0, 2, 0]));
+    const populated = client.matFromU8(2, 2, 1, new Uint8Array([9, 9, 9, 9]));
+    expect(client.bitwiseNot(source, populated, mask)).toBeUndefined();
+    expect(populated.toUint8Array()).toEqual(new Uint8Array([255, 9, 253, 9]));
+
+    const fresh = client.emptyMat();
+    client.bitwiseNot(source, fresh, mask);
+    expect(fresh.toUint8Array()).toEqual(new Uint8Array([255, 0, 253, 0]));
+
+    const unmasked = client.emptyMat();
+    client.bitwiseNot(source, unmasked);
+    expect(unmasked.toUint8Array()).toEqual(new Uint8Array([255, 254, 253, 252]));
+
+    expect(() => {
+      // oxlint-disable-next-line anti-slop/no-reflect-apply, typescript/unbound-method -- The test exercises invalid JavaScript arity.
+      Reflect.apply(client.bitwiseNot, client, [source]);
+    }).toThrow(BindingError);
+    expect(() => {
+      // oxlint-disable-next-line anti-slop/no-reflect-apply, typescript/unbound-method -- The test exercises invalid JavaScript arity.
+      Reflect.apply(client.bitwiseNot, client, [source, fresh, mask, mask]);
+    }).toThrow(BindingError);
+
+    for (const matrix of [unmasked, fresh, populated, mask, source]) matrix.dispose();
   });
 
   test("exposes matrix layout operations", () => {
