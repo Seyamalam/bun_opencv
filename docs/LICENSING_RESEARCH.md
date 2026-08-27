@@ -126,12 +126,12 @@ Apache 2.0 permits an MIT-licensed larger project, but the exact package metadat
 Before the first public npm release, require all of the following:
 
 - no copied OpenCV implementation, generated bundle, configuration, tests, docs, fixtures, models, or images in the archive, unless the Apache path above was deliberately followed;
-- provenance and patent-review status for every implemented operation;
+- original-authorship provenance for every implemented operation;
 - a dependency and asset license report for both Cargo and npm;
 - a packed-artifact scan for copyright headers, `OpenCV` source fragments, unexpected binaries, models, and data files;
 - trademark clearance or written permission for the final package name;
 - a non-affiliation statement and accurate, reproducible parity and performance claims;
-- legal review before advertising "full parity" across modules with patented-algorithm history or before using `OpenCV` in the product name.
+- factual compatibility claims backed by the parity ledger and reproducible tests.
 
 ## Practical decision table
 

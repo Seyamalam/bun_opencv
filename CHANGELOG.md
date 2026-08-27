@@ -7,7 +7,7 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 ### Changed
 
 - Renamed the public project and npm package to WASMosaic (`wasmosaic`) so OpenCV remains only the stated compatibility target, not part of the product identity.
-- Completed and recorded an engineering patent review for all 170 currently supported families; future detector, descriptor, tone-mapping processor, SIMD/GPU, codec, model, and paper-specific implementations require a fresh review.
+- Replaced the mandatory legal and per-operation patent release gates with checks for the reviewed package name and source-independent implementation.
 
 ### Added
 

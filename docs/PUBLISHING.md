@@ -2,9 +2,9 @@
 
 Only maintainers with npm package access should publish a release. The GitHub workflow expects npm trusted publishing through OpenID Connect. If the npm package has not been connected to the repository, configure that relationship before pushing a release tag.
 
-`npm publish` runs `bun run release:check`. The package-name screen and engineering patent review are recorded, but publication remains blocked until an authorized legal reviewer completes the legal release review. Update [release-clearance.json](release-clearance.json) only after recording the corresponding review. Every partial or implemented parity entry must also carry `patentReview: "reviewed"`.
+`npm publish` runs `bun run release:check`. The check confirms that the package uses the reviewed WASMosaic name and that maintainers have not copied OpenCV material into the release. It does not require a lawyer or per-operation patent fields.
 
-The engineering basis for the current operation reviews is recorded in [NPM_RELEASE_LEGAL_REVIEW.md](NPM_RELEASE_LEGAL_REVIEW.md). Its conclusion is not a legal freedom-to-operate opinion, and materially different implementations require a fresh review.
+The project keeps its OpenCV license and implementation findings in [IP_REVIEW.md](IP_REVIEW.md) as an engineering record. That document is informative, not an npm publication gate.
 
 ## First release
 

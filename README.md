@@ -317,7 +317,7 @@ Generated JavaScript and declarations go to `dist/`. The generated WASM loader a
 - [Performance contract](docs/PERFORMANCE.md)
 - [Source-independent compatibility policy](docs/COMPATIBILITY_POLICY.md)
 - [Licensing research](docs/LICENSING_RESEARCH.md)
-- [npm release engineering legal review](docs/NPM_RELEASE_LEGAL_REVIEW.md)
+- [OpenCV license and implementation review](docs/IP_REVIEW.md)
 - [Package-name review](docs/NAME_REVIEW.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
 - [Roadmap](ROADMAP.md)

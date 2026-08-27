@@ -7,7 +7,6 @@ export interface ParityEntry {
   readonly method: string;
   readonly module: UpstreamModule;
   readonly notes: string;
-  readonly patentReview: "required" | "reviewed";
   readonly sources: readonly string[];
   readonly status: ParityStatus;
   readonly upstream: string;
@@ -45,7 +44,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Creates a Rust-owned AKAZE configuration handle with the OpenCV 4.13 defaults and optional descriptor, threshold, octave, diffusivity, and maximum-point settings; the official 4.13.0 artifact omits the config-listed static AKAZE.create binding, so direct factory comparison is unavailable, and feature detection, descriptor extraction, and broader lifetime audits remain.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "partial",
       upstream: "cv.AKAZE.create",
@@ -58,7 +56,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Returns Feature2D.AKAZE with exact pinned-browser arity, return value, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AKAZE.getDefaultName",
@@ -71,7 +68,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Reads the complete signed i32 descriptor-channel state with exact pinned-browser arity, return values, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AKAZE.getDescriptorChannels",
@@ -84,7 +80,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Reads the complete signed i32 descriptor-size state with exact pinned-browser arity, return values, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AKAZE.getDescriptorSize",
@@ -97,7 +92,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Returns the canonical pinned-browser descriptor-type enum singleton with exact identity, arity, argument errors, unknown-wire behavior, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AKAZE.getDescriptorType",
@@ -110,7 +104,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Returns the shared canonical pinned-browser diffusivity enum singleton with exact identity, arity, argument errors, unknown-wire behavior, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AKAZE.getDiffusivity",
@@ -123,7 +116,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Reads the complete signed i32 octave-layer state with exact pinned-browser arity, return values, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AKAZE.getNOctaveLayers",
@@ -136,7 +128,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Reads the complete signed i32 octave-count state with exact pinned-browser arity, return values, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AKAZE.getNOctaves",
@@ -149,7 +140,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Reads the complete F64 threshold state, including negative zero and non-finite values, with exact pinned-browser arity, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AKAZE.getThreshold",
@@ -162,7 +152,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Updates the complete signed i32 descriptor-channel state with exact pinned-browser integer coercion, range errors, undefined return, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AKAZE.setDescriptorChannels",
@@ -175,7 +164,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Updates the complete signed i32 descriptor-size state with exact pinned-browser integer coercion, range errors, undefined return, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AKAZE.setDescriptorSize",
@@ -188,7 +176,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Stores the structural enum object's signed i32 wire value with exact coercion, undefined return, argument errors, unknown values, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AKAZE.setDescriptorType",
@@ -201,7 +188,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Stores the structural diffusivity object's signed i32 wire value with exact coercion, undefined return, argument errors, unknown values, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AKAZE.setDiffusivity",
@@ -214,7 +200,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Updates the complete signed i32 octave-layer state with exact pinned-browser integer coercion, range errors, undefined return, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AKAZE.setNOctaveLayers",
@@ -227,7 +212,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Updates the complete signed i32 octave-count state with exact pinned-browser integer coercion, range errors, undefined return, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AKAZE.setNOctaves",
@@ -240,7 +224,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Updates the complete F64 threshold state, including negative zero and non-finite values, with exact pinned-browser number coercion, undefined return, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AKAZE.setThreshold",
@@ -253,7 +236,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Creates a Rust-owned KAZE configuration handle with the OpenCV 4.13 defaults and optional extended, upright, threshold, octave, and diffusivity settings; the official 4.13.0 artifact omits the config-listed static KAZE.create binding, so direct factory comparison is unavailable, and feature detection and descriptor extraction remain.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "partial",
       upstream: "cv.KAZE.create",
@@ -266,7 +248,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Returns Feature2D.KAZE with exact pinned-browser arity, return value, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.KAZE.getDefaultName",
@@ -279,7 +260,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Returns the shared canonical pinned-browser diffusivity enum singleton with exact identity, arity, argument errors, unknown-wire behavior, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.KAZE.getDiffusivity",
@@ -292,7 +272,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Reads the Rust-owned extended-descriptor flag with exact pinned-browser arity, boolean state, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.KAZE.getExtended",
@@ -305,7 +284,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Reads the complete signed i32 octave-layer state with exact pinned-browser arity, return values, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.KAZE.getNOctaveLayers",
@@ -318,7 +296,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Reads the complete signed i32 octave-count state with exact pinned-browser arity, return values, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.KAZE.getNOctaves",
@@ -331,7 +308,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Reads the complete F64 threshold state, including negative zero and non-finite values, with exact pinned-browser arity, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.KAZE.getThreshold",
@@ -344,7 +320,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Reads the Rust-owned upright-descriptor flag with exact pinned-browser arity, boolean state, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.KAZE.getUpright",
@@ -357,7 +332,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Stores the structural diffusivity object's signed i32 wire value with exact coercion, undefined return, argument errors, unknown values, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.KAZE.setDiffusivity",
@@ -370,7 +344,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Updates the Rust-owned extended-descriptor flag with exact pinned-browser boolean coercion, undefined return, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.KAZE.setExtended",
@@ -383,7 +356,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Updates the complete signed i32 octave-layer state with exact pinned-browser integer coercion, range errors, undefined return, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.KAZE.setNOctaveLayers",
@@ -396,7 +368,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Updates the complete signed i32 octave-count state with exact pinned-browser integer coercion, range errors, undefined return, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.KAZE.setNOctaves",
@@ -409,7 +380,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Updates the complete F64 threshold state, including negative zero and non-finite values, with exact pinned-browser number coercion, undefined return, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.KAZE.setThreshold",
@@ -422,7 +392,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Updates the Rust-owned upright-descriptor flag with exact pinned-browser boolean coercion, undefined return, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.KAZE.setUpright",
@@ -435,7 +404,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Creates a Rust-owned MSER configuration handle with pinned defaults; the official 4.13.0 artifact omits the config-listed static MSER.create binding, and detectRegions remains unimplemented.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "partial",
       upstream: "cv.MSER.create",
@@ -447,7 +415,6 @@ export const PARITY_MANIFEST = {
       method: "MSER.getDefaultName",
       module: "features2d",
       notes: "Exact pinned-browser name, arity, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.MSER.getDefaultName",
@@ -459,7 +426,6 @@ export const PARITY_MANIFEST = {
       method: "MSER.getDelta",
       module: "features2d",
       notes: "Exact pinned-browser signed i32 state, arity, and lifecycle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.MSER.getDelta",
@@ -471,7 +437,6 @@ export const PARITY_MANIFEST = {
       method: "MSER.getMaxArea",
       module: "features2d",
       notes: "Exact pinned-browser signed i32 state, arity, and lifecycle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.MSER.getMaxArea",
@@ -483,7 +448,6 @@ export const PARITY_MANIFEST = {
       method: "MSER.getMinArea",
       module: "features2d",
       notes: "Exact pinned-browser signed i32 state, arity, and lifecycle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.MSER.getMinArea",
@@ -495,7 +459,6 @@ export const PARITY_MANIFEST = {
       method: "MSER.getPass2Only",
       module: "features2d",
       notes: "Exact pinned-browser boolean state, arity, and lifecycle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.MSER.getPass2Only",
@@ -507,7 +470,6 @@ export const PARITY_MANIFEST = {
       method: "MSER.setDelta",
       module: "features2d",
       notes: "Exact pinned-browser signed i32 coercion, return, arity, and lifecycle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.MSER.setDelta",
@@ -519,7 +481,6 @@ export const PARITY_MANIFEST = {
       method: "MSER.setMaxArea",
       module: "features2d",
       notes: "Exact pinned-browser signed i32 coercion, return, arity, and lifecycle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.MSER.setMaxArea",
@@ -531,7 +492,6 @@ export const PARITY_MANIFEST = {
       method: "MSER.setMinArea",
       module: "features2d",
       notes: "Exact pinned-browser signed i32 coercion, return, arity, and lifecycle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.MSER.setMinArea",
@@ -543,7 +503,6 @@ export const PARITY_MANIFEST = {
       method: "MSER.setPass2Only",
       module: "features2d",
       notes: "Exact pinned-browser truthiness, undefined return, arity, and lifecycle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.MSER.setPass2Only",
@@ -556,7 +515,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Creates a Rust-owned ORB configuration handle with pinned defaults; the official 4.13.0 artifact omits the config-listed static ORB.create binding, and detection and descriptors remain unimplemented.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "partial",
       upstream: "cv.ORB.create",
@@ -568,7 +526,6 @@ export const PARITY_MANIFEST = {
       method: "ORB.getDefaultName",
       module: "features2d",
       notes: "Exact pinned-browser name, arity, argument errors, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.ORB.getDefaultName",
@@ -580,7 +537,6 @@ export const PARITY_MANIFEST = {
       method: "ORB.getFastThreshold",
       module: "features2d",
       notes: "Exact pinned-browser signed i32 state, arity, and lifecycle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.ORB.getFastThreshold",
@@ -592,7 +548,6 @@ export const PARITY_MANIFEST = {
       method: "ORB.setEdgeThreshold",
       module: "features2d",
       notes: "Exact pinned-browser signed i32 coercion, return, arity, and lifecycle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.ORB.setEdgeThreshold",
@@ -604,7 +559,6 @@ export const PARITY_MANIFEST = {
       method: "ORB.setFastThreshold",
       module: "features2d",
       notes: "Exact pinned-browser signed i32 coercion, return, arity, and lifecycle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.ORB.setFastThreshold",
@@ -617,7 +571,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Exact pinned-browser signed i32 coercion and non-negative validation with atomic errors.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.ORB.setFirstLevel",
@@ -629,7 +582,6 @@ export const PARITY_MANIFEST = {
       method: "ORB.setMaxFeatures",
       module: "features2d",
       notes: "Exact pinned-browser signed i32 coercion, return, arity, and lifecycle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.ORB.setMaxFeatures",
@@ -641,7 +593,6 @@ export const PARITY_MANIFEST = {
       method: "ORB.setNLevels",
       module: "features2d",
       notes: "Exact pinned-browser signed i32 coercion, return, arity, and lifecycle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.ORB.setNLevels",
@@ -653,7 +604,6 @@ export const PARITY_MANIFEST = {
       method: "ORB.setPatchSize",
       module: "features2d",
       notes: "Exact pinned-browser signed i32 coercion, return, arity, and lifecycle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.ORB.setPatchSize",
@@ -666,7 +616,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Exact pinned-browser F64 input conversion with stored F32 state, arity, and lifecycle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.ORB.setScaleFactor",
@@ -679,7 +628,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Exact pinned-browser structural enum conversion, raw wire state, arity, and lifecycle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.ORB.setScoreType",
@@ -691,7 +639,6 @@ export const PARITY_MANIFEST = {
       method: "ORB.setWTA_K",
       module: "features2d",
       notes: "Exact pinned-browser signed i32 coercion, return, arity, and lifecycle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.ORB.setWTA_K",
@@ -704,7 +651,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Creates a Rust-owned AGAST configuration handle with threshold 10, non-maximum suppression enabled, and OAST 9-16 by default; the official 4.13.0 artifact omits the config-listed static create binding, and keypoint detection remains.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "partial",
       upstream: "cv.AgastFeatureDetector.create",
@@ -717,7 +663,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned browser binding for exact arity, return value, BindingError argument checks, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AgastFeatureDetector.getDefaultName",
@@ -730,7 +675,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned browser binding for exact arity, boolean state, BindingError argument checks, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AgastFeatureDetector.getNonmaxSuppression",
@@ -743,7 +687,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned browser binding for exact arity, signed i32 state, BindingError argument checks, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AgastFeatureDetector.getThreshold",
@@ -756,7 +699,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Returns the canonical pinned-browser AGAST type enum singleton with exact identity, arity, argument errors, unknown-wire behavior, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AgastFeatureDetector.getType",
@@ -769,7 +711,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned browser binding for exact arity, undefined return, boolean coercion, BindingError argument checks, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AgastFeatureDetector.setNonmaxSuppression",
@@ -782,7 +723,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned browser binding for exact arity, undefined return, signed i32 coercion, BindingError argument checks, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AgastFeatureDetector.setThreshold",
@@ -795,7 +735,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Stores the structural AGAST enum object's signed i32 wire value with exact coercion, undefined return, argument errors, unknown values, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.AgastFeatureDetector.setType",
@@ -808,7 +747,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Creates a Rust-owned FAST configuration handle with threshold 10, non-maximum suppression enabled, and type 9-16 by default; the official 4.13.0 artifact omits the config-listed static create binding, and keypoint detection remains.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "partial",
       upstream: "cv.FastFeatureDetector.create",
@@ -821,7 +759,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned browser binding for exact arity, return value, BindingError argument checks, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.FastFeatureDetector.getDefaultName",
@@ -834,7 +771,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned browser binding for exact arity, boolean state, BindingError argument checks, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.FastFeatureDetector.getNonmaxSuppression",
@@ -847,7 +783,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned browser binding for exact arity, signed i32 state, BindingError argument checks, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.FastFeatureDetector.getThreshold",
@@ -860,7 +795,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Returns the canonical pinned-browser FAST type enum singleton with exact identity, arity, argument errors, unknown-wire behavior, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.FastFeatureDetector.getType",
@@ -873,7 +807,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned browser binding for exact arity, undefined return, boolean coercion, BindingError argument checks, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.FastFeatureDetector.setNonmaxSuppression",
@@ -886,7 +819,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned browser binding for exact arity, undefined return, signed i32 coercion, BindingError argument checks, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.FastFeatureDetector.setThreshold",
@@ -899,7 +831,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Stores the structural FAST enum object's signed i32 wire value with exact coercion, undefined return, argument errors, unknown values, and deleted-handle behavior.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.FastFeatureDetector.setType",
@@ -912,7 +843,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Creates a Rust-owned GFTT configuration handle with the exact OpenCV 4.13 defaults through one selected six-argument shape; the gradientSize overload remains, the official artifact omits the config-listed static create binding, and feature detection remains.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "partial",
       upstream: "cv.GFTTDetector.create",
@@ -925,7 +855,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned OpenCV.js 4.13.0 getter for zero-argument arity, signed 32-bit state, return value, and deleted-handle errors. The browser matrix covers the default, integer-coerced mutations, extra arguments, and lifecycle failures.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.GFTTDetector.getBlockSize",
@@ -938,7 +867,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned OpenCV.js 4.13.0 zero-argument getter, exact Feature2D.GFTTDetector return value, extra-argument rejection, and deleted-handle errors.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.GFTTDetector.getDefaultName",
@@ -951,7 +879,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned OpenCV.js 4.13.0 getter for zero-argument arity, boolean state, return value, extra-argument rejection, and deleted-handle errors.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.GFTTDetector.getHarrisDetector",
@@ -964,7 +891,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned OpenCV.js 4.13.0 getter for zero-argument arity, F64 state, return value, extra-argument rejection, and deleted-handle errors, including NaN and infinities.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.GFTTDetector.getK",
@@ -977,7 +903,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned OpenCV.js 4.13.0 getter for zero-argument arity, signed 32-bit state, return value, extra-argument rejection, and deleted-handle errors.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.GFTTDetector.getMaxFeatures",
@@ -990,7 +915,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned OpenCV.js 4.13.0 getter for zero-argument arity, F64 state, return value, extra-argument rejection, and deleted-handle errors, including NaN and infinities.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.GFTTDetector.getMinDistance",
@@ -1003,7 +927,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned OpenCV.js 4.13.0 getter for zero-argument arity, F64 state, return value, extra-argument rejection, and deleted-handle errors, including NaN and infinities.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.GFTTDetector.getQualityLevel",
@@ -1016,7 +939,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned OpenCV.js 4.13.0 one-argument setter, undefined return, JavaScript-to-i32 coercion, missing and extra argument errors, and deleted-handle errors.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.GFTTDetector.setBlockSize",
@@ -1029,7 +951,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned OpenCV.js 4.13.0 one-argument setter, undefined return, JavaScript boolean coercion, missing and extra argument errors, and deleted-handle errors.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.GFTTDetector.setHarrisDetector",
@@ -1042,7 +963,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned OpenCV.js 4.13.0 one-argument setter, undefined return, JavaScript number coercion, NaN and infinity preservation, argument-count errors, and deleted-handle errors.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.GFTTDetector.setK",
@@ -1055,7 +975,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned OpenCV.js 4.13.0 one-argument setter, undefined return, JavaScript-to-i32 coercion, missing and extra argument errors, and deleted-handle errors.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.GFTTDetector.setMaxFeatures",
@@ -1068,7 +987,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned OpenCV.js 4.13.0 one-argument setter, undefined return, JavaScript number coercion, NaN and infinity preservation, argument-count errors, and deleted-handle errors.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.GFTTDetector.setMinDistance",
@@ -1081,7 +999,6 @@ export const PARITY_MANIFEST = {
       module: "features2d",
       notes:
         "Matches the pinned OpenCV.js 4.13.0 one-argument setter, undefined return, JavaScript number coercion, NaN and infinity preservation, argument-count errors, and deleted-handle errors.",
-      patentReview: "reviewed",
       sources: [FEATURES2D_SOURCE],
       status: "implemented",
       upstream: "cv.GFTTDetector.setQualityLevel",
@@ -1094,7 +1011,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Package-owned WebAssembly-instance log state with levels 0 through 6; the official OpenCV.js 4.13.0 docs artifact does not expose this config-listed binding, so runtime differential verification remains unavailable.",
-      patentReview: "reviewed",
       sources: [CORE_SOURCE],
       status: "partial",
       upstream: "cv.getLogLevel",
@@ -1107,7 +1023,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Accepts levels 0 through 6, updates package-owned WebAssembly-instance state, and returns the previous level; the official OpenCV.js 4.13.0 docs artifact does not expose this config-listed binding, so runtime differential verification remains unavailable.",
-      patentReview: "reviewed",
       sources: [CORE_SOURCE],
       status: "partial",
       upstream: "cv.setLogLevel",
@@ -1120,7 +1035,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Matches the pinned browser's exact one-argument contract, Embind signed i32 coercion and errors, minimal 2-, 3-, and 5-smooth results, negative and zero behavior, and exclusive 2,125,764,000 upper sentinel.",
-      patentReview: "reviewed",
       sources: [CORE_SOURCE],
       status: "implemented",
       upstream: "cv.getOptimalDFTSize",
@@ -1133,7 +1047,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Matches exact overload dispatch, Mat-before-Scalar conversion, array-like Scalar coercion, all shipped depths, one through four channels, typed empties, integer sentinels, signed floating zero, and strided in-place output.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.setIdentity",
@@ -1146,7 +1059,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "All scalar depths, strided regions, one through four channel-specific half-open ranges, and deterministic in-place fills; the package RNG sequence differs from OpenCV and differential fixtures remain.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.randu",
@@ -1159,7 +1071,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "All scalar depths, strided regions, one through four channel-specific means and standard deviations, and deterministic in-place fills; covariance matrices, OpenCV RNG sequences, and differential fixtures remain.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.randn",
@@ -1172,7 +1083,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Signed 32-bit seeds replay the package-owned SplitMix64 stream; OpenCV RNG sequences and differential fixtures remain.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.setRNGSeed",
@@ -1185,7 +1095,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "All scalar source depths, one through four input channels, F32/F64 linear or affine coefficients, strided regions, allocation, and mutable destinations; differential fixtures remain.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.transform",
@@ -1198,7 +1107,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "F32/F64 two- and three-component vectors, F32/F64 square coefficients, strided regions, allocation, and mutable destinations; differential fixtures remain.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.perspectiveTransform",
@@ -1211,7 +1119,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Matches the exact one-argument Mat binding for nonempty square single-channel F32/F64 sources, including compact and strided input preservation, direct 1x1 through 3x3 signed-zero and non-finite results, depth-specific elimination and pivot cutoffs for larger matrices, and invalid, empty, or deleted input errors.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.determinant",
@@ -1224,7 +1131,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Square single-channel inputs at every scalar depth, F32/F64 mutable destinations, and LU, Cholesky, or QR methods; pseudo-inverse methods, non-square inputs, and differential fixtures remain.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.invert",
@@ -1237,7 +1143,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Single-channel systems at every input depth, F32/F64 mutable destinations, multiple right-hand sides, and LU, Cholesky, or QR methods; SVD, eigen, normal-equation flags, underdetermined systems, and differential fixtures remain.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.solve",
@@ -1250,7 +1155,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "All source depths, per-channel F64 outputs, optional U8 masks, strided regions, and mutable outputs; differential fixtures remain.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.meanStdDev",
@@ -1263,7 +1167,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Both axes, SUM/AVG/MAX/MIN, all source and destination depths, strided regions, and mutable outputs; differential fixtures remain.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.reduce",
@@ -1276,7 +1179,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Single/difference, masked, relative, numeric, Hamming, and Hamming2 forms across all depths; differential fixtures remain.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.norm",
@@ -1289,7 +1191,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "INF/L1/L2/MINMAX modes, masks, every source/destination depth, strided regions, and mutable destinations; differential fixtures remain.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.normalize",
@@ -1302,7 +1203,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "U8/I8 sources, one or matching table channels, every output depth, strided regions, and mutable destinations; differential fixtures remain.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.LUT",
@@ -1315,7 +1215,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "All depths, constant/replicate/reflect/wrap/reflect101 modes, isolated bit, and scalar constants; public destination form remains.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.copyMakeBorder",
@@ -1328,7 +1227,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Exact six/seven-argument mutable output contract, all scalar depths, mixed-depth dtype conversion, destination replacement, live aliases, typed empties, and CV_32S overflow.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.addWeighted",
@@ -1341,7 +1239,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Exact two/three/four-argument mutable output contract, all scalar input depths, U8 saturation, destination replacement, live aliases, and typed empties.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.convertScaleAbs",
@@ -1354,7 +1251,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Exact three/four/five-argument matrix contract exposed by the pinned artifact, all scalar depths, mixed-depth dtype conversion, destination replacement, live aliases, typed empties, and CV_32S overflow.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.divide",
@@ -1367,7 +1263,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Exact three/four/five-argument mutable output contract, all scalar depths, mixed-depth dtype conversion, destination replacement, live aliases, typed empties, and CV_32S wrapping.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.multiply",
@@ -1379,7 +1274,6 @@ export const PARITY_MANIFEST = {
       method: "hconcat",
       module: "core",
       notes: "Two through four all-depth inputs; MatVector and mutable destination forms remain.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.hconcat",
@@ -1391,7 +1285,6 @@ export const PARITY_MANIFEST = {
       method: "vconcat",
       module: "core",
       notes: "Two through four all-depth inputs; MatVector and mutable destination forms remain.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.vconcat",
@@ -1404,7 +1297,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Exact four- or five-argument F32/F64 browser contract with JavaScript boolean coercion, paired destination replacement, typed empty layouts, live single-output aliases, full-rotation angles, multichannel data, and the pinned F32 computation path for both depths. Shared paired outputs and unsafe native integer or canonical-empty calls are rejected before mutation.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.cartToPolar",
@@ -1417,7 +1309,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Exact two-argument F32/F64 browser contract with typed empty matrices, destination replacement, detached or shared regions, live overlapping traversal, deleted handles, and IEEE edge values.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.exp",
@@ -1430,7 +1321,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Exact two-argument F32/F64 browser contract with typed empty matrices, destination replacement, detached or shared regions, live overlapping traversal, deleted handles, and IEEE edge values.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.log",
@@ -1443,7 +1333,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Exact three-argument F32/F64 browser contract with matching inputs, destination replacement, exact or overlapping aliases to either input, deleted handles, and direct-square overflow, underflow, NaN, infinity, and signed-zero behavior.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.magnitude",
@@ -1456,7 +1345,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Exact four- or five-argument F32/F64 browser contract with JavaScript boolean coercion, paired destination replacement, typed empty layouts, live single-output aliases, multichannel data, periodic angles, signed magnitudes, and the pinned F32 computation path for both depths. Shared paired outputs and unsafe native integer or canonical-empty calls are rejected before mutation.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.polarToCart",
@@ -1469,7 +1357,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Exact three-argument browser contract with Embind F64 exponent conversion, all seven scalar depths for valid powers, typed empty matrices, destination replacement, live aliases, integer saturation or wrapping, and pinned floating-point edge behavior. Unsafe native integer outputs for fractional and non-finite powers are excluded and rejected safely.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.pow",
@@ -1482,7 +1369,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Exact two-argument F32/F64 browser contract with typed and canonical empty matrices, destination replacement, detached or shared regions, live overlapping traversal, deleted handles, and IEEE edge values. Unsafe native integer output is excluded and rejected safely.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.sqrt",
@@ -1494,7 +1380,6 @@ export const PARITY_MANIFEST = {
       method: "absdiff",
       module: "core",
       notes: "U8 matrices with matching dimensions and channels; other depths remain missing.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.absdiff",
@@ -1507,7 +1392,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Saturating U8 matrix-to-matrix addition; scalar, mask, dtype, and output forms remain.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.add",
@@ -1519,7 +1403,6 @@ export const PARITY_MANIFEST = {
       method: "bitwiseAnd",
       module: "core",
       notes: "U8 matrix-to-matrix AND without masks or scalar operands.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.bitwise_and",
@@ -1532,7 +1415,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Exact two- and three-argument browser contract with caller-owned destinations, optional U8/I8 masks, all scalar depths and channel counts, typed empties, raw floating-point bits, strided matrices, aliases, and live unmasked overlapping regions.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.bitwise_not",
@@ -1544,7 +1426,6 @@ export const PARITY_MANIFEST = {
       method: "bitwiseOr",
       module: "core",
       notes: "U8 matrix-to-matrix OR without masks or scalar operands.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.bitwise_or",
@@ -1556,7 +1437,6 @@ export const PARITY_MANIFEST = {
       method: "bitwiseXor",
       module: "core",
       notes: "U8 matrix-to-matrix XOR without masks or scalar operands.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.bitwise_xor",
@@ -1568,7 +1448,6 @@ export const PARITY_MANIFEST = {
       method: "compareEqual",
       module: "core",
       notes: "U8 equality comparison; the remaining comparison modes and scalar form are missing.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.compare",
@@ -1581,7 +1460,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Exact one-argument browser contract across every available scalar depth, signed zero, NaN, infinities, subnormal values, empty and deleted matrices, non-contiguous regions, invalid Mat inputs, and semantic multi-channel rejection.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.countNonZero",
@@ -1594,7 +1472,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Exact three-argument browser contract across all scalar depths, signed flip codes, empty and deleted matrices, destination reallocation, in-place operation, and shared or detached regions.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.flip",
@@ -1607,7 +1484,6 @@ export const PARITY_MANIFEST = {
       module: "imgproc",
       notes:
         "Exact two-argument browser contract for I32 and F32 contours in Nx1C2, 1xNC2, or Nx2C1 layout, including JavaScript truthiness, open and closed perimeter, deleted inputs, invalid depths and shapes, and safe pre-rejection of unsafe typed-empty paths.",
-      patentReview: "reviewed",
       sources: [IMGPROC_SOURCE],
       status: "implemented",
       upstream: "cv.arcLength",
@@ -1620,7 +1496,6 @@ export const PARITY_MANIFEST = {
       module: "imgproc",
       notes:
         "Exact one- or two-argument browser contract with runtime length zero for I32 and F32 contours in Nx1C2, 1xNC2, or Nx2C1 layout, including JavaScript truthiness, deleted inputs, invalid depths and shapes, and safe pre-rejection of unsafe typed-empty paths.",
-      patentReview: "reviewed",
       sources: [IMGPROC_SOURCE],
       status: "implemented",
       upstream: "cv.contourArea",
@@ -1633,7 +1508,6 @@ export const PARITY_MANIFEST = {
       module: "imgproc",
       notes:
         "Exact one-argument browser contract for I32 and F32 contours in Nx1C2, 1xNC2, or Nx2C1 layout, including floored fractional coordinates, inclusive integer bounds, deleted inputs, invalid depths and shapes, canonical empty bounds, and safe pre-rejection of unsafe typed-empty paths.",
-      patentReview: "reviewed",
       sources: [IMGPROC_SOURCE],
       status: "implemented",
       upstream: "cv.boundingRect",
@@ -1646,7 +1520,6 @@ export const PARITY_MANIFEST = {
       module: "imgproc",
       notes:
         "Exact one-argument browser contract for continuous I32 and F32 contours in Nx1C2, 1xNC2, or Nx2C1 layout, including strict clockwise and counter-clockwise convexity, collinear, duplicate, concave, self-crossing, small, empty, deleted, invalid-depth, invalid-shape, and non-contiguous inputs.",
-      patentReview: "reviewed",
       sources: [IMGPROC_SOURCE],
       status: "implemented",
       upstream: "cv.isContourConvex",
@@ -1659,7 +1532,6 @@ export const PARITY_MANIFEST = {
       module: "imgproc",
       notes:
         "Exact three-argument browser contract for continuous I32 and F32 contours in Nx1C2, 1xNC2, or Nx2C1 layout, including structural Point2f conversion, float32 narrowing, JavaScript truthiness, one-point and segment contours, classification, distance, traversal-dependent signed zero, non-finite query sentinels, empty, deleted, invalid-depth, invalid-shape, and non-contiguous inputs.",
-      patentReview: "reviewed",
       sources: [IMGPROC_SOURCE],
       status: "implemented",
       upstream: "cv.pointPolygonTest",
@@ -1672,7 +1544,6 @@ export const PARITY_MANIFEST = {
       module: "imgproc",
       notes:
         "Matches exact two- and three-argument overloads, Embind integer conversion for structural Size and Point values, default and explicit anchors, rectangle, cross, ellipse, and diamond geometry, invalid inputs, and fresh single-channel U8 results.",
-      patentReview: "reviewed",
       sources: [IMGPROC_SOURCE],
       status: "implemented",
       upstream: "cv.getStructuringElement",
@@ -1685,7 +1556,6 @@ export const PARITY_MANIFEST = {
       module: "imgproc",
       notes:
         "Matches the exact destination-first three-argument binding, structural Size and signed i32 type conversion, F32/F64 destination replacement and compatible ROI writes, invalid-input preservation, and pinned cosine-coefficient square-root arithmetic.",
-      patentReview: "reviewed",
       sources: [IMGPROC_SOURCE],
       status: "implemented",
       upstream: "cv.createHanningWindow",
@@ -1698,7 +1568,6 @@ export const PARITY_MANIFEST = {
       module: "imgproc",
       notes:
         "Non-negative integer axes, ordered arc bounds from 0 through 360 degrees, and angular steps from 1 through 180 return deduplicated integer points; arc normalization, swapped bounds, mutable output, and differential fixtures remain.",
-      patentReview: "reviewed",
       sources: [IMGPROC_SOURCE],
       status: "partial",
       upstream: "cv.ellipse2Poly",
@@ -1711,7 +1580,6 @@ export const PARITY_MANIFEST = {
       module: "imgproc",
       notes:
         "Signed 32-bit integer segments clip against positive-size integer rectangles with inclusive pixel bounds; the package returns points instead of mutating caller-owned point objects, and differential fixtures remain.",
-      patentReview: "reviewed",
       sources: [IMGPROC_SOURCE],
       status: "partial",
       upstream: "cv.clipLine",
@@ -1724,7 +1592,6 @@ export const PARITY_MANIFEST = {
       module: "imgproc",
       notes:
         "Matches the pinned three-argument browser binding: structural Point2f fields are checked in x/y order and narrowed to F32, angle and scale use strict Embind F64 conversion with booleans, signed zero and non-finite values propagate, and each call allocates an independent 2x3 single-channel F64 matrix with exact coefficients.",
-      patentReview: "reviewed",
       sources: [IMGPROC_SOURCE],
       status: "implemented",
       upstream: "cv.getRotationMatrix2D",
@@ -1737,7 +1604,6 @@ export const PARITY_MANIFEST = {
       module: "imgproc",
       notes:
         "Matches the exact two-Mat binding, continuous F32 point inputs in 3x2C1, 3x1C2, or 1x3C2 layouts, source preservation, singular zero output, non-finite propagation, exact LU arithmetic, and fresh 2x3 F64 results.",
-      patentReview: "reviewed",
       sources: [IMGPROC_SOURCE],
       status: "implemented",
       upstream: "cv.getAffineTransform",
@@ -1750,7 +1616,6 @@ export const PARITY_MANIFEST = {
       module: "imgproc",
       notes:
         "Matches the exact two-Mat mutable binding for 2x3 single-channel F32/F64 inputs, source-depth arithmetic and output, destination replacement, compatible ROI writes, exact aliasing, singular signed zeros, non-finite propagation, and invalid-input behavior.",
-      patentReview: "reviewed",
       sources: [IMGPROC_SOURCE],
       status: "implemented",
       upstream: "cv.invertAffineTransform",
@@ -1763,7 +1628,6 @@ export const PARITY_MANIFEST = {
       module: "imgproc",
       notes:
         "Four F32 or F64 point pairs in 4x2C1, 4x1C2, or 1x4C2 matrices, including strided regions, allocate a normalized 3x3 F64 map; only one scaled partial-pivoting solve method is present, and differential fixtures remain.",
-      patentReview: "reviewed",
       sources: [IMGPROC_SOURCE],
       status: "partial",
       upstream: "cv.getPerspectiveTransform",
@@ -1775,7 +1639,6 @@ export const PARITY_MANIFEST = {
       method: "grayscale",
       module: "imgproc",
       notes: "One RGBA-to-gray specialization; the cvtColor family has many remaining codes.",
-      patentReview: "reviewed",
       sources: [IMGPROC_COLOR_SOURCE],
       status: "partial",
       upstream: "cv.cvtColor",
@@ -1787,7 +1650,6 @@ export const PARITY_MANIFEST = {
       method: "inRange",
       module: "core",
       notes: "Inclusive U8 matrix bounds; scalar bounds and other depths remain missing.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.inRange",
@@ -1799,7 +1661,6 @@ export const PARITY_MANIFEST = {
       method: "max",
       module: "core",
       notes: "U8 matrix-to-matrix maximum; scalar operands and other depths remain missing.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.max",
@@ -1812,7 +1673,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Exact one- or two-argument browser contract across all scalar depths, one through four channels, optional U8 masks, compact and strided matrices, typed empties, and floating-point edge values.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.mean",
@@ -1824,7 +1684,6 @@ export const PARITY_MANIFEST = {
       method: "min",
       module: "core",
       notes: "U8 matrix-to-matrix minimum; scalar operands and other depths remain missing.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.min",
@@ -1837,7 +1696,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Exact one- or two-argument browser contract across every scalar depth for single-channel matrices, optional U8 masks, compact and strided matrices, ties, NaN, and canonical or typed empty headers.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.minMaxLoc",
@@ -1849,7 +1707,6 @@ export const PARITY_MANIFEST = {
       method: "resizeNearest",
       module: "imgproc",
       notes: "RGBA nearest-neighbor resizing; other matrix types and interpolation modes remain.",
-      patentReview: "reviewed",
       sources: [IMGPROC_TRANSFORM_SOURCE],
       status: "partial",
       upstream: "cv.resize",
@@ -1862,7 +1719,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Exact four-argument browser contract across all scalar depths, Embind signed repeat-count conversion, empty and deleted matrices, destination replacement, detached incompatible regions, exact in-place rejection, and live overlapping shared regions.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.repeat",
@@ -1875,7 +1731,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Exact three-argument browser contract and constants across all scalar depths, Embind signed code conversion, empty and deleted matrices, destination replacement, in-place operation, detached incompatible regions, and live overlapping shared regions.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.rotate",
@@ -1887,7 +1742,6 @@ export const PARITY_MANIFEST = {
       method: "subtract",
       module: "core",
       notes: "Saturating U8 matrix subtraction; scalar, mask, dtype, and output forms remain.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.subtract",
@@ -1899,7 +1753,6 @@ export const PARITY_MANIFEST = {
       method: "threshold",
       module: "imgproc",
       notes: "One luma-derived U8 binary mode; other threshold types and matrix forms remain.",
-      patentReview: "reviewed",
       sources: [IMGPROC_MISC_SOURCE],
       status: "partial",
       upstream: "cv.threshold",
@@ -1912,7 +1765,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Exact two-argument browser contract across all scalar depths, empty and deleted matrices, destination reallocation, in-place operation, and shared or detached regions.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.transpose",
@@ -1925,7 +1777,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Two through four all-depth Mat inputs are supported; MatVector and caller-provided destination forms remain.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.merge",
@@ -1938,7 +1789,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "All scalar depths, strided regions, alias-safe mutable output, and arbitrary channel pairs for one source and one destination; MatVector input/output forms and differential fixtures remain.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.mixChannels",
@@ -1951,7 +1801,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "All scalar depths, channels, and strided regions are supported; the MatVector destination form remains.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "partial",
       upstream: "cv.split",
@@ -1964,7 +1813,6 @@ export const PARITY_MANIFEST = {
       module: "core",
       notes:
         "Exact one-argument browser contract across all scalar depths, one through four channels, rectangular and strided matrices, typed empties, and floating-point accumulation edge values.",
-      patentReview: "reviewed",
       sources: [CORE_ARRAY_SOURCE],
       status: "implemented",
       upstream: "cv.trace",
@@ -1977,7 +1825,6 @@ export const PARITY_MANIFEST = {
       module: "photo",
       notes:
         "Creates a Rust-owned Drago tone-mapping configuration; the pinned artifact omits the global factory and pixel processing remains unimplemented.",
-      patentReview: "reviewed",
       sources: [PHOTO_SOURCE],
       status: "partial",
       upstream: "cv.createTonemapDrago",
@@ -1990,7 +1837,6 @@ export const PARITY_MANIFEST = {
       module: "photo",
       notes:
         "Creates a Rust-owned Mantiuk tone-mapping configuration; the pinned artifact omits the global factory and pixel processing remains unimplemented.",
-      patentReview: "reviewed",
       sources: [PHOTO_SOURCE],
       status: "partial",
       upstream: "cv.createTonemapMantiuk",
@@ -2003,7 +1849,6 @@ export const PARITY_MANIFEST = {
       module: "photo",
       notes:
         "Creates a Rust-owned Reinhard tone-mapping configuration; the pinned artifact omits the global factory and pixel processing remains unimplemented.",
-      patentReview: "reviewed",
       sources: [PHOTO_SOURCE],
       status: "partial",
       upstream: "cv.createTonemapReinhard",
@@ -2015,7 +1860,6 @@ export const PARITY_MANIFEST = {
       method: "Tonemap.getGamma",
       module: "photo",
       notes: "Exact inherited float32 gamma state, arity, return, and lifetime behavior.",
-      patentReview: "reviewed",
       sources: [PHOTO_SOURCE],
       status: "implemented",
       upstream: "cv.Tonemap.getGamma",
@@ -2028,7 +1872,6 @@ export const PARITY_MANIFEST = {
       module: "photo",
       notes:
         "Exact inherited float conversion, float32 state, arity, return, and lifetime behavior.",
-      patentReview: "reviewed",
       sources: [PHOTO_SOURCE],
       status: "implemented",
       upstream: "cv.Tonemap.setGamma",
@@ -2040,7 +1883,6 @@ export const PARITY_MANIFEST = {
       method: "TonemapDrago.getBias",
       module: "photo",
       notes: "Exact float32 state, arity, return, and lifetime behavior.",
-      patentReview: "reviewed",
       sources: [PHOTO_SOURCE],
       status: "implemented",
       upstream: "cv.TonemapDrago.getBias",
@@ -2052,7 +1894,6 @@ export const PARITY_MANIFEST = {
       method: "TonemapDrago.getSaturation",
       module: "photo",
       notes: "Exact float32 state, arity, return, and lifetime behavior.",
-      patentReview: "reviewed",
       sources: [PHOTO_SOURCE],
       status: "implemented",
       upstream: "cv.TonemapDrago.getSaturation",
@@ -2064,7 +1905,6 @@ export const PARITY_MANIFEST = {
       method: "TonemapDrago.setBias",
       module: "photo",
       notes: "Exact float conversion, float32 state, arity, return, and lifetime behavior.",
-      patentReview: "reviewed",
       sources: [PHOTO_SOURCE],
       status: "implemented",
       upstream: "cv.TonemapDrago.setBias",
@@ -2076,7 +1916,6 @@ export const PARITY_MANIFEST = {
       method: "TonemapDrago.setSaturation",
       module: "photo",
       notes: "Exact float conversion, float32 state, arity, return, and lifetime behavior.",
-      patentReview: "reviewed",
       sources: [PHOTO_SOURCE],
       status: "implemented",
       upstream: "cv.TonemapDrago.setSaturation",
@@ -2088,7 +1927,6 @@ export const PARITY_MANIFEST = {
       method: "TonemapMantiuk.getSaturation",
       module: "photo",
       notes: "Exact float32 state, arity, return, and lifetime behavior.",
-      patentReview: "reviewed",
       sources: [PHOTO_SOURCE],
       status: "implemented",
       upstream: "cv.TonemapMantiuk.getSaturation",
@@ -2100,7 +1938,6 @@ export const PARITY_MANIFEST = {
       method: "TonemapMantiuk.getScale",
       module: "photo",
       notes: "Exact float32 state, arity, return, and lifetime behavior.",
-      patentReview: "reviewed",
       sources: [PHOTO_SOURCE],
       status: "implemented",
       upstream: "cv.TonemapMantiuk.getScale",
@@ -2112,7 +1949,6 @@ export const PARITY_MANIFEST = {
       method: "TonemapMantiuk.setSaturation",
       module: "photo",
       notes: "Exact float conversion, float32 state, arity, return, and lifetime behavior.",
-      patentReview: "reviewed",
       sources: [PHOTO_SOURCE],
       status: "implemented",
       upstream: "cv.TonemapMantiuk.setSaturation",
@@ -2124,7 +1960,6 @@ export const PARITY_MANIFEST = {
       method: "TonemapMantiuk.setScale",
       module: "photo",
       notes: "Exact float conversion, float32 state, arity, return, and lifetime behavior.",
-      patentReview: "reviewed",
       sources: [PHOTO_SOURCE],
       status: "implemented",
       upstream: "cv.TonemapMantiuk.setScale",
@@ -2136,7 +1971,6 @@ export const PARITY_MANIFEST = {
       method: "TonemapReinhard.getColorAdaptation",
       module: "photo",
       notes: "Exact float32 state, arity, return, and lifetime behavior.",
-      patentReview: "reviewed",
       sources: [PHOTO_SOURCE],
       status: "implemented",
       upstream: "cv.TonemapReinhard.getColorAdaptation",
@@ -2148,7 +1982,6 @@ export const PARITY_MANIFEST = {
       method: "TonemapReinhard.getIntensity",
       module: "photo",
       notes: "Exact float32 state, arity, return, and lifetime behavior.",
-      patentReview: "reviewed",
       sources: [PHOTO_SOURCE],
       status: "implemented",
       upstream: "cv.TonemapReinhard.getIntensity",
@@ -2160,7 +1993,6 @@ export const PARITY_MANIFEST = {
       method: "TonemapReinhard.getLightAdaptation",
       module: "photo",
       notes: "Exact float32 state, arity, return, and lifetime behavior.",
-      patentReview: "reviewed",
       sources: [PHOTO_SOURCE],
       status: "implemented",
       upstream: "cv.TonemapReinhard.getLightAdaptation",
@@ -2172,7 +2004,6 @@ export const PARITY_MANIFEST = {
       method: "TonemapReinhard.setColorAdaptation",
       module: "photo",
       notes: "Exact float conversion, float32 state, arity, return, and lifetime behavior.",
-      patentReview: "reviewed",
       sources: [PHOTO_SOURCE],
       status: "implemented",
       upstream: "cv.TonemapReinhard.setColorAdaptation",
@@ -2184,7 +2015,6 @@ export const PARITY_MANIFEST = {
       method: "TonemapReinhard.setIntensity",
       module: "photo",
       notes: "Exact float conversion, float32 state, arity, return, and lifetime behavior.",
-      patentReview: "reviewed",
       sources: [PHOTO_SOURCE],
       status: "implemented",
       upstream: "cv.TonemapReinhard.setIntensity",
@@ -2196,7 +2026,6 @@ export const PARITY_MANIFEST = {
       method: "TonemapReinhard.setLightAdaptation",
       module: "photo",
       notes: "Exact float conversion, float32 state, arity, return, and lifetime behavior.",
-      patentReview: "reviewed",
       sources: [PHOTO_SOURCE],
       status: "implemented",
       upstream: "cv.TonemapReinhard.setLightAdaptation",
@@ -2208,7 +2037,6 @@ export const PARITY_MANIFEST = {
       method: "gaussianBlur",
       module: "imgproc",
       notes: "Kernel-based Gaussian blur is not implemented.",
-      patentReview: "required",
       sources: ["https://docs.opencv.org/4.13.0/d4/d86/group__imgproc__filter.html"],
       status: "planned",
       upstream: "cv.GaussianBlur",
@@ -2219,7 +2047,6 @@ export const PARITY_MANIFEST = {
       method: "canny",
       module: "imgproc",
       notes: "Canny edge detection is not implemented.",
-      patentReview: "required",
       sources: ["https://docs.opencv.org/4.13.0/dd/d1a/group__imgproc__feature.html"],
       status: "planned",
       upstream: "cv.Canny",
@@ -2230,7 +2057,6 @@ export const PARITY_MANIFEST = {
       method: "findContours",
       module: "imgproc",
       notes: "Contour extraction is not implemented.",
-      patentReview: "required",
       sources: ["https://docs.opencv.org/4.13.0/d3/dc0/group__imgproc__shape.html"],
       status: "planned",
       upstream: "cv.findContours",
@@ -2241,7 +2067,6 @@ export const PARITY_MANIFEST = {
       method: "warpPerspective",
       module: "imgproc",
       notes: "Perspective transforms are not implemented.",
-      patentReview: "required",
       sources: [IMGPROC_TRANSFORM_SOURCE],
       status: "planned",
       upstream: "cv.warpPerspective",

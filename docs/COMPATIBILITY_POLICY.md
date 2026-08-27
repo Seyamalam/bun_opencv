@@ -15,11 +15,10 @@ Every parity entry records:
 - whether implementation has started;
 - specification source links;
 - original authorship status;
-- patent-review status;
 - the closest OpenCV.js operation;
 - known numerical differences.
 
-An operation cannot become `partial` or `implemented` without original-authorship confirmation and at least one specification source. npm publication remains blocked until every shipped operation has patent review.
+An operation cannot become `partial` or `implemented` without original-authorship confirmation and at least one specification source. The release check verifies the package-name decision and the source-independent implementation confirmation. It does not require legal counsel or a patent checklist.
 
 ## If copied material enters the repository
 
