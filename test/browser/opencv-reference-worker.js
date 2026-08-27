@@ -4176,6 +4176,139 @@ function auditAffineTransform(reference) {
   return { arity, conversionOrder, layouts, strided, numeric };
 }
 
+function auditInvertAffineTransform(reference) {
+  const make = (rows, cols, type, values) => makeSeedMat(reference, rows, cols, type, values);
+  const run = (name, source, destination) => {
+    const audit = auditTypedMatCall(
+      () => reference.invertAffineTransform(source, destination),
+      [
+        ["source", source],
+        ["destination", destination],
+      ],
+    );
+    safeDelete(destination);
+    safeDelete(source);
+    return { name, audit };
+  };
+
+  const aritySource = make(2, 3, reference.CV_64FC1, [2, 0, 4, 0, 3, -6]);
+  const arityDestination = new reference.Mat();
+  const arity = {
+    length: reference.invertAffineTransform.length,
+    zero: captureCall(() => reference.invertAffineTransform()),
+    one: captureCall(() => reference.invertAffineTransform(aritySource)),
+    two: auditTypedMatCall(
+      () => reference.invertAffineTransform(aritySource, arityDestination),
+      [
+        ["source", aritySource],
+        ["destination", arityDestination],
+      ],
+    ),
+    three: captureCall(() => reference.invertAffineTransform(aritySource, arityDestination, 1)),
+  };
+  safeDelete(arityDestination);
+  safeDelete(aritySource);
+
+  let destinationReads = 0;
+  const deferredDestination = {
+    get $$() {
+      destinationReads += 1;
+      return undefined;
+    },
+  };
+  const conversionOrder = {
+    call: captureCall(() => reference.invertAffineTransform({}, deferredDestination)),
+    destinationReads,
+  };
+
+  const layouts = [
+    run("F32 to empty", make(2, 3, reference.CV_32FC1, [2, 0, 4, 0, 3, -6]), new reference.Mat()),
+    run("F64 to empty", make(2, 3, reference.CV_64FC1, [2, 0, 4, 0, 3, -6]), new reference.Mat()),
+    run(
+      "F64 to F32 destination",
+      make(2, 3, reference.CV_64FC1, [2, 0, 4, 0, 3, -6]),
+      make(2, 3, reference.CV_32FC1, [9, 9, 9, 9, 9, 9]),
+    ),
+    run(
+      "F32 to F64 destination",
+      make(2, 3, reference.CV_32FC1, [2, 0, 4, 0, 3, -6]),
+      make(2, 3, reference.CV_64FC1, [9, 9, 9, 9, 9, 9]),
+    ),
+    run("U8 source", make(2, 3, reference.CV_8UC1, [2, 0, 4, 0, 3, 6]), new reference.Mat()),
+    run(
+      "F64 wrong shape",
+      make(3, 2, reference.CV_64FC1, [2, 0, 4, 0, 3, -6]),
+      new reference.Mat(),
+    ),
+    run(
+      "F64 multichannel",
+      make(
+        2,
+        3,
+        reference.CV_64FC2,
+        Array.from({ length: 12 }, (_, index) => index + 1),
+      ),
+      new reference.Mat(),
+    ),
+  ];
+
+  const sourceParent = make(2, 5, reference.CV_64FC1, [99, 2, 0, 4, 99, 99, 0, 3, -6, 99]);
+  const stridedSource = sourceParent.roi(new reference.Rect(1, 0, 3, 2));
+  const strided = run("strided F64 source", stridedSource, new reference.Mat());
+  safeDelete(sourceParent);
+
+  const destinationParent = make(
+    3,
+    5,
+    reference.CV_64FC1,
+    Array.from({ length: 15 }, () => 99),
+  );
+  const destinationRoi = destinationParent.roi(new reference.Rect(1, 0, 3, 2));
+  const destinationRegionSource = make(2, 3, reference.CV_64FC1, [2, 0, 4, 0, 3, -6]);
+  const destinationRegion = {
+    name: "F64 destination ROI",
+    audit: auditTypedMatCall(
+      () => reference.invertAffineTransform(destinationRegionSource, destinationRoi),
+      [
+        ["source", destinationRegionSource],
+        ["destination", destinationRoi],
+        ["parent", destinationParent],
+      ],
+    ),
+  };
+  safeDelete(destinationRegionSource);
+  safeDelete(destinationRoi);
+  safeDelete(destinationParent);
+
+  const alias = make(2, 3, reference.CV_64FC1, [2, 0, 4, 0, 3, -6]);
+  const inPlace = {
+    name: "exact in place",
+    audit: auditTypedMatCall(
+      () => reference.invertAffineTransform(alias, alias),
+      [["matrix", alias]],
+    ),
+  };
+  safeDelete(alias);
+
+  const numeric = [
+    run(
+      "fractional",
+      make(2, 3, reference.CV_64FC1, [1.25, -0.5, 3.75, 2.5, 4.25, -1.5]),
+      new reference.Mat(),
+    ),
+    run("singular", make(2, 3, reference.CV_64FC1, [1, 2, 3, 2, 4, 6]), new reference.Mat()),
+    run("NaN", make(2, 3, reference.CV_64FC1, [Number.NaN, 0, 1, 0, 1, 2]), new reference.Mat()),
+    run(
+      "infinity",
+      make(2, 3, reference.CV_64FC1, [Number.POSITIVE_INFINITY, 0, 1, 0, 1, 2]),
+      new reference.Mat(),
+    ),
+    run("signed zero", make(2, 3, reference.CV_64FC1, [-0, 1, -0, 1, -0, 0]), new reference.Mat()),
+  ];
+
+  return { arity, conversionOrder, layouts, strided, destinationRegion, inPlace, numeric };
+}
+
 function auditStructuringElement(reference) {
   const capture = (callback) => {
     let matrix;
@@ -5700,6 +5833,12 @@ self.addEventListener("message", async ({ data: input }) => {
       self.postMessage({ outputs: { affineTransformAudit: auditAffineTransform(reference) } });
       return;
     }
+    if (request === "invert-affine-transform-contracts") {
+      self.postMessage({
+        outputs: { invertAffineTransformAudit: auditInvertAffineTransform(reference) },
+      });
+      return;
+    }
     if (request === "structuring-element-contracts") {
       self.postMessage({
         outputs: { structuringElementAudit: auditStructuringElement(reference) },
@@ -5890,6 +6029,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.determinantAudit = auditDeterminant(reference);
     outputs.setIdentityAudit = auditSetIdentity(reference);
     outputs.affineTransformAudit = auditAffineTransform(reference);
+    outputs.invertAffineTransformAudit = auditInvertAffineTransform(reference);
     outputs.structuringElementAudit = auditStructuringElement(reference);
     self.postMessage({ outputs });
   } catch (error) {

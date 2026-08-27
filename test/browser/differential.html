@@ -4134,6 +4134,140 @@
         return { arity, conversionOrder, layouts, strided, numeric };
       }
 
+      function auditPackageInvertAffineTransform(packageCv) {
+        const make = (rows, columns, depth, channels, values) =>
+          makePackageSeedMat(packageCv, rows, columns, depth, channels, values);
+        const run = (name, source, destination) => {
+          const audit = auditPackageTypedMatCall(
+            () => packageCv.invertAffineTransform(source, destination),
+            [
+              ["source", source],
+              ["destination", destination],
+            ],
+          );
+          disposePackageMat(destination);
+          disposePackageMat(source);
+          return { name, audit };
+        };
+
+        const aritySource = make(2, 3, "f64", 1, [2, 0, 4, 0, 3, -6]);
+        const arityDestination = packageCv.emptyMat();
+        const arity = {
+          length: packageCv.invertAffineTransform.length,
+          zero: captureCall(() => packageCv.invertAffineTransform()),
+          one: captureCall(() => packageCv.invertAffineTransform(aritySource)),
+          two: auditPackageTypedMatCall(
+            () => packageCv.invertAffineTransform(aritySource, arityDestination),
+            [
+              ["source", aritySource],
+              ["destination", arityDestination],
+            ],
+          ),
+          three: captureCall(() =>
+            packageCv.invertAffineTransform(aritySource, arityDestination, 1),
+          ),
+        };
+        disposePackageMat(arityDestination);
+        disposePackageMat(aritySource);
+
+        let destinationReads = 0;
+        const deferredDestination = {
+          get $$() {
+            destinationReads += 1;
+            return undefined;
+          },
+        };
+        const conversionOrder = {
+          call: captureCall(() => packageCv.invertAffineTransform({}, deferredDestination)),
+          destinationReads,
+        };
+
+        const layouts = [
+          run("F32 to empty", make(2, 3, "f32", 1, [2, 0, 4, 0, 3, -6]), packageCv.emptyMat()),
+          run("F64 to empty", make(2, 3, "f64", 1, [2, 0, 4, 0, 3, -6]), packageCv.emptyMat()),
+          run(
+            "F64 to F32 destination",
+            make(2, 3, "f64", 1, [2, 0, 4, 0, 3, -6]),
+            make(2, 3, "f32", 1, [9, 9, 9, 9, 9, 9]),
+          ),
+          run(
+            "F32 to F64 destination",
+            make(2, 3, "f32", 1, [2, 0, 4, 0, 3, -6]),
+            make(2, 3, "f64", 1, [9, 9, 9, 9, 9, 9]),
+          ),
+          run("U8 source", make(2, 3, "u8", 1, [2, 0, 4, 0, 3, 6]), packageCv.emptyMat()),
+          run("F64 wrong shape", make(3, 2, "f64", 1, [2, 0, 4, 0, 3, -6]), packageCv.emptyMat()),
+          run(
+            "F64 multichannel",
+            make(
+              2,
+              3,
+              "f64",
+              2,
+              Array.from({ length: 12 }, (_, index) => index + 1),
+            ),
+            packageCv.emptyMat(),
+          ),
+        ];
+
+        const sourceParent = make(2, 5, "f64", 1, [99, 2, 0, 4, 99, 99, 0, 3, -6, 99]);
+        const stridedSource = sourceParent.roi(0, 1, 2, 3);
+        const strided = run("strided F64 source", stridedSource, packageCv.emptyMat());
+        disposePackageMat(sourceParent);
+
+        const destinationParent = make(
+          3,
+          5,
+          "f64",
+          1,
+          Array.from({ length: 15 }, () => 99),
+        );
+        const destinationRoi = destinationParent.roi(0, 1, 2, 3);
+        const destinationRegionSource = make(2, 3, "f64", 1, [2, 0, 4, 0, 3, -6]);
+        const destinationRegion = {
+          name: "F64 destination ROI",
+          audit: auditPackageTypedMatCall(
+            () => packageCv.invertAffineTransform(destinationRegionSource, destinationRoi),
+            [
+              ["source", destinationRegionSource],
+              ["destination", destinationRoi],
+              ["parent", destinationParent],
+            ],
+          ),
+        };
+        disposePackageMat(destinationRegionSource);
+        disposePackageMat(destinationRoi);
+        disposePackageMat(destinationParent);
+
+        const alias = make(2, 3, "f64", 1, [2, 0, 4, 0, 3, -6]);
+        const inPlace = {
+          name: "exact in place",
+          audit: auditPackageTypedMatCall(
+            () => packageCv.invertAffineTransform(alias, alias),
+            [["matrix", alias]],
+          ),
+        };
+        disposePackageMat(alias);
+
+        const numeric = [
+          run(
+            "fractional",
+            make(2, 3, "f64", 1, [1.25, -0.5, 3.75, 2.5, 4.25, -1.5]),
+            packageCv.emptyMat(),
+          ),
+          run("singular", make(2, 3, "f64", 1, [1, 2, 3, 2, 4, 6]), packageCv.emptyMat()),
+          run("NaN", make(2, 3, "f64", 1, [Number.NaN, 0, 1, 0, 1, 2]), packageCv.emptyMat()),
+          run(
+            "infinity",
+            make(2, 3, "f64", 1, [Number.POSITIVE_INFINITY, 0, 1, 0, 1, 2]),
+            packageCv.emptyMat(),
+          ),
+          run("signed zero", make(2, 3, "f64", 1, [-0, 1, -0, 1, -0, 0]), packageCv.emptyMat()),
+        ];
+
+        return { arity, conversionOrder, layouts, strided, destinationRegion, inPlace, numeric };
+      }
+
       function auditPackageStructuringElement(packageCv) {
         const capture = (callback) => {
           let matrix;
@@ -6110,9 +6244,11 @@
                             ? "set-identity-contracts"
                             : searchParameters.has("reference-affine-transform")
                               ? "affine-transform-contracts"
-                              : searchParameters.has("reference-structuring-element")
-                                ? "structuring-element-contracts"
-                                : undefined;
+                              : searchParameters.has("reference-invert-affine-transform")
+                                ? "invert-affine-transform-contracts"
+                                : searchParameters.has("reference-structuring-element")
+                                  ? "structuring-element-contracts"
+                                  : undefined;
         const referenceOutputs = await runReference(input, referenceRequest);
         if (searchParameters.has("reference-transpose")) {
           packageSource.dispose();
@@ -6191,6 +6327,14 @@
           result.textContent = JSON.stringify(referenceOutputs.affineTransformAudit, null, 2);
           break differential;
         }
+        if (searchParameters.has("reference-invert-affine-transform")) {
+          packageSource.dispose();
+          globalThis.invertAffineTransformReferenceAudit =
+            referenceOutputs.invertAffineTransformAudit;
+          result.style.whiteSpace = "pre-wrap";
+          result.textContent = JSON.stringify(referenceOutputs.invertAffineTransformAudit, null, 2);
+          break differential;
+        }
         if (searchParameters.has("reference-structuring-element")) {
           packageSource.dispose();
           globalThis.structuringElementReferenceAudit = referenceOutputs.structuringElementAudit;
@@ -6267,6 +6411,33 @@
         );
         if (affineTransformDifference !== undefined) {
           throw new Error(affineTransformDifference);
+        }
+        const normalizeInvertAffineAudit = (audit) => ({
+          ...audit,
+          layouts: audit.layouts.map((entry) =>
+            entry.audit.call.threw
+              ? {
+                  name: entry.name,
+                  audit: {
+                    before: { source: entry.audit.before.source },
+                    call: { threw: true },
+                    after: { source: entry.audit.after.source },
+                  },
+                }
+              : entry,
+          ),
+        });
+        const invertAffineTransformDifference = findDifference(
+          normalizeContourAudit(
+            normalizeInvertAffineAudit(auditPackageInvertAffineTransform(packageCv)),
+          ),
+          normalizeContourAudit(
+            normalizeInvertAffineAudit(referenceOutputs.invertAffineTransformAudit),
+          ),
+          "invertAffineTransform audit",
+        );
+        if (invertAffineTransformDifference !== undefined) {
+          throw new Error(invertAffineTransformDifference);
         }
         const structuringElementDifference = findDifference(
           normalizeContourAudit(auditPackageStructuringElement(packageCv)),
