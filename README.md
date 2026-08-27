@@ -186,7 +186,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `boundingRect`                              | `cv.boundingRect`                              | Full    | Exact I32/F32 contour bounds             |
 | imgproc    | `clipLine`                                  | `cv.clipLine`                                  | Partial | Integer rectangle and segment form       |
 | imgproc    | `contourArea`                               | `cv.contourArea`                               | Full    | Exact I32/F32 contour area               |
-| imgproc    | `createHanningWindow`                       | `cv.createHanningWindow`                       | Partial | F32/F64 two-dimensional windows          |
+| imgproc    | `createHanningWindow`                       | `cv.createHanningWindow`                       | Full    | Exact F32/F64 mutable window contract    |
 | imgproc    | `ellipse2Poly`                              | `cv.ellipse2Poly`                              | Partial | Ordered integer ellipse arcs             |
 | imgproc    | `getAffineTransform`                        | `cv.getAffineTransform`                        | Full    | Exact continuous F32 points and F64 map  |
 | imgproc    | `getPerspectiveTransform`                   | `cv.getPerspectiveTransform`                   | Partial | Four F32/F64 point pairs to F64          |
@@ -203,7 +203,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `findContours`                              | `cv.findContours`                              | Planned | Not started                              |
 | imgproc    | `warpPerspective`                           | `cv.warpPerspective`                           | Planned | Not started                              |
 
-Current full parity is **83 of 488 (17.01%)**. There are **46 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+Current full parity is **84 of 488 (17.21%)**. There are **45 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
 
 The fixture passes the complete pinned browser contract for `determinant`. The function requires exactly one live `Mat` and accepts only nonempty square single-channel F32 or F64 matrices, including non-contiguous regions. It preserves the input, matches the direct 1x1, 2x2, and 3x3 paths with signed-zero and non-finite propagation, and keeps F32 and F64 arithmetic distinct during elimination for larger matrices. The audit locks the absolute pivot cutoffs, exact cutoff acceptance, row-swap signs, singular positive zero, stored-F32 widening in the small formulas, and Hilbert precision. Integer, multichannel, nonsquare, empty, deleted, and non-Mat inputs reject before computation.
 

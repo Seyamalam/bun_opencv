@@ -47,6 +47,7 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - A fully implemented `getAffineTransform` family with exact two-Mat dispatch, continuous F32 point layouts, source preservation, singular zero matrices, non-finite propagation, bit-exact LU arithmetic, and fresh 2x3 F64 results. The totals are now 48 partial, 81 implemented, and 129 supported families.
 - A fully implemented `getStructuringElement` family with exact overload dispatch, structural Size and Point conversion, Embind signed integers, default and explicit anchors, rectangle, cross, ellipse, and diamond kernels, plus complete invalid-input coverage. The totals are now 47 partial, 82 implemented, and 129 supported families.
 - A fully implemented `invertAffineTransform` family with exact two-Mat dispatch, source-depth F32/F64 arithmetic, mutable destination replacement, compatible ROI writes, exact aliasing, singular signed zeros, non-finite propagation, and invalid-input coverage. The totals are now 46 partial, 83 implemented, and 129 supported families.
+- A fully implemented `createHanningWindow` family with exact destination-first dispatch, structural Size and type conversion, F32/F64 destination replacement, compatible ROI writes, invalid-input preservation, and bit-exact asymmetric window arithmetic. The totals are now 45 partial, 84 implemented, and 129 supported families.
 - Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
 
 ### Planned

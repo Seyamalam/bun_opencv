@@ -1413,13 +1413,13 @@ export const PARITY_MANIFEST = {
       method: "createHanningWindow",
       module: "imgproc",
       notes:
-        "Two-dimensional F32 or F64 output for dimensions of at least two, capped at the conservative F64 WASM matrix limit; other output forms and differential fixtures remain.",
+        "Matches the exact destination-first three-argument binding, structural Size and signed i32 type conversion, F32/F64 destination replacement and compatible ROI writes, invalid-input preservation, and pinned cosine-coefficient square-root arithmetic.",
       patentReview: "required",
       sources: [IMGPROC_SOURCE],
-      status: "partial",
+      status: "implemented",
       upstream: "cv.createHanningWindow",
       upstreamId: "imgproc.function.create-hanning-window",
-      wasmExport: "createHanningWindow",
+      wasmExport: "createHanningWindowInto",
     },
     {
       implementationOrigin: "original",

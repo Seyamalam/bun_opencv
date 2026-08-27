@@ -198,7 +198,8 @@ type StructuringElementKind = 0 | 1 | 2 | 3;
 type HanningWindowDepth = "f32" | "f64";
 
 getStructuringElement(kind: StructuringElementKind, size: Size, anchor?: Point): Mat;
-createHanningWindow(size: Size, depth: HanningWindowDepth): Mat;
+createHanningWindow(destination: Mat, size: Size, type: 5 | 6): void;
+createHanningWindowAlloc(size: Size, depth: HanningWindowDepth): Mat;
 ellipse2Poly(
   center: Point,
   axes: Size,
@@ -212,7 +213,7 @@ clipLine(rectangle: Rect, start: Point, end: Point): readonly [Point, Point] | u
 
 `getStructuringElement` returns a single-channel U8 kernel. Kind `0` is a rectangle, `1` is a cross, `2` is an ellipse, and `3` is a diamond. Width and height must be positive after Embind signed-integer conversion. The default anchor is `{ x: -1, y: -1 }`, which selects each dimension's center. A custom anchor moves the cross intersection. Rectangle, ellipse, and diamond geometry stay centered.
 
-`createHanningWindow` returns a single-channel F32 or F64 matrix. Each dimension must be at least two. The implementation caps allocation at the conservative F64 WASM matrix limit. The values are the outer product of non-negative sine weights, which are the square roots of one-dimensional Hann coefficients.
+`createHanningWindow` accepts exactly three arguments and writes a single-channel F32 (`5`) or F64 (`6`) matrix into the supplied destination. Size is a structural value object whose fields use Embind signed i32 conversion, and each converted dimension must be at least two. Compatible regions are written through; other destinations are rebound. The pinned arithmetic takes the square root after multiplying the horizontal and vertical Hann coefficients, preserving asymmetric F64 rounding. `createHanningWindowAlloc` is the package-specific allocating convenience.
 
 `ellipse2Poly` accepts non-negative integer axes. Arc bounds must satisfy `0 <= arcStart <= arcEnd <= 360`, and `delta` must be from 1 through 180. It always samples the exact end angle and removes consecutive points that round to the same signed 32-bit coordinate. It does not normalize or swap arc bounds.
 

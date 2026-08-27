@@ -152,6 +152,7 @@ const AUDITED_BINDING_FORMS: Readonly<Record<string, AuditedBindingForm>> = Obje
   "imgproc.function.bounding-rect": { overloadCount: 1, runtimeArity: 1 },
   "imgproc.function.contour-area": { overloadCount: 2, runtimeArity: 0 },
   "imgproc.function.get-affine-transform": { overloadCount: 1, runtimeArity: 2 },
+  "imgproc.function.create-hanning-window": { overloadCount: 1, runtimeArity: 3 },
   "imgproc.function.invert-affine-transform": { overloadCount: 1, runtimeArity: 2 },
   "imgproc.function.get-rotation-matrix2-d": { overloadCount: 1, runtimeArity: 3 },
   "imgproc.function.get-structuring-element": { overloadCount: 2, runtimeArity: 0 },
