@@ -1,7 +1,9 @@
 import type { WasmMatHandle } from "./mat.js";
 import type { WasmAKAZEHandle } from "./akaze.js";
 import type { WasmKAZEHandle } from "./kaze.js";
+import type { WasmORBHandle } from "./orb.js";
 import type { WasmGFTTDetectorHandle } from "./gftt.js";
+import type { WasmMSERHandle } from "./mser.js";
 import type {
   WasmAgastFeatureDetectorHandle,
   WasmFastFeatureDetectorHandle,
@@ -98,6 +100,33 @@ declare module "#wasm" {
     setUpright(value: boolean): void;
   }
 
+  export class ORB implements WasmORBHandle {
+    private constructor();
+    static create(
+      maxFeatures?: number | null,
+      scaleFactor?: number | null,
+      nLevels?: number | null,
+      edgeThreshold?: number | null,
+      firstLevel?: number | null,
+      wtaK?: number | null,
+      scoreType?: number | null,
+      patchSize?: number | null,
+      fastThreshold?: number | null,
+    ): ORB;
+    free(): void;
+    getDefaultName(): string;
+    getFastThreshold(): number;
+    setEdgeThreshold(value: number): void;
+    setFastThreshold(value: number): void;
+    setFirstLevel(value: number): void;
+    setMaxFeatures(value: number): void;
+    setNLevels(value: number): void;
+    setPatchSize(value: number): void;
+    setScaleFactor(value: number): void;
+    setScoreType(value: number): void;
+    setWTA_K(value: number): void;
+  }
+
   export class GFTTDetector implements WasmGFTTDetectorHandle {
     private constructor();
     static create(
@@ -122,6 +151,26 @@ declare module "#wasm" {
     setMaxFeatures(value: number): void;
     setMinDistance(value: number): void;
     setQualityLevel(value: number): void;
+  }
+
+  export class MSERConfig implements WasmMSERHandle {
+    private constructor();
+    static create(
+      delta?: number | null,
+      minArea?: number | null,
+      maxArea?: number | null,
+      pass2Only?: boolean | null,
+    ): MSERConfig;
+    free(): void;
+    getDefaultName(): string;
+    getDelta(): number;
+    getMaxArea(): number;
+    getMinArea(): number;
+    getPass2Only(): boolean;
+    setDelta(value: number): void;
+    setMaxArea(value: number): void;
+    setMinArea(value: number): void;
+    setPass2Only(value: boolean): void;
   }
 
   export default function initialize(): Promise<void>;

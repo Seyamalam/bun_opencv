@@ -15,7 +15,14 @@ import {
   KAZE_DEFAULTS,
   KAZE_DiffusivityType,
   KAZEDiffusivity,
+  MSER,
+  MSER_DEFAULTS,
   OpenCvInputError,
+  ORB_DEFAULTS,
+  ORB_FAST_SCORE,
+  ORB_HARRIS_SCORE,
+  ORB_ScoreType,
+  ORBScoreType,
 } from "../src/index.js";
 import type {
   Mat,
@@ -30,7 +37,11 @@ import type {
   WasmGFTTDetectorHandle,
   WasmKAZEFactory,
   WasmKAZEHandle,
+  WasmMSERFactory,
+  WasmMSERHandle,
   WasmMatHandle,
+  WasmORBFactory,
+  WasmORBHandle,
 } from "../src/index.js";
 
 class CopyingMatHandle implements WasmMatHandle {
@@ -310,6 +321,69 @@ class CopyingGFTTDetectorHandle implements WasmGFTTDetectorHandle {
   }
 }
 
+class CopyingMSERHandle implements WasmMSERHandle {
+  #delta: number;
+  #freed = false;
+  #maxArea: number;
+  #minArea: number;
+  #pass2Only: boolean;
+
+  constructor(
+    delta: number,
+    minArea: number,
+    maxArea: number,
+    pass2Only: boolean,
+    readonly onFree: () => void,
+  ) {
+    this.#delta = delta;
+    this.#minArea = minArea;
+    this.#maxArea = maxArea;
+    this.#pass2Only = pass2Only;
+  }
+
+  free(): void {
+    if (this.#freed) return;
+    this.#freed = true;
+    this.onFree();
+  }
+
+  getDefaultName(): string {
+    return "Feature2D.MSER";
+  }
+
+  getDelta(): number {
+    return this.#delta;
+  }
+
+  getMaxArea(): number {
+    return this.#maxArea;
+  }
+
+  getMinArea(): number {
+    return this.#minArea;
+  }
+
+  getPass2Only(): boolean {
+    return this.#pass2Only;
+  }
+
+  setDelta(value: number): void {
+    this.#delta = value;
+  }
+
+  setMaxArea(value: number): void {
+    this.#maxArea = value;
+  }
+
+  setMinArea(value: number): void {
+    this.#minArea = value;
+  }
+
+  setPass2Only(value: boolean): void {
+    this.#pass2Only = value;
+  }
+}
+
 class CopyingKAZEHandle implements WasmKAZEHandle {
   #diffusivity: number;
   #extended: boolean;
@@ -395,6 +469,117 @@ class CopyingKAZEHandle implements WasmKAZEHandle {
 
   setUpright(value: boolean): void {
     this.#upright = value;
+  }
+}
+
+class CopyingORBHandle implements WasmORBHandle {
+  #edgeThreshold: number;
+  #fastThreshold: number;
+  #firstLevel: number;
+  #freed = false;
+  #maxFeatures: number;
+  #nLevels: number;
+  #patchSize: number;
+  #scaleFactor: number;
+  #scoreType: number;
+  #wtaK: number;
+
+  constructor(
+    maxFeatures: number,
+    scaleFactor: number,
+    nLevels: number,
+    edgeThreshold: number,
+    firstLevel: number,
+    wtaK: number,
+    scoreType: number,
+    patchSize: number,
+    fastThreshold: number,
+    readonly onFree: () => void,
+  ) {
+    this.#maxFeatures = maxFeatures;
+    this.#scaleFactor = scaleFactor;
+    this.#nLevels = nLevels;
+    this.#edgeThreshold = edgeThreshold;
+    this.#firstLevel = firstLevel;
+    this.#wtaK = wtaK;
+    this.#scoreType = scoreType;
+    this.#patchSize = patchSize;
+    this.#fastThreshold = fastThreshold;
+  }
+
+  free(): void {
+    if (this.#freed) return;
+    this.#freed = true;
+    this.onFree();
+  }
+
+  getDefaultName(): string {
+    return "Feature2D.ORB";
+  }
+
+  getFastThreshold(): number {
+    return this.#fastThreshold;
+  }
+
+  configuration(): readonly [
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+  ] {
+    return [
+      this.#maxFeatures,
+      this.#scaleFactor,
+      this.#nLevels,
+      this.#edgeThreshold,
+      this.#firstLevel,
+      this.#wtaK,
+      this.#scoreType,
+      this.#patchSize,
+      this.#fastThreshold,
+    ];
+  }
+
+  setEdgeThreshold(value: number): void {
+    this.#edgeThreshold = value;
+  }
+
+  setFastThreshold(value: number): void {
+    this.#fastThreshold = value;
+  }
+
+  setFirstLevel(value: number): void {
+    if (value < 0) throw new OpenCvInputError("ORB first level must be zero or greater");
+    this.#firstLevel = value;
+  }
+
+  setMaxFeatures(value: number): void {
+    this.#maxFeatures = value;
+  }
+
+  setNLevels(value: number): void {
+    this.#nLevels = value;
+  }
+
+  setPatchSize(value: number): void {
+    this.#patchSize = value;
+  }
+
+  setScaleFactor(value: number): void {
+    this.#scaleFactor = value;
+  }
+
+  setScoreType(value: number): void {
+    this.#scoreType = value;
+  }
+
+  setWTA_K(value: number): void {
+    this.#wtaK = value;
   }
 }
 
@@ -683,6 +868,8 @@ class CopyingBackend implements OpenCvBackend {
   #fastFeatureDetectorFreeCount = 0;
   #gfttDetectorFreeCount = 0;
   #kazeFreeCount = 0;
+  #mserFreeCount = 0;
+  #orbFreeCount = 0;
   #logLevel = 3;
   #randomState = 0;
   readonly cartToPolarDegreeFlags: boolean[] = [];
@@ -750,6 +937,34 @@ class CopyingBackend implements OpenCvBackend {
       ),
   };
 
+  readonly ORB: WasmORBFactory = {
+    create: (
+      maxFeatures,
+      scaleFactor,
+      nLevels,
+      edgeThreshold,
+      firstLevel,
+      wtaK,
+      scoreType,
+      patchSize,
+      fastThreshold,
+    ): WasmORBHandle =>
+      new CopyingORBHandle(
+        maxFeatures ?? ORB_DEFAULTS.maxFeatures,
+        scaleFactor ?? ORB_DEFAULTS.scaleFactor,
+        nLevels ?? ORB_DEFAULTS.nLevels,
+        edgeThreshold ?? ORB_DEFAULTS.edgeThreshold,
+        firstLevel ?? ORB_DEFAULTS.firstLevel,
+        wtaK ?? ORB_DEFAULTS.wtaK,
+        scoreType ?? ORB_DEFAULTS.scoreType,
+        patchSize ?? ORB_DEFAULTS.patchSize,
+        fastThreshold ?? ORB_DEFAULTS.fastThreshold,
+        () => {
+          this.#orbFreeCount += 1;
+        },
+      ),
+  };
+
   readonly GFTTDetector: WasmGFTTDetectorFactory = {
     create: (
       maxFeatures,
@@ -772,6 +987,19 @@ class CopyingBackend implements OpenCvBackend {
       ),
   };
 
+  readonly MSERConfig: WasmMSERFactory = {
+    create: (delta, minArea, maxArea, pass2Only): WasmMSERHandle =>
+      new CopyingMSERHandle(
+        delta ?? MSER_DEFAULTS.delta,
+        minArea ?? MSER_DEFAULTS.minArea,
+        maxArea ?? MSER_DEFAULTS.maxArea,
+        pass2Only ?? MSER_DEFAULTS.pass2Only,
+        () => {
+          this.#mserFreeCount += 1;
+        },
+      ),
+  };
+
   readonly AgastFeatureDetector: WasmAgastFeatureDetectorFactory = {
     create: (threshold, nonmaxSuppression, type): WasmAgastFeatureDetectorHandle =>
       new CopyingAgastFeatureDetectorHandle(
@@ -790,6 +1018,14 @@ class CopyingBackend implements OpenCvBackend {
 
   get kazeFreeCount(): number {
     return this.#kazeFreeCount;
+  }
+
+  get orbFreeCount(): number {
+    return this.#orbFreeCount;
+  }
+
+  get mserFreeCount(): number {
+    return this.#mserFreeCount;
   }
 
   get gfttDetectorFreeCount(): number {
@@ -3932,6 +4168,43 @@ describe("OpenCv client", () => {
     detector.dispose();
   });
 
+  test("creates a Rust-owned MSER configuration without exposing a static factory", () => {
+    const backend = new CopyingBackend();
+    const localClient = createOpenCv(backend);
+    const detector = localClient.createMSER({
+      delta: 7,
+      minArea: 61,
+      maxArea: 14_401,
+      pass2Only: true,
+    });
+
+    expect(Reflect.has(MSER, "create")).toBe(false);
+    expect(detector.getDefaultName()).toBe("Feature2D.MSER");
+    expect(detector.getDelta()).toBe(7);
+    expect(detector.getMinArea()).toBe(61);
+    expect(detector.getMaxArea()).toBe(14_401);
+    expect(detector.getPass2Only()).toBe(true);
+
+    detector.dispose();
+    detector.dispose();
+    expect(backend.mserFreeCount).toBe(1);
+  });
+
+  test("uses MSER defaults and validates convenience-factory integers", () => {
+    const localClient = createOpenCv(new CopyingBackend());
+    const detector = localClient.createMSER();
+
+    expect(detector.getDelta()).toBe(MSER_DEFAULTS.delta);
+    expect(detector.getMinArea()).toBe(MSER_DEFAULTS.minArea);
+    expect(detector.getMaxArea()).toBe(MSER_DEFAULTS.maxArea);
+    expect(detector.getPass2Only()).toBe(MSER_DEFAULTS.pass2Only);
+    detector.dispose();
+
+    expect(() => localClient.createMSER({ delta: 1.5 })).toThrow(OpenCvInputError);
+    expect(() => localClient.createMSER({ minArea: -2_147_483_649 })).toThrow(OpenCvInputError);
+    expect(() => localClient.createMSER({ maxArea: 2_147_483_648 })).toThrow(OpenCvInputError);
+  });
+
   test("owns a KAZE configuration with OpenCV 4.13 defaults", () => {
     const backend = new CopyingBackend();
     const localClient = createOpenCv(backend);
@@ -3951,6 +4224,87 @@ describe("OpenCv client", () => {
     expect(backend.kazeFreeCount).toBe(1);
     expect(() => kaze.getThreshold()).toThrow(BindingError);
   });
+
+  test("owns an ORB configuration with the pinned constructor defaults", () => {
+    const backend = new CopyingBackend();
+    const localClient = createOpenCv(backend);
+    const orb = localClient.createORB();
+
+    expect(orb.getDefaultName()).toBe("Feature2D.ORB");
+    expect(orb.getFastThreshold()).toBe(ORB_DEFAULTS.fastThreshold);
+    expect(ORB_ScoreType.HARRIS_SCORE.value).toBe(0);
+    expect(ORB_ScoreType.FAST_SCORE.value).toBe(1);
+
+    orb.dispose();
+    expect(backend.orbFreeCount).toBe(1);
+  });
+
+  // oxlint-disable anti-slop/no-reflect-apply, typescript/unbound-method -- This test exercises untyped JavaScript Embind call shapes.
+  test("matches ORB method arity, coercion, enum, and lifetime contracts", () => {
+    const backend = new CopyingBackend();
+    const localClient = createOpenCv(backend);
+    const orb = localClient.createORB({ fastThreshold: 20, scoreType: ORBScoreType.HARRIS_SCORE });
+
+    expect(orb.getDefaultName).toHaveLength(0);
+    expect(orb.getFastThreshold).toHaveLength(0);
+    for (const setter of [
+      orb.setEdgeThreshold,
+      orb.setFastThreshold,
+      orb.setFirstLevel,
+      orb.setMaxFeatures,
+      orb.setNLevels,
+      orb.setPatchSize,
+      orb.setScaleFactor,
+      orb.setScoreType,
+      orb.setWTA_K,
+    ]) {
+      expect(setter).toHaveLength(1);
+      expect(() => Reflect.apply(setter, orb, [])).toThrow(BindingError);
+      expect(() => Reflect.apply(setter, orb, [1, 2])).toThrow(BindingError);
+    }
+    expect(() => Reflect.apply(orb.getFastThreshold, orb, [1])).toThrow(BindingError);
+
+    expect(orb.setFastThreshold(37.9)).toBeUndefined();
+    expect(orb.getFastThreshold()).toBe(37);
+    orb.setFastThreshold(Number.NaN);
+    expect(orb.getFastThreshold()).toBe(0);
+    expect(() => orb.setFastThreshold(Number.POSITIVE_INFINITY)).toThrow(TypeError);
+    expect(() => Reflect.apply(orb.setFastThreshold, orb, [null])).toThrow(TypeError);
+    expect(orb.getFastThreshold()).toBe(0);
+
+    expect(orb.setScaleFactor(Number.NEGATIVE_INFINITY)).toBeUndefined();
+    expect(() => Reflect.apply(orb.setScaleFactor, orb, ["1.2"])).toThrow(TypeError);
+    expect(() => orb.setFirstLevel(-1)).toThrow(OpenCvInputError);
+    expect(orb.setFirstLevel(2)).toBeUndefined();
+
+    expect(orb.setScoreType(ORB_ScoreType.FAST_SCORE)).toBeUndefined();
+    expect(Reflect.apply(orb.setScoreType, orb, [{ value: 19.9 }])).toBeUndefined();
+    expect(Reflect.apply(orb.setScoreType, orb, [1])).toBeUndefined();
+    expect(() => Reflect.apply(orb.setScoreType, orb, [null])).toThrow(TypeError);
+
+    expect(ORB_HARRIS_SCORE).toBe(0);
+    expect(ORB_FAST_SCORE).toBe(1);
+    expect(localClient.ORB_HARRIS_SCORE).toBe(0);
+    expect(localClient.ORB_FAST_SCORE).toBe(1);
+    expect(localClient.ORB_ScoreType).toBe(ORB_ScoreType);
+    expect(ORB_ScoreType.values[0]).toBe(ORB_ScoreType.HARRIS_SCORE);
+    expect(ORB_ScoreType.values[1]).toBe(ORB_ScoreType.FAST_SCORE);
+    expect(ORB_ScoreType.HARRIS_SCORE).not.toBe(ORB_HARRIS_SCORE);
+
+    expect(Reflect.apply(orb.delete, orb, [1, 2])).toBeUndefined();
+    expect(backend.orbFreeCount).toBe(1);
+    expect(() => orb.delete()).toThrow("ORB instance already deleted");
+    expect(() => orb.getDefaultName()).toThrow(
+      "Cannot pass deleted object as a pointer of type ORB",
+    );
+    expect(() => orb.getFastThreshold()).toThrow(
+      "Cannot pass deleted object as a pointer of type ORB const*",
+    );
+    expect(() => orb.setFastThreshold(1)).toThrow(
+      "Cannot pass deleted object as a pointer of type ORB",
+    );
+  });
+  // oxlint-enable anti-slop/no-reflect-apply, typescript/unbound-method
 
   test("creates and mutates an explicit KAZE configuration", () => {
     const localClient = createOpenCv(new CopyingBackend());

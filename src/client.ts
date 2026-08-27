@@ -7,8 +7,12 @@ import {
 import type { AKAZEOptions } from "./akaze.js";
 import { KAZE, validateKAZEOptions } from "./kaze.js";
 import type { KAZEOptions } from "./kaze.js";
+import { ORB, ORB_FAST_SCORE, ORB_HARRIS_SCORE, ORB_ScoreType, validateORBOptions } from "./orb.js";
+import type { ORBOptions } from "./orb.js";
 import { GFTTDetector, validateGFTTDetectorOptions } from "./gftt.js";
 import type { GFTTDetectorOptions } from "./gftt.js";
+import { MSER, validateMSEROptions } from "./mser.js";
+import type { MSEROptions } from "./mser.js";
 import {
   AgastFeatureDetector,
   AgastFeatureDetector_DetectorType,
@@ -54,6 +58,9 @@ class WasmOpenCv implements OpenCv {
   readonly AgastFeatureDetector_DetectorType = AgastFeatureDetector_DetectorType;
   readonly FastFeatureDetector_DetectorType = FastFeatureDetector_DetectorType;
   readonly KAZE_DiffusivityType = KAZE_DiffusivityType;
+  readonly ORB_FAST_SCORE = ORB_FAST_SCORE;
+  readonly ORB_HARRIS_SCORE = ORB_HARRIS_SCORE;
+  readonly ORB_ScoreType = ORB_ScoreType;
   readonly ROTATE_90_CLOCKWISE = 0 as const;
   readonly ROTATE_180 = 1 as const;
   readonly ROTATE_90_COUNTERCLOCKWISE = 2 as const;
@@ -246,6 +253,23 @@ class WasmOpenCv implements OpenCv {
     );
   }
 
+  createORB(options: ORBOptions = {}): ORB {
+    validateORBOptions(options);
+    return new ORB(
+      this.#backend.ORB.create(
+        options.maxFeatures,
+        options.scaleFactor === undefined ? undefined : Math.fround(options.scaleFactor),
+        options.nLevels,
+        options.edgeThreshold,
+        options.firstLevel,
+        options.wtaK,
+        options.scoreType,
+        options.patchSize,
+        options.fastThreshold,
+      ),
+    );
+  }
+
   createGFTTDetector(options: GFTTDetectorOptions = {}): GFTTDetector {
     validateGFTTDetectorOptions(options);
     return new GFTTDetector(
@@ -256,6 +280,18 @@ class WasmOpenCv implements OpenCv {
         options.blockSize,
         options.useHarrisDetector,
         options.k,
+      ),
+    );
+  }
+
+  createMSER(options: MSEROptions = {}): MSER {
+    validateMSEROptions(options);
+    return new MSER(
+      this.#backend.MSERConfig.create(
+        options.delta,
+        options.minArea,
+        options.maxArea,
+        options.pass2Only,
       ),
     );
   }

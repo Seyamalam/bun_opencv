@@ -6,7 +6,9 @@ import type {
   WasmAKAZEFactory,
 } from "./akaze.js";
 import type { KAZE, KAZEOptions, WasmKAZEFactory } from "./kaze.js";
+import type { ORB, ORBOptions, ORB_ScoreTypeNamespace, WasmORBFactory } from "./orb.js";
 import type { GFTTDetector, GFTTDetectorOptions, WasmGFTTDetectorFactory } from "./gftt.js";
+import type { MSER, MSEROptions, WasmMSERFactory } from "./mser.js";
 import type {
   AgastFeatureDetector,
   AgastFeatureDetector_DetectorTypeNamespace,
@@ -86,6 +88,8 @@ export interface OpenCvBackend {
   readonly FastFeatureDetector: WasmFastFeatureDetectorFactory;
   readonly GFTTDetector: WasmGFTTDetectorFactory;
   readonly KAZE: WasmKAZEFactory;
+  readonly ORB: WasmORBFactory;
+  readonly MSERConfig: WasmMSERFactory;
   clipLine(
     rectangleX: number,
     rectangleY: number,
@@ -395,6 +399,9 @@ export interface OpenCv {
   readonly AgastFeatureDetector_DetectorType: AgastFeatureDetector_DetectorTypeNamespace;
   readonly FastFeatureDetector_DetectorType: FastFeatureDetector_DetectorTypeNamespace;
   readonly KAZE_DiffusivityType: KAZE_DiffusivityTypeNamespace;
+  readonly ORB_FAST_SCORE: 1;
+  readonly ORB_HARRIS_SCORE: 0;
+  readonly ORB_ScoreType: ORB_ScoreTypeNamespace;
   readonly ROTATE_90_CLOCKWISE: 0;
   readonly ROTATE_180: 1;
   readonly ROTATE_90_COUNTERCLOCKWISE: 2;
@@ -427,9 +434,11 @@ export interface OpenCv {
   createHanningWindowAlloc(size: Size, depth: HanningWindowDepth): Mat;
   createAKAZE(options?: AKAZEOptions): AKAZE;
   createKAZE(options?: KAZEOptions): KAZE;
+  createORB(options?: ORBOptions): ORB;
   createAgastFeatureDetector(options?: AgastFeatureDetectorOptions): AgastFeatureDetector;
   createFastFeatureDetector(options?: FastFeatureDetectorOptions): FastFeatureDetector;
   createGFTTDetector(options?: GFTTDetectorOptions): GFTTDetector;
+  createMSER(options?: MSEROptions): MSER;
   determinant(source: Mat): number;
   convertScaleAbs(source: Mat, destination: Mat, alpha?: number, beta?: number): void;
   convertScaleAbsAlloc(source: Mat, alpha?: number, beta?: number): Mat;

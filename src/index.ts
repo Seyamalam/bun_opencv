@@ -21,12 +21,29 @@ export type {
 } from "./akaze.js";
 export { KAZE, KAZE_DEFAULTS } from "./kaze.js";
 export type { KAZEOptions, WasmKAZEFactory, WasmKAZEHandle } from "./kaze.js";
+export {
+  ORB,
+  ORB_DEFAULTS,
+  ORB_FAST_SCORE,
+  ORB_HARRIS_SCORE,
+  ORB_ScoreType,
+  ORBScoreType,
+} from "./orb.js";
+export type {
+  ORBOptions,
+  ORB_ScoreTypeNamespace,
+  ORB_ScoreTypeValue,
+  WasmORBFactory,
+  WasmORBHandle,
+} from "./orb.js";
 export { GFTT_DETECTOR_DEFAULTS, GFTTDetector } from "./gftt.js";
 export type {
   GFTTDetectorOptions,
   WasmGFTTDetectorFactory,
   WasmGFTTDetectorHandle,
 } from "./gftt.js";
+export { MSER, MSER_DEFAULTS } from "./mser.js";
+export type { MSEROptions, WasmMSERFactory, WasmMSERHandle } from "./mser.js";
 export { BindingError, OpenCvInputError } from "./error.js";
 export type { EmbindEnumInput, EmbindEnumValue } from "./embind-enum.js";
 export {

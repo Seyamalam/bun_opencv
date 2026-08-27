@@ -20,6 +20,12 @@ export function createEmbindEnumNamespace<T extends Function>(
   const namespace = function () {} as unknown as T;
   Object.defineProperty(namespace, "name", { configurable: true, value: namespaceName });
   const values: Record<number, EmbindEnumValue> = {};
+  Object.defineProperty(namespace, "values", {
+    configurable: true,
+    enumerable: true,
+    value: values,
+    writable: true,
+  });
 
   for (const [constantName, value] of entries) {
     const constant: EmbindEnumValue = Object.create(namespace.prototype);
@@ -41,13 +47,6 @@ export function createEmbindEnumNamespace<T extends Function>(
     });
     values[value] = constant;
   }
-
-  Object.defineProperty(namespace, "values", {
-    configurable: true,
-    enumerable: true,
-    value: values,
-    writable: true,
-  });
 
   return namespace;
 }
