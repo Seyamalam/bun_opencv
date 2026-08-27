@@ -50,23 +50,59 @@ pub(crate) fn affine_transform(
     source: &[[f64; 2]; 3],
     destination: &[[f64; 2]; 3],
 ) -> Result<[f64; 6], TransformMatrixError> {
-    validate_points(source)?;
-    validate_points(destination)?;
-    let coefficients = source.map(|[x, y]| [x, y, 1.0]);
-    let destination_x = destination.map(|[x, _]| x);
-    let destination_y = destination.map(|[_, y]| y);
-    let first_row = solve_linear(coefficients, destination_x)?;
-    let second_row = solve_linear(coefficients, destination_y)?;
-    let result = [
-        first_row[0],
-        first_row[1],
-        first_row[2],
-        second_row[0],
-        second_row[1],
-        second_row[2],
-    ];
-    validate_result(&result)?;
-    Ok(result)
+    if source
+        .iter()
+        .chain(destination)
+        .flatten()
+        .any(|value| !value.is_finite())
+    {
+        return Ok([f64::NAN; 6]);
+    }
+    let mut coefficients = source.map(|[x, y]| [x, y, 1.0]);
+    let mut right_hand_sides = *destination;
+    for column in 0..3 {
+        let pivot_row = (column..3)
+            .max_by(|&left, &right| {
+                coefficients[left][column]
+                    .abs()
+                    .total_cmp(&coefficients[right][column].abs())
+            })
+            .expect("each affine column has at least one pivot candidate");
+        if coefficients[pivot_row][column] == 0.0 {
+            return Ok([0.0; 6]);
+        }
+        if pivot_row != column {
+            coefficients.swap(column, pivot_row);
+            right_hand_sides.swap(column, pivot_row);
+        }
+        let negative_inverse_pivot = -1.0 / coefficients[column][column];
+        for row in column + 1..3 {
+            let factor = coefficients[row][column] * negative_inverse_pivot;
+            for target in column + 1..3 {
+                coefficients[row][target] += factor * coefficients[column][target];
+            }
+            for target in 0..2 {
+                right_hand_sides[row][target] += factor * right_hand_sides[column][target];
+            }
+        }
+    }
+    for row in (0..3).rev() {
+        for target in 0..2 {
+            let mut value = right_hand_sides[row][target];
+            for column in row + 1..3 {
+                value -= coefficients[row][column] * right_hand_sides[column][target];
+            }
+            right_hand_sides[row][target] = value / coefficients[row][row];
+        }
+    }
+    Ok([
+        right_hand_sides[0][0],
+        right_hand_sides[1][0],
+        right_hand_sides[2][0],
+        right_hand_sides[0][1],
+        right_hand_sides[1][1],
+        right_hand_sides[2][1],
+    ])
 }
 
 /// Inverts a finite, nonsingular 2-by-3 affine matrix.
@@ -300,6 +336,26 @@ mod tests {
         let matrix = affine_transform(&source, &destination).expect("independent points");
 
         assert_close(&matrix, &[2.0, -1.0, 2.0, 1.0, 3.0, 3.0], 1.0e-14);
+    }
+
+    #[test]
+    fn affine_transform_matches_the_pinned_lu_operation_order() {
+        let source = [[0.25, -0.5], [2.5, 0.75], [-1.25, 3.5]];
+        let destination = [[4.5, -2.25], [8.75, 1.5], [-3.5, 9.25]];
+
+        let matrix = affine_transform(&source, &destination).expect("independent points");
+
+        assert_eq!(
+            matrix.map(f64::to_bits),
+            [
+                0x4003_DCB0_8D3D_CB08,
+                0xBFF1_1A7B_9611_A7BA,
+                0x400A_C234_F72C_2350,
+                0x3FAD_6CDF_A1D6_CDED,
+                0x4007_2C23_4F72_C235,
+                0xBFEA_1D6C_DFA1_D6CD,
+            ]
+        );
     }
 
     #[test]

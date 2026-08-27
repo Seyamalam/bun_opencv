@@ -12,6 +12,8 @@ enum TransformMatrixWasmError {
     Kernel(TransformMatrixError),
     Matrix(MatError),
     FloatingPointInputRequired(MatDepth),
+    F32PointInputRequired(MatDepth),
+    NonContinuousPointInput,
     PointMatrixShape {
         point_count: usize,
         rows: u32,
@@ -34,6 +36,13 @@ impl fmt::Display for TransformMatrixWasmError {
                 formatter,
                 "transform matrix inputs require F32 or F64 depth; received {depth:?}"
             ),
+            Self::F32PointInputRequired(depth) => write!(
+                formatter,
+                "affine point matrices require F32 depth; received {depth:?}"
+            ),
+            Self::NonContinuousPointInput => {
+                formatter.write_str("affine point matrices require continuous storage")
+            }
             Self::PointMatrixShape {
                 point_count,
                 rows,
@@ -137,10 +146,22 @@ fn rotation_adapter(
 }
 
 fn affine_adapter(source: &Mat, destination: &Mat) -> Result<Mat, TransformMatrixWasmError> {
-    let source = decode_points::<3>(source)?;
-    let destination = decode_points::<3>(destination)?;
+    let source = decode_affine_points(source)?;
+    let destination = decode_affine_points(destination)?;
     let result = imgproc_transform_matrices::affine_transform(&source, &destination)?;
     f64_matrix(&result, 2, 3)
+}
+
+fn decode_affine_points(matrix: &Mat) -> Result<[[f64; 2]; 3], TransformMatrixWasmError> {
+    if matrix.depth() != MatDepth::F32 {
+        return Err(TransformMatrixWasmError::F32PointInputRequired(
+            matrix.depth(),
+        ));
+    }
+    if !matrix.is_continuous() {
+        return Err(TransformMatrixWasmError::NonContinuousPointInput);
+    }
+    decode_points::<3>(matrix)
 }
 
 fn invert_affine_adapter(transform: &Mat) -> Result<Mat, TransformMatrixWasmError> {
@@ -314,16 +335,25 @@ mod tests {
     }
 
     #[test]
-    fn affine_adapter_reads_strided_f64_and_two_channel_f32_points() {
+    fn affine_adapter_rejects_f64_and_strided_point_matrices() {
         let source_parent = f64_mat(&[99.0, 0.0, 0.0, 99.0, 1.0, 0.0, 99.0, 0.0, 1.0], 3, 3, 1);
         let source = source_parent
             .roi(0, 1, 3, 2)
             .expect("strided source points");
         let destination = f32_mat(&[2.0, 3.0, 4.0, 4.0, 1.0, 6.0], 3, 1, 2);
 
-        let result = affine_adapter(&source, &destination).expect("valid correspondences");
+        assert!(affine_adapter(&source, &destination).is_err());
 
-        assert_close(&result, &[2.0, -1.0, 2.0, 1.0, 3.0, 3.0], 1.0e-13);
+        let strided_parent = f32_mat(
+            &[
+                99.0, 99.0, 0.0, 0.0, 99.0, 99.0, 1.0, 0.0, 99.0, 99.0, 0.0, 1.0,
+            ],
+            3,
+            2,
+            2,
+        );
+        let strided = strided_parent.roi(0, 1, 3, 1).expect("strided F32 points");
+        assert!(affine_adapter(&strided, &destination).is_err());
     }
 
     #[test]
@@ -363,7 +393,7 @@ mod tests {
         assert_eq!(
             affine_adapter(&integer_points, &integer_points)
                 .expect_err("integer point depth must fail"),
-            TransformMatrixWasmError::FloatingPointInputRequired(MatDepth::U8)
+            TransformMatrixWasmError::F32PointInputRequired(MatDepth::U8)
         );
 
         let wrong_shape = f64_mat(&[0.0; 6], 1, 6, 1);
@@ -377,19 +407,18 @@ mod tests {
             })
         );
 
-        let collinear = f64_mat(&[0.0, 0.0, 1.0, 1.0, 2.0, 2.0], 3, 2, 1);
-        let destination = f64_mat(&[0.0, 0.0, 1.0, 0.0, 0.0, 1.0], 3, 2, 1);
-        assert_eq!(
-            affine_adapter(&collinear, &destination)
-                .expect_err("collinear source points must fail"),
-            TransformMatrixWasmError::Kernel(TransformMatrixError::DegenerateGeometry)
-        );
+        let collinear = f32_mat(&[0.0, 0.0, 1.0, 1.0, 2.0, 2.0], 3, 1, 2);
+        let destination = f32_mat(&[0.0, 0.0, 1.0, 0.0, 0.0, 1.0], 3, 1, 2);
+        let zero = affine_adapter(&collinear, &destination).expect("singular maps return zeros");
+        assert_eq!(decode_floating(&zero).expect("F64 result"), vec![0.0; 6]);
 
-        let non_finite = f64_mat(&[f64::NAN, 0.0, 1.0, 0.0, 0.0, 1.0], 3, 2, 1);
-        assert_eq!(
-            affine_adapter(&non_finite, &destination)
-                .expect_err("non-finite coordinates must fail"),
-            TransformMatrixWasmError::Kernel(TransformMatrixError::NonFiniteInput)
+        let non_finite = f32_mat(&[f32::NAN, 0.0, 1.0, 0.0, 0.0, 1.0], 3, 1, 2);
+        let nan = affine_adapter(&non_finite, &destination).expect("NaN coordinates propagate");
+        assert!(
+            decode_floating(&nan)
+                .expect("F64 result")
+                .into_iter()
+                .all(f64::is_nan)
         );
     }
 }
