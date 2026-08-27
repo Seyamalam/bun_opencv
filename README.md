@@ -1,6 +1,6 @@
-# bun-opencv
+# WASMosaic
 
-`bun-opencv` is an experimental browser image-processing package written in Rust and TypeScript. Rust owns the pixel loops. WebAssembly carries them into the browser. The TypeScript layer validates inputs and provides an API that works with `ImageData`.
+`wasmosaic` is an experimental browser image-processing package written in Rust and TypeScript. Rust owns the pixel loops. WebAssembly carries them into the browser. The TypeScript layer validates inputs and provides an API that works with `ImageData`.
 
 Version 0.1.0 implements four RGBA operations: grayscale, invert, binary threshold, and nearest-neighbor resize. The long-term target is full parity with the browser bindings in the pinned OpenCV.js 4.x baseline, followed by typed browser adapters that OpenCV.js does not provide.
 
@@ -9,15 +9,15 @@ Version 0.1.0 implements four RGBA operations: grayscale, invert, binary thresho
 The package is not published yet. After the first release:
 
 ```sh
-bun add bun-opencv
+bun add wasmosaic
 ```
 
-The npm equivalent is `npm install bun-opencv`.
+The npm equivalent is `npm install wasmosaic`.
 
 ## Browser example
 
 ```ts
-import { imageDataFromRgbaImage, initOpenCv, rgbaImageFromImageData } from "bun-opencv";
+import { imageDataFromRgbaImage, initOpenCv, rgbaImageFromImageData } from "wasmosaic";
 
 const canvas = document.querySelector("canvas");
 if (!(canvas instanceof HTMLCanvasElement)) {
@@ -317,6 +317,8 @@ Generated JavaScript and declarations go to `dist/`. The generated WASM loader a
 - [Performance contract](docs/PERFORMANCE.md)
 - [Source-independent compatibility policy](docs/COMPATIBILITY_POLICY.md)
 - [Licensing research](docs/LICENSING_RESEARCH.md)
+- [npm release engineering legal review](docs/NPM_RELEASE_LEGAL_REVIEW.md)
+- [Package-name review](docs/NAME_REVIEW.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
 - [Roadmap](ROADMAP.md)
 - [TODO](TODO.md)
@@ -330,4 +332,4 @@ Generated JavaScript and declarations go to `dist/`. The generated WASM loader a
 
 MIT. See [LICENSE](LICENSE).
 
-OpenCV is a trademark of its owner. This independent project is not affiliated with or endorsed by OpenCV. `bun-opencv` remains a working name and publication is blocked until it receives trademark review or changes.
+OpenCV is a trademark of its owner. WASMosaic is an independent project and is not affiliated with or endorsed by OpenCV. The OpenCV name is used only to identify the compatibility target.

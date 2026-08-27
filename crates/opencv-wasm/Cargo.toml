@@ -1,11 +1,11 @@
 [package]
-name = "bun-opencv-wasm"
+name = "wasmosaic-wasm"
 version.workspace = true
 edition.workspace = true
 license-file = "../../LICENSE"
 rust-version.workspace = true
 publish = false
-description = "Rust and WebAssembly implementation for the bun-opencv npm package"
+description = "Rust and WebAssembly implementation for the WASMosaic npm package"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

@@ -1,4 +1,4 @@
-//! Browser-focused image processing operations for the `bun-opencv` package.
+//! Browser-focused image processing operations for the `wasmosaic` package.
 
 use std::{error::Error, fmt};
 

@@ -27,7 +27,7 @@ Stop and identify it. Do not rewrite headers or describe it as MIT-only code. Re
 
 ## Product name and claims
 
-`bun-opencv` is a working name. npm publication is blocked until the name receives trademark review or the project adopts a distinctive name. OpenCV is a trademark of its owner. This project is independent and is not affiliated with or endorsed by OpenCV.
+WASMosaic is the project's distinctive primary name. OpenCV is a trademark of its owner and appears only in factual compatibility descriptions. This project is independent and is not affiliated with or endorsed by OpenCV.
 
 Performance claims need a published benchmark with the exact OpenCV.js version, browser, device, input, warm-up policy, sample count, and statistic. “Faster” cannot mean one selected input.
 

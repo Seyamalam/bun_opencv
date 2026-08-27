@@ -274,7 +274,7 @@ The same fixture verifies the complete `trace` contract across every scalar dept
 `cv.createAKAZE(options)` allocates a Rust-owned AKAZE configuration handle. The current slice stores configuration only. Feature detection, descriptor extraction, image input, and keypoint output are not implemented yet.
 
 ```ts
-import { AKAZEDescriptorType, KAZEDiffusivity } from "bun-opencv";
+import { AKAZEDescriptorType, KAZEDiffusivity } from "wasmosaic";
 
 const akaze = cv.createAKAZE({
   descriptorChannels: 3,
@@ -312,7 +312,7 @@ Call `dispose()` when the handle is no longer needed. Repeated disposal does not
 `cv.createKAZE(options)` allocates a Rust-owned KAZE configuration handle. It stores detector and descriptor settings but does not accept images, detect keypoints, or compute descriptors yet.
 
 ```ts
-import { KAZEDiffusivity } from "bun-opencv";
+import { KAZEDiffusivity } from "wasmosaic";
 
 const kaze = cv.createKAZE({
   diffusivity: KAZEDiffusivity.PM_G2,
@@ -362,7 +362,7 @@ The nine implemented methods reproduce the pinned constructor state, exact metho
 `cv.createORB(options)` allocates a Rust-owned configuration handle. Its defaults are 500 maximum features, float32 `1.2` scale factor, eight levels, edge threshold `31`, first level `0`, WTA_K `2`, Harris scoring, patch size `31`, and FAST threshold `20`.
 
 ```ts
-import { ORBScoreType } from "bun-opencv";
+import { ORBScoreType } from "wasmosaic";
 
 const orb = cv.createORB({ maxFeatures: 1000, scoreType: ORBScoreType.FAST_SCORE });
 
@@ -382,7 +382,7 @@ The eleven implemented methods reproduce exact arity, signed i32 and F64 input c
 `cv.createAgastFeatureDetector(options)` and `cv.createFastFeatureDetector(options)` allocate Rust-owned detector configuration handles. They do not accept images or detect keypoints yet.
 
 ```ts
-import { AgastFeatureDetectorType, FastFeatureDetectorType } from "bun-opencv";
+import { AgastFeatureDetectorType, FastFeatureDetectorType } from "wasmosaic";
 
 const agast = cv.createAgastFeatureDetector({
   nonmaxSuppression: true,

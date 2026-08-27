@@ -2,11 +2,13 @@
 
 Only maintainers with npm package access should publish a release. The GitHub workflow expects npm trusted publishing through OpenID Connect. If the npm package has not been connected to the repository, configure that relationship before pushing a release tag.
 
-`npm publish` runs `bun run release:check`. The check currently blocks publication because the working package name, legal review, and per-operation patent review are unresolved. Update [release-clearance.json](release-clearance.json) only after recording the corresponding review. Every partial or implemented parity entry must also carry `patentReview: "reviewed"`.
+`npm publish` runs `bun run release:check`. The package-name screen and engineering patent review are recorded, but publication remains blocked until an authorized legal reviewer completes the legal release review. Update [release-clearance.json](release-clearance.json) only after recording the corresponding review. Every partial or implemented parity entry must also carry `patentReview: "reviewed"`.
+
+The engineering basis for the current operation reviews is recorded in [NPM_RELEASE_LEGAL_REVIEW.md](NPM_RELEASE_LEGAL_REVIEW.md). Its conclusion is not a legal freedom-to-operate opinion, and materially different implementations require a fresh review.
 
 ## First release
 
-1. Confirm that `bun-opencv` is still the intended npm name and that the package page is available.
+1. Confirm that `wasmosaic` is still the intended npm name and that the package page is available.
 2. Add the final repository, bugs, homepage, author, and funding fields to `package.json`.
 3. Configure npm trusted publishing for `.github/workflows/release.yml`.
 4. Protect the default branch and require the CI workflow.

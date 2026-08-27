@@ -1,15 +1,15 @@
 {
-  "name": "bun-opencv",
+  "name": "wasmosaic",
   "version": "0.1.0",
   "description": "Browser image processing primitives written in Rust and exposed through WebAssembly and TypeScript.",
   "author": "Touhidul Alam Seyam (https://github.com/Seyamalam)",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Seyamalam/bun_opencv.git"
+    "url": "git+https://github.com/Seyamalam/wasmosaic.git"
   },
-  "homepage": "https://github.com/Seyamalam/bun_opencv#readme",
+  "homepage": "https://github.com/Seyamalam/wasmosaic#readme",
   "bugs": {
-    "url": "https://github.com/Seyamalam/bun_opencv/issues"
+    "url": "https://github.com/Seyamalam/wasmosaic/issues"
   },
   "type": "module",
   "types": "./dist/index.d.ts",
@@ -28,7 +28,7 @@
     "./package.json": "./package.json"
   },
   "imports": {
-    "#wasm": "./wasm/bun_opencv_wasm.js"
+    "#wasm": "./wasm/wasmosaic_wasm.js"
   },
   "files": [
     "dist",
@@ -64,7 +64,7 @@
   "scripts": {
     "build": "bun scripts/build.ts",
     "build:ts": "tsc -p tsconfig.build.json",
-    "build:wasm": "wasm-pack build crates/opencv-wasm --target web --out-dir ../../wasm --out-name bun_opencv_wasm --release",
+    "build:wasm": "wasm-pack build crates/opencv-wasm --target web --out-dir ../../wasm --out-name wasmosaic_wasm --release",
     "check": "bun scripts/check.ts",
     "docs:check": "bun scripts/check-docs.ts",
     "fmt": "prettier --write .",

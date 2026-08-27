@@ -1,6 +1,6 @@
 # OpenCV compatibility licensing research
 
-Research date: 2026-08-25
+Research date: 2026-08-25. Package-name disposition updated 2026-08-27.
 
 This note covers an independent Rust, TypeScript, and WebAssembly implementation that aims to match OpenCV.js 4.13.0. It is not legal advice. Copyright, patent, and trademark rules vary by country, and an npm release with commercial ambitions should get a lawyer's review.
 
@@ -10,7 +10,7 @@ An original Rust implementation can be released under MIT. Matching OpenCV.js be
 
 OpenCV 4.13.0 itself is under Apache License 2.0, so copying is permitted, including commercial copying and modification, but the Apache conditions travel with copied or derived material. Copied OpenCV material cannot simply be relabeled as this project's MIT code.
 
-The harder issue is the name. OpenCV states that "OpenCV" is a trademark, and Apache 2.0 does not grant a trademark license beyond reasonable descriptive use. The current package name, `bun-opencv`, puts the mark in the product name. That should receive trademark clearance or permission before publication. A distinctive product name with "OpenCV.js-compatible" used only in descriptive text is the safer posture.
+The former working name placed the OpenCV mark in the product name. On 2026-08-27 the project adopted the distinctive primary name WASMosaic and npm package name `wasmosaic`. OpenCV now appears only in factual compatibility descriptions and the non-affiliation statement.
 
 ## Verified facts
 
@@ -96,7 +96,7 @@ This approach tests real compatibility more effectively than porting upstream te
 - Describe the product factually as "compatible with the OpenCV.js 4.13.0 browser API" or "an independent implementation of selected OpenCV.js behavior."
 - Add a plain non-affiliation statement. For example: "OpenCV is a trademark of its owner. This project is independent and is not affiliated with or endorsed by OpenCV."
 - Do not use the OpenCV logo, visual identity, or language that suggests an official port, successor, edition, or endorsed replacement.
-- Treat the disclaimer as supporting context, not a cure for a confusing product name. Obtain written permission or trademark counsel before publishing as `bun-opencv`.
+- Treat the disclaimer as supporting context, not a cure for a confusing product name. Keep OpenCV out of the primary package and product names.
 - Support comparative speed claims with reproducible benchmarks and identify the exact OpenCV.js version, browser, device, warm-up, input, and statistical method.
 
 ### Audit patents and third-party components separately
@@ -144,7 +144,7 @@ Before the first public npm release, require all of the following:
 | Copy `opencv_js.config.py` or derive a declaration file mechanically from it | Treat the imported material as Apache-covered, or replace it with an independently authored inventory.           |
 | Port an upstream JavaScript test                                             | Preserve Apache obligations and attribution, or write an original test instead.                                  |
 | Download OpenCV.js only in CI for comparisons                                | Pin it, document Apache 2.0, keep it out of the npm archive, and verify the packed artifact.                     |
-| Publish as `bun-opencv`                                                      | Pause for trademark clearance or permission. A distinctive name is safer.                                        |
+| Publish under a name containing `OpenCV`                                     | Pause for trademark clearance or permission. A distinctive name is safer.                                        |
 | Say the project is faster than OpenCV.js                                     | Publish reproducible evidence and avoid implying endorsement or universal superiority.                           |
 
 ## Primary sources

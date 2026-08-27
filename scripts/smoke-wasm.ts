@@ -1,6 +1,6 @@
 import { grayscaleRgba, initSync, matFlip, matFromI16, matFromU8, matSum } from "#wasm";
 
-const bytes = await Bun.file("wasm/bun_opencv_wasm_bg.wasm").arrayBuffer();
+const bytes = await Bun.file("wasm/wasmosaic_wasm_bg.wasm").arrayBuffer();
 initSync({ module: bytes });
 
 const output = grayscaleRgba(new Uint8Array([255, 0, 0, 17]), 1, 1);
