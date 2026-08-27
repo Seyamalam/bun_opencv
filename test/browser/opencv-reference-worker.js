@@ -4060,6 +4060,122 @@ function auditNumericContracts(reference) {
   return { contracts, dtype, scale, replacement, overlap, empty, mixedDepth, i32Overflow };
 }
 
+function auditAffineTransform(reference) {
+  const points = {
+    source: [0, 0, 1, 0, 0, 1],
+    destination: [2, 3, 4, 3, 2, 6],
+  };
+  const run = (name, source, destination) => {
+    const sourceBefore = capturePrimitive(() => summarizeTypedMat(source));
+    const destinationBefore = capturePrimitive(() => summarizeTypedMat(destination));
+    const call = captureRotationMatrix(() => reference.getAffineTransform(source, destination));
+    const sourceAfter = capturePrimitive(() => summarizeTypedMat(source));
+    const destinationAfter = capturePrimitive(() => summarizeTypedMat(destination));
+    safeDelete(destination);
+    safeDelete(source);
+    return { name, sourceBefore, destinationBefore, call, sourceAfter, destinationAfter };
+  };
+  const make = (rows, cols, type, values) => makeSeedMat(reference, rows, cols, type, values);
+  const aritySource = make(3, 1, reference.CV_32FC2, points.source);
+  const arityDestination = make(3, 1, reference.CV_32FC2, points.destination);
+  const arity = {
+    length: reference.getAffineTransform.length,
+    zero: captureCall(() => reference.getAffineTransform()),
+    one: captureCall(() => reference.getAffineTransform(aritySource)),
+    two: captureRotationMatrix(() => reference.getAffineTransform(aritySource, arityDestination)),
+    three: captureCall(() => reference.getAffineTransform(aritySource, arityDestination, 1)),
+  };
+  safeDelete(arityDestination);
+  safeDelete(aritySource);
+
+  let destinationReads = 0;
+  const deferredDestination = {
+    get $$() {
+      destinationReads += 1;
+      return undefined;
+    },
+  };
+  const conversionOrder = {
+    call: captureCall(() => reference.getAffineTransform({}, deferredDestination)),
+    destinationReads,
+  };
+
+  const layouts = [
+    run(
+      "F32 3x1C2",
+      make(3, 1, reference.CV_32FC2, points.source),
+      make(3, 1, reference.CV_32FC2, points.destination),
+    ),
+    run(
+      "F32 1x3C2",
+      make(1, 3, reference.CV_32FC2, points.source),
+      make(1, 3, reference.CV_32FC2, points.destination),
+    ),
+    run(
+      "F32 3x2C1",
+      make(3, 2, reference.CV_32FC1, points.source),
+      make(3, 2, reference.CV_32FC1, points.destination),
+    ),
+    run(
+      "F64 3x1C2",
+      make(3, 1, reference.CV_64FC2, points.source),
+      make(3, 1, reference.CV_64FC2, points.destination),
+    ),
+    run(
+      "U8 3x1C2",
+      make(3, 1, reference.CV_8UC2, points.source),
+      make(3, 1, reference.CV_8UC2, points.destination),
+    ),
+    run(
+      "wrong shape",
+      make(2, 1, reference.CV_32FC2, points.source.slice(0, 4)),
+      make(2, 1, reference.CV_32FC2, points.destination.slice(0, 4)),
+    ),
+  ];
+
+  const stridedSourceParent = make(
+    3,
+    2,
+    reference.CV_32FC2,
+    [99, 99, 0, 0, 99, 99, 1, 0, 99, 99, 0, 1],
+  );
+  const stridedDestinationParent = make(
+    3,
+    2,
+    reference.CV_32FC2,
+    [99, 99, 2, 3, 99, 99, 4, 3, 99, 99, 2, 6],
+  );
+  const stridedSource = stridedSourceParent.roi(new reference.Rect(1, 0, 1, 3));
+  const stridedDestination = stridedDestinationParent.roi(new reference.Rect(1, 0, 1, 3));
+  const strided = run("strided F32 3x1C2", stridedSource, stridedDestination);
+  safeDelete(stridedDestinationParent);
+  safeDelete(stridedSourceParent);
+
+  const numeric = [
+    run(
+      "fractional",
+      make(3, 1, reference.CV_32FC2, [0.25, -0.5, 2.5, 0.75, -1.25, 3.5]),
+      make(3, 1, reference.CV_32FC2, [4.5, -2.25, 8.75, 1.5, -3.5, 9.25]),
+    ),
+    run(
+      "collinear",
+      make(3, 1, reference.CV_32FC2, [0, 0, 1, 1, 2, 2]),
+      make(3, 1, reference.CV_32FC2, points.destination),
+    ),
+    run(
+      "nonfinite source",
+      make(3, 1, reference.CV_32FC2, [Number.NaN, 0, 1, 0, 0, 1]),
+      make(3, 1, reference.CV_32FC2, points.destination),
+    ),
+    run(
+      "signed zero",
+      make(3, 1, reference.CV_32FC2, [-0, -0, 1, -0, -0, 1]),
+      make(3, 1, reference.CV_32FC2, [-0, -0, 2, -0, -0, 3]),
+    ),
+  ];
+  return { arity, conversionOrder, layouts, strided, numeric };
+}
+
 function auditSetIdentity(reference) {
   const auditCase = (name, rows, cols, type, values, scalar, useDefault = false) => {
     const matrix = makeSeedMat(reference, rows, cols, type, values);
@@ -5505,6 +5621,10 @@ self.addEventListener("message", async ({ data: input }) => {
       self.postMessage({ outputs: { setIdentityAudit: auditSetIdentity(reference) } });
       return;
     }
+    if (request === "affine-transform-contracts") {
+      self.postMessage({ outputs: { affineTransformAudit: auditAffineTransform(reference) } });
+      return;
+    }
     const source = reference.matFromArray(2, 3, reference.CV_8UC1, sourceInput);
     const outputs = {};
     const operations = [
@@ -5688,6 +5808,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.polygonAudit = auditPolygonContracts(reference);
     outputs.determinantAudit = auditDeterminant(reference);
     outputs.setIdentityAudit = auditSetIdentity(reference);
+    outputs.affineTransformAudit = auditAffineTransform(reference);
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });
