@@ -344,7 +344,7 @@ export interface OpenCvBackend {
   matSum(source: WasmMatHandle): Float64Array;
   matTranspose(source: WasmMatHandle): WasmMatHandle;
   matTransposeInto(source: WasmMatHandle, destination: WasmMatHandle): void;
-  matTrace(source: WasmMatHandle): number;
+  matTrace(source: WasmMatHandle): Float64Array;
   matTransform(source: WasmMatHandle, coefficients: WasmMatHandle): WasmMatHandle;
   matTransformInto(
     source: WasmMatHandle,
@@ -533,7 +533,7 @@ export interface OpenCv {
   sum(source: Mat): Scalar;
   transpose(source: Mat, destination: Mat): void;
   transposeAlloc(source: Mat): Mat;
-  trace(source: Mat): number;
+  trace(source: Mat): Scalar;
   transform(source: Mat, coefficients: Mat): Mat;
   transform(source: Mat, coefficients: Mat, destination: Mat): void;
   vconcat(

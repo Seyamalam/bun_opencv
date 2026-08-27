@@ -328,27 +328,34 @@ fn validate_mask_length(mask: Option<&[u8]>, pixels: usize) -> Result<(), Reduct
     Ok(())
 }
 
-/// Sums channel zero along the main diagonal of a compact matrix.
+/// Sums each channel along the main diagonal of a compact matrix.
 ///
 /// Rectangular matrices use the shorter dimension. Floating-point NaN propagates through the
-/// result according to IEEE 754 addition.
+/// corresponding result lane according to IEEE 754 addition.
 pub(crate) fn trace(
     data: &[u8],
     rows: u32,
     columns: u32,
     channels: u16,
     depth: ScalarDepth,
-) -> Result<f64, ReductionError> {
+) -> Result<[f64; 4], ReductionError> {
+    require_four_lane_result(channels)?;
+    if rows == 0 || columns == 0 {
+        validate_empty(data, channels)?;
+        return Ok([0.0; 4]);
+    }
     validate_compact(data, rows, columns, channels, depth)?;
 
     let diagonal =
         usize::try_from(rows.min(columns)).map_err(|_| ReductionError::BufferSizeOverflow)?;
     let columns = usize::try_from(columns).map_err(|_| ReductionError::BufferSizeOverflow)?;
     let channels = usize::from(channels);
-    let mut output = 0.0;
+    let mut output = [0.0; 4];
     for position in 0..diagonal {
-        let index = (position * columns + position) * channels;
-        output += scalar_at(data, index, depth);
+        let first = (position * columns + position) * channels;
+        for channel in 0..channels {
+            output[channel] += scalar_at(data, first + channel, depth);
+        }
     }
     Ok(output)
 }
@@ -547,7 +554,7 @@ mod tests {
     }
 
     #[test]
-    fn trace_sums_channel_zero_along_a_rectangular_diagonal() {
+    fn trace_sums_every_channel_along_a_rectangular_diagonal() {
         let bytes: Vec<u8> = [
             1.0_f64, 10.0, 2.0, 20.0, 3.0, 30.0, 4.0, 40.0, 5.0, 50.0, 6.0, 60.0,
         ]
@@ -555,11 +562,37 @@ mod tests {
         .flat_map(f64::to_ne_bytes)
         .collect();
 
-        assert_eq!(
-            trace(&bytes, 3, 2, 2, ScalarDepth::F64)
-                .expect("valid compact matrix")
-                .to_bits(),
-            5.0_f64.to_bits()
+        assert_exact_lanes(
+            trace(&bytes, 3, 2, 2, ScalarDepth::F64).expect("valid compact matrix"),
+            [5.0, 50.0, 0.0, 0.0],
+        );
+
+        let widened = [
+            16_777_216.0_f32,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            -16_777_216.0,
+            0.0,
+        ]
+        .into_iter()
+        .flat_map(f32::to_ne_bytes)
+        .collect::<Vec<_>>();
+        assert_exact_lanes(
+            trace(&widened, 3, 3, 2, ScalarDepth::F32).expect("valid F32 matrix"),
+            [1.0, 0.0, 0.0, 0.0],
         );
     }
 
@@ -576,9 +609,7 @@ mod tests {
         );
         assert!(sum(&bytes, 2, 2, 1, ScalarDepth::F32).expect("valid matrix")[0].is_nan());
         assert!(mean(&bytes, 2, 2, 1, ScalarDepth::F32).expect("valid matrix")[0].is_nan());
-        assert!(trace(&bytes, 2, 2, 1, ScalarDepth::F32)
-            .expect("valid matrix")
-            .is_nan());
+        assert!(trace(&bytes, 2, 2, 1, ScalarDepth::F32).expect("valid matrix")[0].is_nan());
         assert_eq!(
             min_max_loc(&bytes, 2, 2, 1, ScalarDepth::F32).expect("ordered values remain"),
             MinMaxLocation {
@@ -697,17 +728,18 @@ mod tests {
             sum(&[0; 5], 1, 1, 5, ScalarDepth::I8),
             Err(ReductionError::TooManyChannels { actual: 5 })
         );
-        assert_eq!(
-            trace(&[], 0, 1, 1, ScalarDepth::U8),
-            Err(ReductionError::EmptyDimensions)
-        );
+        assert_eq!(trace(&[], 0, 1, 1, ScalarDepth::U8), Ok([0.0; 4]));
         assert_eq!(
             trace(&[], 1, 1, 0, ScalarDepth::U8),
             Err(ReductionError::EmptyChannels)
         );
         assert_eq!(
             trace(&[], u32::MAX, u32::MAX, u16::MAX, ScalarDepth::F64),
-            Err(ReductionError::BufferSizeOverflow)
+            Err(ReductionError::TooManyChannels { actual: u16::MAX })
+        );
+        assert_eq!(
+            trace(&[], 0, 1, 5, ScalarDepth::U8),
+            Err(ReductionError::TooManyChannels { actual: 5 })
         );
     }
 }

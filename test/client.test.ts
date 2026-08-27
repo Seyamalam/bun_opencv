@@ -1838,15 +1838,36 @@ class CopyingBackend implements OpenCvBackend {
     );
   }
 
-  matTrace(source: WasmMatHandle): number {
-    const data = source.toUint8Array();
+  matTrace(source: WasmMatHandle): Float64Array {
+    const data: ArrayLike<number> = (() => {
+      switch (source.depth) {
+        case 0:
+          return source.toUint8Array();
+        case 1:
+          return source.toInt8Array();
+        case 2:
+          return source.toUint16Array();
+        case 3:
+          return source.toInt16Array();
+        case 4:
+          return source.toInt32Array();
+        case 5:
+          return source.toFloat32Array();
+        case 6:
+          return source.toFloat64Array();
+        default:
+          throw new OpenCvInputError("unsupported depth");
+      }
+    })();
     const diagonal = Math.min(source.rows, source.columns);
-    let total = 0;
+    const output = new Float64Array(4);
     for (let position = 0; position < diagonal; position += 1) {
-      const index = (position * source.columns + position) * source.channels;
-      total += byteAt(data, index);
+      const first = (position * source.columns + position) * source.channels;
+      for (let channel = 0; channel < source.channels; channel += 1) {
+        output[channel] = floatAt(output, channel) + requiredNumber(data, first + channel);
+      }
     }
-    return total;
+    return output;
   }
 
   matTransform(source: WasmMatHandle, coefficients: WasmMatHandle): WasmMatHandle {
@@ -2042,7 +2063,7 @@ function requiredPoint(
   return point;
 }
 
-function requiredNumber(values: Int32Array | Float64Array, index: number): number {
+function requiredNumber(values: ArrayLike<number>, index: number): number {
   const value = values[index];
   if (value === undefined) throw new RangeError(`missing number at index ${index}`);
   return value;
@@ -3156,8 +3177,38 @@ describe("OpenCv client", () => {
       minLoc: { x: 1, y: 0 },
       minVal: 2,
     });
-    expect(client.trace(extremaSource)).toBe(14);
+    expect(client.trace(extremaSource)).toEqual([14, 0, 0, 0]);
     extremaSource.dispose();
+  });
+
+  test("matches the exact four-lane trace contract", () => {
+    expect(client.trace.bind(client)).toHaveLength(1);
+
+    const source = client.matFromU8(
+      2,
+      3,
+      4,
+      new Uint8Array([
+        1, 10, 100, 200, 2, 20, 101, 201, 3, 30, 102, 202, 4, 40, 103, 203, 5, 50, 104, 204,
+        6, 60, 105, 205,
+      ]),
+    );
+    expect(client.trace(source)).toEqual([6, 60, 204, 404]);
+
+    const typedEmpty = client.matFromF64(0, 3, 4, new Float64Array());
+    expect(client.trace(typedEmpty)).toEqual([0, 0, 0, 0]);
+
+    expect(() => {
+      // oxlint-disable-next-line anti-slop/no-reflect-apply, typescript/unbound-method -- The test exercises invalid JavaScript arity.
+      Reflect.apply(client.trace, client, []);
+    }).toThrow(BindingError);
+    expect(() => {
+      // oxlint-disable-next-line anti-slop/no-reflect-apply, typescript/unbound-method -- The test exercises invalid JavaScript arity.
+      Reflect.apply(client.trace, client, [source, source]);
+    }).toThrow(BindingError);
+
+    typedEmpty.dispose();
+    source.dispose();
   });
 
   test("matches mean and minMaxLoc overload, mask, and empty contracts", () => {

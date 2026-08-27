@@ -971,8 +971,9 @@ class WasmOpenCv implements OpenCv {
     return new Mat(this.#backend.matTranspose(source.handleForBackend()));
   }
 
-  trace(source: Mat): number {
-    return this.#backend.matTrace(source.handleForBackend());
+  trace(source: Mat): Scalar {
+    requireExactArity(arguments.length, 1, "trace");
+    return scalarFromArray(this.#backend.matTrace(matHandleForBinding(source)));
   }
 
   transform(source: Mat, coefficients: Mat): Mat;

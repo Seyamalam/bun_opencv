@@ -137,14 +137,16 @@ pub fn mat_min_max_loc_masked(source: &Mat, mask: &Mat) -> Result<Vec<f64>, JsEr
     reduce_min_max_loc_masked(source, mask.as_deref()).map_err(JsError::from)
 }
 
-/// Sums channel zero along the main diagonal.
+/// Sums up to four channels along the main diagonal.
 ///
 /// # Errors
 ///
 /// Returns an error when matrix metadata and its compact bytes disagree.
 #[wasm_bindgen(js_name = matTrace)]
-pub fn mat_trace(source: &Mat) -> Result<f64, JsError> {
-    reduce_trace(source).map_err(JsError::from)
+pub fn mat_trace(source: &Mat) -> Result<Vec<f64>, JsError> {
+    reduce_trace(source)
+        .map(|lanes| lanes.to_vec())
+        .map_err(JsError::from)
 }
 
 fn reduce_count_non_zero(source: &Mat) -> Result<u32, ReductionWasmError> {
@@ -256,7 +258,7 @@ fn reduction_mask(source: &Mat, mask: &Mat) -> Result<Option<Vec<u8>>, Reduction
     Ok(Some(mask.compact_bytes()))
 }
 
-fn reduce_trace(source: &Mat) -> Result<f64, ReductionWasmError> {
+fn reduce_trace(source: &Mat) -> Result<[f64; 4], ReductionWasmError> {
     trace(
         &source.compact_bytes(),
         source.rows(),
@@ -411,15 +413,11 @@ mod tests {
     }
 
     #[test]
-    fn trace_reads_channel_zero_from_each_diagonal_pixel() {
+    fn trace_reads_every_channel_from_each_diagonal_pixel() {
         let source = matrix(vec![1, 10, 2, 20, 3, 30, 4, 40], 2, 2, 2, MatDepth::U8);
 
-        assert_eq!(
-            reduce_trace(&source)
-                .expect("trace should succeed")
-                .to_bits(),
-            5.0_f64.to_bits()
-        );
+        assert_exact_lanes(reduce_trace(&source), [5.0, 50.0, 0.0, 0.0]);
+        assert_exact_lanes(reduce_trace(&Mat::empty_output()), [0.0; 4]);
     }
 
     #[test]
