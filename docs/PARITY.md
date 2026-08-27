@@ -25,7 +25,7 @@ Desktop modules that the official OpenCV.js build disables are outside this pari
 
 ## Fully implemented families
 
-Seventy-nine families meet the full-family definition. Current full parity is 79 of 488, or 16.19%.
+Eighty families meet the full-family definition. Current full parity is 80 of 488, or 16.39%.
 
 | Package methods                                                                                                   | OpenCV.js families                              | Verified contract                                                          |
 | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------- |
@@ -63,6 +63,7 @@ Seventy-nine families meet the full-family definition. Current full parity is 79
 | `isContourConvex`, `pointPolygonTest`                                                                             | Matching `cv` polygon-query families            | Exact strict convexity, Point2f, small contours, distance, errors, and ROI |
 | `getRotationMatrix2D`                                                                                             | `cv.getRotationMatrix2D`                        | Exact Point2f, F64 conversion, coefficients, and independent ownership     |
 | `determinant`                                                                                                     | `cv.determinant`                                | Exact F32/F64 square-matrix arithmetic, errors, ROI, and preservation      |
+| `setIdentity`                                                                                                     | `cv.setIdentity`                                | Exact overloads, Scalar conversion, all depths, empties, ROI, and aliases  |
 | `transpose`                                                                                                       | `cv.transpose`                                  | Exact all-depth OutputArray, aliasing, empty, arity, and lifetime behavior |
 | `flip`                                                                                                            | `cv.flip`                                       | Exact all-depth OutputArray, signed codes, aliasing, errors, and lifetime  |
 | `countNonZero`                                                                                                    | `cv.countNonZero`                               | Exact all-depth scalar reduction, empty, ROI, errors, and lifetime         |
@@ -71,7 +72,7 @@ Seventy-nine families meet the full-family definition. Current full parity is 79
 
 ## Working partial families
 
-Fifty families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 129 families in total.
+Forty-nine families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 129 families in total.
 
 | Package methods                                       | OpenCV.js families                                                    | Current limit                                            |
 | ----------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------- |
@@ -86,7 +87,7 @@ Fifty families have useful original Rust/WASM slices but do not meet the full-fa
 | `meanStdDev`, `reduce`                                | `cv.meanStdDev`, `cv.reduce`                                          | All depths and mutable outputs                           |
 | `mean`, `minMaxLoc`, `trace`                          | `cv.mean`, `cv.minMaxLoc`, `cv.trace`                                 | Masks or multi-channel trace remain                      |
 | `mixChannels`                                         | `cv.mixChannels`                                                      | One source and destination; MatVector remains            |
-| `setIdentity`, `randu`, `randn`, `setRNGSeed`         | Matching `cv` initialization and random families                      | Package RNG sequences differ from OpenCV                 |
+| `randu`, `randn`, `setRNGSeed`                        | Matching `cv` random families                                         | Package RNG sequences differ from OpenCV                 |
 | `getLogLevel`, `setLogLevel`                          | Matching `cv` logging families                                        | Log bindings stay absent from upstream browser artifact. |
 | `transform`, `perspectiveTransform`                   | `cv.transform`, `cv.perspectiveTransform`                             | Selected channel and coefficient forms                   |
 | `invert`, `solve`                                     | `cv.invert`, `cv.solve`                                               | Selected dense single-channel methods                    |

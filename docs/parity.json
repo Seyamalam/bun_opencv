@@ -762,10 +762,10 @@
       "implementationOrigin": "original",
       "method": "setIdentity",
       "module": "core",
-      "notes": "All scalar depths, strided regions, one through four channels, default or per-channel scaling, and in-place output; differential fixtures remain.",
+      "notes": "Matches exact overload dispatch, Mat-before-Scalar conversion, array-like Scalar coercion, all shipped depths, one through four channels, typed empties, integer sentinels, signed floating zero, and strided in-place output.",
       "patentReview": "required",
       "sources": ["https://docs.opencv.org/4.13.0/d2/de8/group__core__array.html"],
-      "status": "partial",
+      "status": "implemented",
       "upstream": "cv.setIdentity",
       "upstreamId": "core.function.set-identity",
       "wasmExport": "matSetIdentity"

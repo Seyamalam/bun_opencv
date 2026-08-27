@@ -130,7 +130,7 @@ The mutable forms support all seven scalar depths, strided and overlapping regio
 
 ### Matrix initialization and random fills
 
-- `setIdentity(destination, value)` clears a matrix and writes `value` on its diagonal. The default scalar is `[1, 0, 0, 0]`.
+- `setIdentity(destination, value?)` clears a matrix and writes the four-lane Scalar on its diagonal in place. The default is `[1, 0, 0, 0]`; all shipped depths, one through four channels, typed empties, and regions of interest are supported.
 - `randu(destination, lower, upper)` fills each channel from a half-open uniform range.
 - `randn(destination, mean, standardDeviation)` fills each channel from a normal distribution.
 - `setRNGSeed(seed)` resets the random stream from a signed 32-bit seed.

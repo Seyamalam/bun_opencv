@@ -862,10 +862,10 @@ export const PARITY_MANIFEST = {
       method: "setIdentity",
       module: "core",
       notes:
-        "All scalar depths, strided regions, one through four channels, default or per-channel scaling, and in-place output; differential fixtures remain.",
+        "Matches exact overload dispatch, Mat-before-Scalar conversion, array-like Scalar coercion, all shipped depths, one through four channels, typed empties, integer sentinels, signed floating zero, and strided in-place output.",
       patentReview: "required",
       sources: [CORE_ARRAY_SOURCE],
-      status: "partial",
+      status: "implemented",
       upstream: "cv.setIdentity",
       upstreamId: "core.function.set-identity",
       wasmExport: "matSetIdentity",
