@@ -94,11 +94,11 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | core       | `lut`                                       | `cv.LUT`                                       | Partial | Byte sources and every table depth       |
 | core       | `magnitude`                                 | `cv.magnitude`                                 | Full    | Exact matching F32/F64 mutable output    |
 | core       | `max`                                       | `cv.max`                                       | Partial | U8 matrix operands                       |
-| core       | `mean`                                      | `cv.mean`                                      | Partial | All depths, no mask                      |
+| core       | `mean`                                      | `cv.mean`                                      | Full    | Exact all-depth optional-mask contract   |
 | core       | `meanStdDev`                                | `cv.meanStdDev`                                | Partial | All depths, masks, and F64 outputs       |
 | core       | `merge`                                     | `cv.merge`                                     | Partial | Two through four all-depth inputs        |
 | core       | `min`                                       | `cv.min`                                       | Partial | U8 matrix operands                       |
-| core       | `minMaxLoc`                                 | `cv.minMaxLoc`                                 | Partial | All single-channel depths, no mask       |
+| core       | `minMaxLoc`                                 | `cv.minMaxLoc`                                 | Full    | Exact all-depth optional-mask contract   |
 | core       | `mixChannels`                               | `cv.mixChannels`                               | Partial | One source and destination, all depths   |
 | core       | `multiply`                                  | `cv.multiply`                                  | Full    | Exact all-depth mutable-output contract  |
 | core       | `norm`                                      | `cv.norm`                                      | Partial | All depths, masks, and norm modes        |
@@ -203,7 +203,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `findContours`                              | `cv.findContours`                              | Planned | Not started                              |
 | imgproc    | `warpPerspective`                           | `cv.warpPerspective`                           | Planned | Not started                              |
 
-Current full parity is **84 of 488 (17.21%)**. There are **45 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+Current full parity is **86 of 488 (17.62%)**. There are **43 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
 
 The fixture passes the complete pinned browser contract for `determinant`. The function requires exactly one live `Mat` and accepts only nonempty square single-channel F32 or F64 matrices, including non-contiguous regions. It preserves the input, matches the direct 1x1, 2x2, and 3x3 paths with signed-zero and non-finite propagation, and keeps F32 and F64 arithmetic distinct during elimination for larger matrices. The audit locks the absolute pivot cutoffs, exact cutoff acceptance, row-swap signs, singular positive zero, stored-F32 widening in the small formulas, and Hilbert precision. Integer, multichannel, nonsquare, empty, deleted, and non-Mat inputs reject before computation.
 
@@ -224,6 +224,8 @@ The fixture passes the complete pinned browser contract for `rotate`, including 
 The fixture passes the complete pinned browser contract for `repeat`, including exact arity, Embind signed i32 conversion, all scalar depths, empty and deleted matrices, OutputArray replacement, compatible and detached regions, exact in-place rejection, and live overlapping shared-region traversal. Invalid native calls are compared by rejection and unchanged state because the official build exposes transient numeric exception pointers; this package preserves stable Rust errors.
 
 The fixture passes the complete pinned browser contract for `countNonZero`, including exact arity and Mat conversion errors, all seven scalar depths available in the artifact, signed zero, NaN, infinities, subnormal values, fresh empty matrices, deleted handles, and non-contiguous regions. Multi-channel rejection is compared semantically because the official build throws a transient numeric native-exception pointer; this package preserves a stable Rust error instead.
+
+The fixture passes the complete pinned browser contracts for `mean` and `minMaxLoc`. It covers both optional-mask overloads, all scalar depths, one through four mean channels, single-channel extrema, compact and strided matrices, malformed masks, empty-header sentinels, first row-major ties, NaN, infinities, signed zero, and deleted or invalid inputs.
 
 The fixture passes the complete pinned browser contract for `getOptimalDFTSize`, including exact arity, Embind signed i32 coercion and errors, negative and zero inputs, every smooth-size boundary exercised by Rust tests, and the exclusive `2,125,764,000` upper sentinel. This family counts as full parity.
 

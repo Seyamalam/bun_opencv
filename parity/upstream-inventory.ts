@@ -67,6 +67,8 @@ const AUDITED_BINDING_FORMS: Readonly<Record<string, AuditedBindingForm>> = Obje
   "core.function.get-optimal-dftsize": { overloadCount: 1, runtimeArity: 1 },
   "core.function.log": { overloadCount: 1, runtimeArity: 2 },
   "core.function.magnitude": { overloadCount: 1, runtimeArity: 3 },
+  "core.function.mean": { overloadCount: 2, runtimeArity: 0 },
+  "core.function.min-max-loc": { overloadCount: 2, runtimeArity: 0 },
   "core.function.multiply": { overloadCount: 3, runtimeArity: 0 },
   "core.function.polar-to-cart": { overloadCount: 2, runtimeArity: 0 },
   "core.function.pow": { overloadCount: 1, runtimeArity: 3 },
