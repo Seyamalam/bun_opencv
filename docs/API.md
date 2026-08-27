@@ -340,6 +340,43 @@ The instance exposes `getDefaultName()`, getters and setters for every option, O
 
 The pinned OpenCV.js 4.13.0 browser fixture exposes the direct `KAZE` constructor and all 13 instance methods. The complete compatibility matrix passes for every instance method. It covers exact arity, defaults, return values, scalar coercion, shared enum singleton identity, structural enum inputs, raw unknown wire values, argument errors, and const-getter versus mutable-setter lifetime behavior. The artifact omits the config-listed static `KAZE.create`, so the package factory has no direct static-factory comparator for that baseline.
 
+### MSER configuration
+
+`cv.createMSER(options)` allocates a Rust-owned configuration handle. Defaults are delta `5`, minimum area `60`, maximum area `14400`, and second-pass-only disabled.
+
+```ts
+const mser = cv.createMSER({ delta: 8, minArea: 40, maxArea: 20_000 });
+
+try {
+  mser.setPass2Only(true);
+  console.log(mser.getDelta(), mser.getPass2Only());
+} finally {
+  mser.dispose();
+}
+```
+
+The nine implemented methods reproduce the pinned constructor state, exact method arity, signed i32 conversion, JavaScript boolean coercion, undefined setter returns, and deleted-object errors. Factory integer options are strictly validated before entering WASM. The pinned artifact omits the config-listed static `MSER.create`; the package factory is a convenience. Region detection and its output-vector types remain unimplemented.
+
+### ORB configuration
+
+`cv.createORB(options)` allocates a Rust-owned configuration handle. Its defaults are 500 maximum features, float32 `1.2` scale factor, eight levels, edge threshold `31`, first level `0`, WTA_K `2`, Harris scoring, patch size `31`, and FAST threshold `20`.
+
+```ts
+import { ORBScoreType } from "bun-opencv";
+
+const orb = cv.createORB({ maxFeatures: 1000, scoreType: ORBScoreType.FAST_SCORE });
+
+try {
+  orb.setFastThreshold(12);
+  orb.setScoreType(cv.ORB_ScoreType.HARRIS_SCORE);
+  console.log(orb.getFastThreshold());
+} finally {
+  orb.dispose();
+}
+```
+
+The eleven implemented methods reproduce exact arity, signed i32 and F64 input conversion, float32 scale storage, structural score-enum conversion, first-level validation, undefined setter returns, and const-versus-mutable deleted-object errors. The pinned artifact omits the config-listed static `ORB.create`; the package factory is a convenience. Image detection, keypoints, and descriptors remain unimplemented.
+
 ### AGAST and FAST configuration
 
 `cv.createAgastFeatureDetector(options)` and `cv.createFastFeatureDetector(options)` allocate Rust-owned detector configuration handles. They do not accept images or detect keypoints yet.

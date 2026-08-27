@@ -67,143 +67,165 @@ Read [the API reference](docs/API.md) for input contracts and conversion helpers
 
 The independent browser inventory contains 488 callable families, so the 25% milestone is 122 fully compatible families. A family earns full credit only after every selected browser overload, supported matrix form, output mutation, error case, and differential fixture passes. A useful U8 specialization is recorded as partial and earns no full-parity credit.
 
-| Module     | Package method                              | OpenCV.js family                               | Status  | Current scope                            |
-| ---------- | ------------------------------------------- | ---------------------------------------------- | ------- | ---------------------------------------- |
-| core       | `absdiff`                                   | `cv.absdiff`                                   | Partial | Matching U8 matrices                     |
-| core       | `add`                                       | `cv.add`                                       | Partial | Saturating U8 matrix operands            |
-| core       | `addWeighted`                               | `cv.addWeighted`                               | Full    | Exact all-depth mutable-output contract  |
-| core       | `bitwiseAnd`                                | `cv.bitwise_and`                               | Partial | U8 matrix operands, no mask              |
-| core       | `bitwiseNot`                                | `cv.bitwise_not`                               | Full    | All-depth destination/mask contract      |
-| core       | `bitwiseOr`                                 | `cv.bitwise_or`                                | Partial | U8 matrix operands, no mask              |
-| core       | `bitwiseXor`                                | `cv.bitwise_xor`                               | Partial | U8 matrix operands, no mask              |
-| core       | `compareEqual`                              | `cv.compare`                                   | Partial | U8 equality mode                         |
-| core       | `countNonZero`                              | `cv.countNonZero`                              | Full    | Exact all-depth single-channel reduction |
-| core       | `convertScaleAbs`                           | `cv.convertScaleAbs`                           | Full    | Exact all-depth mutable-output contract  |
-| core       | `copyMakeBorder`                            | `cv.copyMakeBorder`                            | Partial | All depths and five border modes         |
-| core       | `determinant`                               | `cv.determinant`                               | Full    | Exact F32/F64 square-matrix contract     |
-| core       | `divide`                                    | `cv.divide`                                    | Full    | Exact all-depth mutable-output contract  |
-| core       | `cartToPolar`                               | `cv.cartToPolar`                               | Full    | Exact paired F32/F64 output contract     |
-| core       | `exp`                                       | `cv.exp`                                       | Full    | Exact F32/F64 mutable-output contract    |
-| core       | `flip`                                      | `cv.flip`                                      | Full    | Exact all-depth mutable-output contract  |
-| core       | `getLogLevel`                               | `cv.getLogLevel`                               | Partial | Package-owned log level 0 through 6      |
-| core       | `getOptimalDFTSize`                         | `cv.getOptimalDFTSize`                         | Full    | Exact i32 contract and smooth result     |
-| core       | `hconcat`                                   | `cv.hconcat`                                   | Partial | All depths, two through four inputs      |
-| core       | `inRange`                                   | `cv.inRange`                                   | Partial | U8 matrix bounds                         |
-| core       | `invert`                                    | `cv.invert`                                    | Partial | Square matrices and three methods        |
-| core       | `log`                                       | `cv.log`                                       | Full    | Exact F32/F64 mutable-output contract    |
-| core       | `lut`                                       | `cv.LUT`                                       | Partial | Byte sources and every table depth       |
-| core       | `magnitude`                                 | `cv.magnitude`                                 | Full    | Exact matching F32/F64 mutable output    |
-| core       | `max`                                       | `cv.max`                                       | Partial | U8 matrix operands                       |
-| core       | `mean`                                      | `cv.mean`                                      | Full    | Exact all-depth optional-mask contract   |
-| core       | `meanStdDev`                                | `cv.meanStdDev`                                | Partial | All depths, masks, and F64 outputs       |
-| core       | `merge`                                     | `cv.merge`                                     | Partial | Two through four all-depth inputs        |
-| core       | `min`                                       | `cv.min`                                       | Partial | U8 matrix operands                       |
-| core       | `minMaxLoc`                                 | `cv.minMaxLoc`                                 | Full    | Exact all-depth optional-mask contract   |
-| core       | `mixChannels`                               | `cv.mixChannels`                               | Partial | One source and destination, all depths   |
-| core       | `multiply`                                  | `cv.multiply`                                  | Full    | Exact all-depth mutable-output contract  |
-| core       | `norm`                                      | `cv.norm`                                      | Partial | All depths, masks, and norm modes        |
-| core       | `normalize`                                 | `cv.normalize`                                 | Partial | All depths and mutable destinations      |
-| core       | `polarToCart`                               | `cv.polarToCart`                               | Full    | Exact paired F32/F64 output contract     |
-| core       | `perspectiveTransform`                      | `cv.perspectiveTransform`                      | Partial | F32/F64 2D and 3D vectors                |
-| core       | `pow`                                       | `cv.pow`                                       | Full    | Exact all-depth valid-power contract     |
-| core       | `randn`                                     | `cv.randn`                                     | Partial | All depths and diagonal deviations       |
-| core       | `randu`                                     | `cv.randu`                                     | Partial | All depths and per-channel ranges        |
-| core       | `repeat`                                    | `cv.repeat`                                    | Full    | Exact all-depth mutable-output contract  |
-| core       | `reduce`                                    | `cv.reduce`                                    | Partial | Both axes, four modes, all depths        |
-| core       | `rotate`                                    | `cv.rotate`                                    | Full    | Exact all-depth mutable-output contract  |
-| core       | `setIdentity`                               | `cv.setIdentity`                               | Full    | Exact Scalar conversion and in-place ROI |
-| core       | `setLogLevel`                               | `cv.setLogLevel`                               | Partial | Previous-level return and state update   |
-| core       | `setRNGSeed`                                | `cv.setRNGSeed`                                | Partial | Deterministic package-owned RNG          |
-| core       | `solve`                                     | `cv.solve`                                     | Partial | LU, Cholesky, and QR methods             |
-| core       | `subtract`                                  | `cv.subtract`                                  | Partial | Saturating U8 matrix operands            |
-| core       | `split`                                     | `cv.split`                                     | Partial | All depths and strided regions           |
-| core       | `sqrt`                                      | `cv.sqrt`                                      | Full    | Exact F32/F64 mutable-output contract    |
-| core       | `transpose`                                 | `cv.transpose`                                 | Full    | Exact all-depth mutable-output contract  |
-| core       | `trace`                                     | `cv.trace`                                     | Full    | Exact all-depth four-lane Scalar         |
-| core       | `transform`                                 | `cv.transform`                                 | Partial | All depths and F32/F64 coefficients      |
-| core       | `vconcat`                                   | `cv.vconcat`                                   | Partial | All depths, two through four inputs      |
-| features2d | `createAKAZE`                               | `cv.AKAZE.create`                              | Partial | Configuration handle only; no detection  |
-| features2d | `AKAZE.getDefaultName`                      | `cv.AKAZE.getDefaultName`                      | Full    | Exact name, arity, and lifecycle         |
-| features2d | `AKAZE.getDescriptorChannels`               | `cv.AKAZE.getDescriptorChannels`               | Full    | Exact signed i32 state and lifecycle     |
-| features2d | `AKAZE.getDescriptorSize`                   | `cv.AKAZE.getDescriptorSize`                   | Full    | Exact signed i32 state and lifecycle     |
-| features2d | `AKAZE.getDescriptorType`                   | `cv.AKAZE.getDescriptorType`                   | Full    | Canonical enum identity and lifecycle    |
-| features2d | `AKAZE.getDiffusivity`                      | `cv.AKAZE.getDiffusivity`                      | Full    | Shared enum identity and lifecycle       |
-| features2d | `AKAZE.getNOctaveLayers`                    | `cv.AKAZE.getNOctaveLayers`                    | Full    | Exact signed i32 state and lifecycle     |
-| features2d | `AKAZE.getNOctaves`                         | `cv.AKAZE.getNOctaves`                         | Full    | Exact signed i32 state and lifecycle     |
-| features2d | `AKAZE.getThreshold`                        | `cv.AKAZE.getThreshold`                        | Full    | Exact F64 state and lifecycle            |
-| features2d | `AKAZE.setDescriptorChannels`               | `cv.AKAZE.setDescriptorChannels`               | Full    | Exact i32 coercion and call contract     |
-| features2d | `AKAZE.setDescriptorSize`                   | `cv.AKAZE.setDescriptorSize`                   | Full    | Exact i32 coercion and call contract     |
-| features2d | `AKAZE.setDescriptorType`                   | `cv.AKAZE.setDescriptorType`                   | Full    | Exact structural enum-object coercion    |
-| features2d | `AKAZE.setDiffusivity`                      | `cv.AKAZE.setDiffusivity`                      | Full    | Exact structural enum-object coercion    |
-| features2d | `AKAZE.setNOctaveLayers`                    | `cv.AKAZE.setNOctaveLayers`                    | Full    | Exact i32 coercion and call contract     |
-| features2d | `AKAZE.setNOctaves`                         | `cv.AKAZE.setNOctaves`                         | Full    | Exact i32 coercion and call contract     |
-| features2d | `AKAZE.setThreshold`                        | `cv.AKAZE.setThreshold`                        | Full    | Exact number coercion and call contract  |
-| features2d | `createKAZE`                                | `cv.KAZE.create`                               | Partial | Configuration handle only; no detection  |
-| features2d | `KAZE.getDefaultName`                       | `cv.KAZE.getDefaultName`                       | Full    | Exact name, arity, and lifecycle         |
-| features2d | `KAZE.getDiffusivity`                       | `cv.KAZE.getDiffusivity`                       | Full    | Shared enum identity and lifecycle       |
-| features2d | `KAZE.getExtended`                          | `cv.KAZE.getExtended`                          | Full    | Exact boolean state and lifecycle        |
-| features2d | `KAZE.getNOctaveLayers`                     | `cv.KAZE.getNOctaveLayers`                     | Full    | Exact signed i32 state and lifecycle     |
-| features2d | `KAZE.getNOctaves`                          | `cv.KAZE.getNOctaves`                          | Full    | Exact signed i32 state and lifecycle     |
-| features2d | `KAZE.getThreshold`                         | `cv.KAZE.getThreshold`                         | Full    | Exact F64 state and lifecycle            |
-| features2d | `KAZE.getUpright`                           | `cv.KAZE.getUpright`                           | Full    | Exact boolean state and lifecycle        |
-| features2d | `KAZE.setDiffusivity`                       | `cv.KAZE.setDiffusivity`                       | Full    | Exact structural enum-object coercion    |
-| features2d | `KAZE.setExtended`                          | `cv.KAZE.setExtended`                          | Full    | Exact boolean coercion and call contract |
-| features2d | `KAZE.setNOctaveLayers`                     | `cv.KAZE.setNOctaveLayers`                     | Full    | Exact i32 coercion and call contract     |
-| features2d | `KAZE.setNOctaves`                          | `cv.KAZE.setNOctaves`                          | Full    | Exact i32 coercion and call contract     |
-| features2d | `KAZE.setThreshold`                         | `cv.KAZE.setThreshold`                         | Full    | Exact number coercion and call contract  |
-| features2d | `KAZE.setUpright`                           | `cv.KAZE.setUpright`                           | Full    | Exact boolean coercion and call contract |
-| features2d | `createAgastFeatureDetector`                | `cv.AgastFeatureDetector.create`               | Partial | Configuration handle only; no detection  |
-| features2d | `AgastFeatureDetector.getDefaultName`       | `cv.AgastFeatureDetector.getDefaultName`       | Full    | Exact name, arity, and lifecycle         |
-| features2d | `AgastFeatureDetector.getNonmaxSuppression` | `cv.AgastFeatureDetector.getNonmaxSuppression` | Full    | Exact boolean state and lifecycle        |
-| features2d | `AgastFeatureDetector.getThreshold`         | `cv.AgastFeatureDetector.getThreshold`         | Full    | Exact signed i32 state and lifecycle     |
-| features2d | `AgastFeatureDetector.getType`              | `cv.AgastFeatureDetector.getType`              | Full    | Canonical enum identity and lifecycle    |
-| features2d | `AgastFeatureDetector.setNonmaxSuppression` | `cv.AgastFeatureDetector.setNonmaxSuppression` | Full    | Exact boolean coercion and call contract |
-| features2d | `AgastFeatureDetector.setThreshold`         | `cv.AgastFeatureDetector.setThreshold`         | Full    | Exact i32 coercion and call contract     |
-| features2d | `AgastFeatureDetector.setType`              | `cv.AgastFeatureDetector.setType`              | Full    | Exact structural enum-object coercion    |
-| features2d | `createFastFeatureDetector`                 | `cv.FastFeatureDetector.create`                | Partial | Configuration handle only; no detection  |
-| features2d | `FastFeatureDetector.getDefaultName`        | `cv.FastFeatureDetector.getDefaultName`        | Full    | Exact name, arity, and lifecycle         |
-| features2d | `FastFeatureDetector.getNonmaxSuppression`  | `cv.FastFeatureDetector.getNonmaxSuppression`  | Full    | Exact boolean state and lifecycle        |
-| features2d | `FastFeatureDetector.getThreshold`          | `cv.FastFeatureDetector.getThreshold`          | Full    | Exact signed i32 state and lifecycle     |
-| features2d | `FastFeatureDetector.getType`               | `cv.FastFeatureDetector.getType`               | Full    | Canonical enum identity and lifecycle    |
-| features2d | `FastFeatureDetector.setNonmaxSuppression`  | `cv.FastFeatureDetector.setNonmaxSuppression`  | Full    | Exact boolean coercion and call contract |
-| features2d | `FastFeatureDetector.setThreshold`          | `cv.FastFeatureDetector.setThreshold`          | Full    | Exact i32 coercion and call contract     |
-| features2d | `FastFeatureDetector.setType`               | `cv.FastFeatureDetector.setType`               | Full    | Exact structural enum-object coercion    |
-| features2d | `createGFTTDetector`                        | `cv.GFTTDetector.create`                       | Partial | Selected six-argument configuration      |
-| features2d | `GFTTDetector.getBlockSize`                 | `cv.GFTTDetector.getBlockSize`                 | Full    | Exact arity, state, and lifecycle        |
-| features2d | `GFTTDetector.getDefaultName`               | `cv.GFTTDetector.getDefaultName`               | Full    | Exact name, arity, and lifecycle         |
-| features2d | `GFTTDetector.getHarrisDetector`            | `cv.GFTTDetector.getHarrisDetector`            | Full    | Exact boolean state and lifecycle        |
-| features2d | `GFTTDetector.getK`                         | `cv.GFTTDetector.getK`                         | Full    | Exact F64 state and lifecycle            |
-| features2d | `GFTTDetector.getMaxFeatures`               | `cv.GFTTDetector.getMaxFeatures`               | Full    | Exact signed i32 state and lifecycle     |
-| features2d | `GFTTDetector.getMinDistance`               | `cv.GFTTDetector.getMinDistance`               | Full    | Exact F64 state and lifecycle            |
-| features2d | `GFTTDetector.getQualityLevel`              | `cv.GFTTDetector.getQualityLevel`              | Full    | Exact F64 state and lifecycle            |
-| features2d | `GFTTDetector.setBlockSize`                 | `cv.GFTTDetector.setBlockSize`                 | Full    | Exact i32 coercion and call contract     |
-| features2d | `GFTTDetector.setHarrisDetector`            | `cv.GFTTDetector.setHarrisDetector`            | Full    | Exact boolean coercion and call contract |
-| features2d | `GFTTDetector.setK`                         | `cv.GFTTDetector.setK`                         | Full    | Exact number coercion and call contract  |
-| features2d | `GFTTDetector.setMaxFeatures`               | `cv.GFTTDetector.setMaxFeatures`               | Full    | Exact i32 coercion and call contract     |
-| features2d | `GFTTDetector.setMinDistance`               | `cv.GFTTDetector.setMinDistance`               | Full    | Exact number coercion and call contract  |
-| features2d | `GFTTDetector.setQualityLevel`              | `cv.GFTTDetector.setQualityLevel`              | Full    | Exact number coercion and call contract  |
-| imgproc    | `arcLength`                                 | `cv.arcLength`                                 | Full    | Exact I32/F32 contour contract           |
-| imgproc    | `boundingRect`                              | `cv.boundingRect`                              | Full    | Exact I32/F32 contour bounds             |
-| imgproc    | `clipLine`                                  | `cv.clipLine`                                  | Partial | Integer rectangle and segment form       |
-| imgproc    | `contourArea`                               | `cv.contourArea`                               | Full    | Exact I32/F32 contour area               |
-| imgproc    | `createHanningWindow`                       | `cv.createHanningWindow`                       | Full    | Exact F32/F64 mutable window contract    |
-| imgproc    | `ellipse2Poly`                              | `cv.ellipse2Poly`                              | Partial | Ordered integer ellipse arcs             |
-| imgproc    | `getAffineTransform`                        | `cv.getAffineTransform`                        | Full    | Exact continuous F32 points and F64 map  |
-| imgproc    | `getPerspectiveTransform`                   | `cv.getPerspectiveTransform`                   | Partial | Four F32/F64 point pairs to F64          |
-| imgproc    | `getRotationMatrix2D`                       | `cv.getRotationMatrix2D`                       | Full    | Exact Point2f and F64 matrix contract    |
-| imgproc    | `getStructuringElement`                     | `cv.getStructuringElement`                     | Full    | Exact rectangle, cross, ellipse, diamond |
-| imgproc    | `grayscale`                                 | `cv.cvtColor`                                  | Partial | RGBA-to-gray specialization              |
-| imgproc    | `invertAffineTransform`                     | `cv.invertAffineTransform`                     | Full    | Exact F32/F64 mutable inverse contract   |
-| imgproc    | `isContourConvex`                           | `cv.isContourConvex`                           | Full    | Exact strict-convexity contract          |
-| imgproc    | `pointPolygonTest`                          | `cv.pointPolygonTest`                          | Full    | Exact classification and signed distance |
-| imgproc    | `resizeNearest`                             | `cv.resize`                                    | Partial | RGBA nearest-neighbor specialization     |
-| imgproc    | `threshold`                                 | `cv.threshold`                                 | Partial | Luma-derived U8 binary specialization    |
-| imgproc    | `gaussianBlur`                              | `cv.GaussianBlur`                              | Planned | Not started                              |
-| imgproc    | `canny`                                     | `cv.Canny`                                     | Planned | Not started                              |
-| imgproc    | `findContours`                              | `cv.findContours`                              | Planned | Not started                              |
-| imgproc    | `warpPerspective`                           | `cv.warpPerspective`                           | Planned | Not started                              |
+| Module     | Package method                              | OpenCV.js family                               | Status  | Current scope                              |
+| ---------- | ------------------------------------------- | ---------------------------------------------- | ------- | ------------------------------------------ |
+| core       | `absdiff`                                   | `cv.absdiff`                                   | Partial | Matching U8 matrices                       |
+| core       | `add`                                       | `cv.add`                                       | Partial | Saturating U8 matrix operands              |
+| core       | `addWeighted`                               | `cv.addWeighted`                               | Full    | Exact all-depth mutable-output contract    |
+| core       | `bitwiseAnd`                                | `cv.bitwise_and`                               | Partial | U8 matrix operands, no mask                |
+| core       | `bitwiseNot`                                | `cv.bitwise_not`                               | Full    | All-depth destination/mask contract        |
+| core       | `bitwiseOr`                                 | `cv.bitwise_or`                                | Partial | U8 matrix operands, no mask                |
+| core       | `bitwiseXor`                                | `cv.bitwise_xor`                               | Partial | U8 matrix operands, no mask                |
+| core       | `compareEqual`                              | `cv.compare`                                   | Partial | U8 equality mode                           |
+| core       | `countNonZero`                              | `cv.countNonZero`                              | Full    | Exact all-depth single-channel reduction   |
+| core       | `convertScaleAbs`                           | `cv.convertScaleAbs`                           | Full    | Exact all-depth mutable-output contract    |
+| core       | `copyMakeBorder`                            | `cv.copyMakeBorder`                            | Partial | All depths and five border modes           |
+| core       | `determinant`                               | `cv.determinant`                               | Full    | Exact F32/F64 square-matrix contract       |
+| core       | `divide`                                    | `cv.divide`                                    | Full    | Exact all-depth mutable-output contract    |
+| core       | `cartToPolar`                               | `cv.cartToPolar`                               | Full    | Exact paired F32/F64 output contract       |
+| core       | `exp`                                       | `cv.exp`                                       | Full    | Exact F32/F64 mutable-output contract      |
+| core       | `flip`                                      | `cv.flip`                                      | Full    | Exact all-depth mutable-output contract    |
+| core       | `getLogLevel`                               | `cv.getLogLevel`                               | Partial | Package-owned log level 0 through 6        |
+| core       | `getOptimalDFTSize`                         | `cv.getOptimalDFTSize`                         | Full    | Exact i32 contract and smooth result       |
+| core       | `hconcat`                                   | `cv.hconcat`                                   | Partial | All depths, two through four inputs        |
+| core       | `inRange`                                   | `cv.inRange`                                   | Partial | U8 matrix bounds                           |
+| core       | `invert`                                    | `cv.invert`                                    | Partial | Square matrices and three methods          |
+| core       | `log`                                       | `cv.log`                                       | Full    | Exact F32/F64 mutable-output contract      |
+| core       | `lut`                                       | `cv.LUT`                                       | Partial | Byte sources and every table depth         |
+| core       | `magnitude`                                 | `cv.magnitude`                                 | Full    | Exact matching F32/F64 mutable output      |
+| core       | `max`                                       | `cv.max`                                       | Partial | U8 matrix operands                         |
+| core       | `mean`                                      | `cv.mean`                                      | Full    | Exact all-depth optional-mask contract     |
+| core       | `meanStdDev`                                | `cv.meanStdDev`                                | Partial | All depths, masks, and F64 outputs         |
+| core       | `merge`                                     | `cv.merge`                                     | Partial | Two through four all-depth inputs          |
+| core       | `min`                                       | `cv.min`                                       | Partial | U8 matrix operands                         |
+| core       | `minMaxLoc`                                 | `cv.minMaxLoc`                                 | Full    | Exact all-depth optional-mask contract     |
+| core       | `mixChannels`                               | `cv.mixChannels`                               | Partial | One source and destination, all depths     |
+| core       | `multiply`                                  | `cv.multiply`                                  | Full    | Exact all-depth mutable-output contract    |
+| core       | `norm`                                      | `cv.norm`                                      | Partial | All depths, masks, and norm modes          |
+| core       | `normalize`                                 | `cv.normalize`                                 | Partial | All depths and mutable destinations        |
+| core       | `polarToCart`                               | `cv.polarToCart`                               | Full    | Exact paired F32/F64 output contract       |
+| core       | `perspectiveTransform`                      | `cv.perspectiveTransform`                      | Partial | F32/F64 2D and 3D vectors                  |
+| core       | `pow`                                       | `cv.pow`                                       | Full    | Exact all-depth valid-power contract       |
+| core       | `randn`                                     | `cv.randn`                                     | Partial | All depths and diagonal deviations         |
+| core       | `randu`                                     | `cv.randu`                                     | Partial | All depths and per-channel ranges          |
+| core       | `repeat`                                    | `cv.repeat`                                    | Full    | Exact all-depth mutable-output contract    |
+| core       | `reduce`                                    | `cv.reduce`                                    | Partial | Both axes, four modes, all depths          |
+| core       | `rotate`                                    | `cv.rotate`                                    | Full    | Exact all-depth mutable-output contract    |
+| core       | `setIdentity`                               | `cv.setIdentity`                               | Full    | Exact Scalar conversion and in-place ROI   |
+| core       | `setLogLevel`                               | `cv.setLogLevel`                               | Partial | Previous-level return and state update     |
+| core       | `setRNGSeed`                                | `cv.setRNGSeed`                                | Partial | Deterministic package-owned RNG            |
+| core       | `solve`                                     | `cv.solve`                                     | Partial | LU, Cholesky, and QR methods               |
+| core       | `subtract`                                  | `cv.subtract`                                  | Partial | Saturating U8 matrix operands              |
+| core       | `split`                                     | `cv.split`                                     | Partial | All depths and strided regions             |
+| core       | `sqrt`                                      | `cv.sqrt`                                      | Full    | Exact F32/F64 mutable-output contract      |
+| core       | `transpose`                                 | `cv.transpose`                                 | Full    | Exact all-depth mutable-output contract    |
+| core       | `trace`                                     | `cv.trace`                                     | Full    | Exact all-depth four-lane Scalar           |
+| core       | `transform`                                 | `cv.transform`                                 | Partial | All depths and F32/F64 coefficients        |
+| core       | `vconcat`                                   | `cv.vconcat`                                   | Partial | All depths, two through four inputs        |
+| features2d | `createAKAZE`                               | `cv.AKAZE.create`                              | Partial | Configuration handle only; no detection    |
+| features2d | `AKAZE.getDefaultName`                      | `cv.AKAZE.getDefaultName`                      | Full    | Exact name, arity, and lifecycle           |
+| features2d | `AKAZE.getDescriptorChannels`               | `cv.AKAZE.getDescriptorChannels`               | Full    | Exact signed i32 state and lifecycle       |
+| features2d | `AKAZE.getDescriptorSize`                   | `cv.AKAZE.getDescriptorSize`                   | Full    | Exact signed i32 state and lifecycle       |
+| features2d | `AKAZE.getDescriptorType`                   | `cv.AKAZE.getDescriptorType`                   | Full    | Canonical enum identity and lifecycle      |
+| features2d | `AKAZE.getDiffusivity`                      | `cv.AKAZE.getDiffusivity`                      | Full    | Shared enum identity and lifecycle         |
+| features2d | `AKAZE.getNOctaveLayers`                    | `cv.AKAZE.getNOctaveLayers`                    | Full    | Exact signed i32 state and lifecycle       |
+| features2d | `AKAZE.getNOctaves`                         | `cv.AKAZE.getNOctaves`                         | Full    | Exact signed i32 state and lifecycle       |
+| features2d | `AKAZE.getThreshold`                        | `cv.AKAZE.getThreshold`                        | Full    | Exact F64 state and lifecycle              |
+| features2d | `AKAZE.setDescriptorChannels`               | `cv.AKAZE.setDescriptorChannels`               | Full    | Exact i32 coercion and call contract       |
+| features2d | `AKAZE.setDescriptorSize`                   | `cv.AKAZE.setDescriptorSize`                   | Full    | Exact i32 coercion and call contract       |
+| features2d | `AKAZE.setDescriptorType`                   | `cv.AKAZE.setDescriptorType`                   | Full    | Exact structural enum-object coercion      |
+| features2d | `AKAZE.setDiffusivity`                      | `cv.AKAZE.setDiffusivity`                      | Full    | Exact structural enum-object coercion      |
+| features2d | `AKAZE.setNOctaveLayers`                    | `cv.AKAZE.setNOctaveLayers`                    | Full    | Exact i32 coercion and call contract       |
+| features2d | `AKAZE.setNOctaves`                         | `cv.AKAZE.setNOctaves`                         | Full    | Exact i32 coercion and call contract       |
+| features2d | `AKAZE.setThreshold`                        | `cv.AKAZE.setThreshold`                        | Full    | Exact number coercion and call contract    |
+| features2d | `createKAZE`                                | `cv.KAZE.create`                               | Partial | Configuration handle only; no detection    |
+| features2d | `KAZE.getDefaultName`                       | `cv.KAZE.getDefaultName`                       | Full    | Exact name, arity, and lifecycle           |
+| features2d | `KAZE.getDiffusivity`                       | `cv.KAZE.getDiffusivity`                       | Full    | Shared enum identity and lifecycle         |
+| features2d | `KAZE.getExtended`                          | `cv.KAZE.getExtended`                          | Full    | Exact boolean state and lifecycle          |
+| features2d | `KAZE.getNOctaveLayers`                     | `cv.KAZE.getNOctaveLayers`                     | Full    | Exact signed i32 state and lifecycle       |
+| features2d | `KAZE.getNOctaves`                          | `cv.KAZE.getNOctaves`                          | Full    | Exact signed i32 state and lifecycle       |
+| features2d | `KAZE.getThreshold`                         | `cv.KAZE.getThreshold`                         | Full    | Exact F64 state and lifecycle              |
+| features2d | `KAZE.getUpright`                           | `cv.KAZE.getUpright`                           | Full    | Exact boolean state and lifecycle          |
+| features2d | `KAZE.setDiffusivity`                       | `cv.KAZE.setDiffusivity`                       | Full    | Exact structural enum-object coercion      |
+| features2d | `KAZE.setExtended`                          | `cv.KAZE.setExtended`                          | Full    | Exact boolean coercion and call contract   |
+| features2d | `KAZE.setNOctaveLayers`                     | `cv.KAZE.setNOctaveLayers`                     | Full    | Exact i32 coercion and call contract       |
+| features2d | `KAZE.setNOctaves`                          | `cv.KAZE.setNOctaves`                          | Full    | Exact i32 coercion and call contract       |
+| features2d | `KAZE.setThreshold`                         | `cv.KAZE.setThreshold`                         | Full    | Exact number coercion and call contract    |
+| features2d | `KAZE.setUpright`                           | `cv.KAZE.setUpright`                           | Full    | Exact boolean coercion and call contract   |
+| features2d | `createMSER`                                | `cv.MSER.create`                               | Partial | Static factory absent; no region detection |
+| features2d | `MSER.getDefaultName`                       | `cv.MSER.getDefaultName`                       | Full    | Exact name, arity, and lifecycle           |
+| features2d | `MSER.getDelta`                             | `cv.MSER.getDelta`                             | Full    | Exact signed i32 state and lifecycle       |
+| features2d | `MSER.getMaxArea`                           | `cv.MSER.getMaxArea`                           | Full    | Exact signed i32 state and lifecycle       |
+| features2d | `MSER.getMinArea`                           | `cv.MSER.getMinArea`                           | Full    | Exact signed i32 state and lifecycle       |
+| features2d | `MSER.getPass2Only`                         | `cv.MSER.getPass2Only`                         | Full    | Exact boolean state and lifecycle          |
+| features2d | `MSER.setDelta`                             | `cv.MSER.setDelta`                             | Full    | Exact i32 coercion and call contract       |
+| features2d | `MSER.setMaxArea`                           | `cv.MSER.setMaxArea`                           | Full    | Exact i32 coercion and call contract       |
+| features2d | `MSER.setMinArea`                           | `cv.MSER.setMinArea`                           | Full    | Exact i32 coercion and call contract       |
+| features2d | `MSER.setPass2Only`                         | `cv.MSER.setPass2Only`                         | Full    | Exact boolean coercion and call contract   |
+| features2d | `createORB`                                 | `cv.ORB.create`                                | Partial | Static factory absent; no detection        |
+| features2d | `ORB.getDefaultName`                        | `cv.ORB.getDefaultName`                        | Full    | Exact name, arity, and lifecycle           |
+| features2d | `ORB.getFastThreshold`                      | `cv.ORB.getFastThreshold`                      | Full    | Exact signed i32 state and lifecycle       |
+| features2d | `ORB.setEdgeThreshold`                      | `cv.ORB.setEdgeThreshold`                      | Full    | Exact i32 coercion and call contract       |
+| features2d | `ORB.setFastThreshold`                      | `cv.ORB.setFastThreshold`                      | Full    | Exact i32 coercion and call contract       |
+| features2d | `ORB.setFirstLevel`                         | `cv.ORB.setFirstLevel`                         | Full    | Exact i32 conversion and validation        |
+| features2d | `ORB.setMaxFeatures`                        | `cv.ORB.setMaxFeatures`                        | Full    | Exact i32 coercion and call contract       |
+| features2d | `ORB.setNLevels`                            | `cv.ORB.setNLevels`                            | Full    | Exact i32 coercion and call contract       |
+| features2d | `ORB.setPatchSize`                          | `cv.ORB.setPatchSize`                          | Full    | Exact i32 coercion and call contract       |
+| features2d | `ORB.setScaleFactor`                        | `cv.ORB.setScaleFactor`                        | Full    | Exact F64 input and F32 stored state       |
+| features2d | `ORB.setScoreType`                          | `cv.ORB.setScoreType`                          | Full    | Exact structural enum-object coercion      |
+| features2d | `ORB.setWTA_K`                              | `cv.ORB.setWTA_K`                              | Full    | Exact i32 coercion and call contract       |
+| features2d | `createAgastFeatureDetector`                | `cv.AgastFeatureDetector.create`               | Partial | Configuration handle only; no detection    |
+| features2d | `AgastFeatureDetector.getDefaultName`       | `cv.AgastFeatureDetector.getDefaultName`       | Full    | Exact name, arity, and lifecycle           |
+| features2d | `AgastFeatureDetector.getNonmaxSuppression` | `cv.AgastFeatureDetector.getNonmaxSuppression` | Full    | Exact boolean state and lifecycle          |
+| features2d | `AgastFeatureDetector.getThreshold`         | `cv.AgastFeatureDetector.getThreshold`         | Full    | Exact signed i32 state and lifecycle       |
+| features2d | `AgastFeatureDetector.getType`              | `cv.AgastFeatureDetector.getType`              | Full    | Canonical enum identity and lifecycle      |
+| features2d | `AgastFeatureDetector.setNonmaxSuppression` | `cv.AgastFeatureDetector.setNonmaxSuppression` | Full    | Exact boolean coercion and call contract   |
+| features2d | `AgastFeatureDetector.setThreshold`         | `cv.AgastFeatureDetector.setThreshold`         | Full    | Exact i32 coercion and call contract       |
+| features2d | `AgastFeatureDetector.setType`              | `cv.AgastFeatureDetector.setType`              | Full    | Exact structural enum-object coercion      |
+| features2d | `createFastFeatureDetector`                 | `cv.FastFeatureDetector.create`                | Partial | Configuration handle only; no detection    |
+| features2d | `FastFeatureDetector.getDefaultName`        | `cv.FastFeatureDetector.getDefaultName`        | Full    | Exact name, arity, and lifecycle           |
+| features2d | `FastFeatureDetector.getNonmaxSuppression`  | `cv.FastFeatureDetector.getNonmaxSuppression`  | Full    | Exact boolean state and lifecycle          |
+| features2d | `FastFeatureDetector.getThreshold`          | `cv.FastFeatureDetector.getThreshold`          | Full    | Exact signed i32 state and lifecycle       |
+| features2d | `FastFeatureDetector.getType`               | `cv.FastFeatureDetector.getType`               | Full    | Canonical enum identity and lifecycle      |
+| features2d | `FastFeatureDetector.setNonmaxSuppression`  | `cv.FastFeatureDetector.setNonmaxSuppression`  | Full    | Exact boolean coercion and call contract   |
+| features2d | `FastFeatureDetector.setThreshold`          | `cv.FastFeatureDetector.setThreshold`          | Full    | Exact i32 coercion and call contract       |
+| features2d | `FastFeatureDetector.setType`               | `cv.FastFeatureDetector.setType`               | Full    | Exact structural enum-object coercion      |
+| features2d | `createGFTTDetector`                        | `cv.GFTTDetector.create`                       | Partial | Selected six-argument configuration        |
+| features2d | `GFTTDetector.getBlockSize`                 | `cv.GFTTDetector.getBlockSize`                 | Full    | Exact arity, state, and lifecycle          |
+| features2d | `GFTTDetector.getDefaultName`               | `cv.GFTTDetector.getDefaultName`               | Full    | Exact name, arity, and lifecycle           |
+| features2d | `GFTTDetector.getHarrisDetector`            | `cv.GFTTDetector.getHarrisDetector`            | Full    | Exact boolean state and lifecycle          |
+| features2d | `GFTTDetector.getK`                         | `cv.GFTTDetector.getK`                         | Full    | Exact F64 state and lifecycle              |
+| features2d | `GFTTDetector.getMaxFeatures`               | `cv.GFTTDetector.getMaxFeatures`               | Full    | Exact signed i32 state and lifecycle       |
+| features2d | `GFTTDetector.getMinDistance`               | `cv.GFTTDetector.getMinDistance`               | Full    | Exact F64 state and lifecycle              |
+| features2d | `GFTTDetector.getQualityLevel`              | `cv.GFTTDetector.getQualityLevel`              | Full    | Exact F64 state and lifecycle              |
+| features2d | `GFTTDetector.setBlockSize`                 | `cv.GFTTDetector.setBlockSize`                 | Full    | Exact i32 coercion and call contract       |
+| features2d | `GFTTDetector.setHarrisDetector`            | `cv.GFTTDetector.setHarrisDetector`            | Full    | Exact boolean coercion and call contract   |
+| features2d | `GFTTDetector.setK`                         | `cv.GFTTDetector.setK`                         | Full    | Exact number coercion and call contract    |
+| features2d | `GFTTDetector.setMaxFeatures`               | `cv.GFTTDetector.setMaxFeatures`               | Full    | Exact i32 coercion and call contract       |
+| features2d | `GFTTDetector.setMinDistance`               | `cv.GFTTDetector.setMinDistance`               | Full    | Exact number coercion and call contract    |
+| features2d | `GFTTDetector.setQualityLevel`              | `cv.GFTTDetector.setQualityLevel`              | Full    | Exact number coercion and call contract    |
+| imgproc    | `arcLength`                                 | `cv.arcLength`                                 | Full    | Exact I32/F32 contour contract             |
+| imgproc    | `boundingRect`                              | `cv.boundingRect`                              | Full    | Exact I32/F32 contour bounds               |
+| imgproc    | `clipLine`                                  | `cv.clipLine`                                  | Partial | Integer rectangle and segment form         |
+| imgproc    | `contourArea`                               | `cv.contourArea`                               | Full    | Exact I32/F32 contour area                 |
+| imgproc    | `createHanningWindow`                       | `cv.createHanningWindow`                       | Full    | Exact F32/F64 mutable window contract      |
+| imgproc    | `ellipse2Poly`                              | `cv.ellipse2Poly`                              | Partial | Ordered integer ellipse arcs               |
+| imgproc    | `getAffineTransform`                        | `cv.getAffineTransform`                        | Full    | Exact continuous F32 points and F64 map    |
+| imgproc    | `getPerspectiveTransform`                   | `cv.getPerspectiveTransform`                   | Partial | Four F32/F64 point pairs to F64            |
+| imgproc    | `getRotationMatrix2D`                       | `cv.getRotationMatrix2D`                       | Full    | Exact Point2f and F64 matrix contract      |
+| imgproc    | `getStructuringElement`                     | `cv.getStructuringElement`                     | Full    | Exact rectangle, cross, ellipse, diamond   |
+| imgproc    | `grayscale`                                 | `cv.cvtColor`                                  | Partial | RGBA-to-gray specialization                |
+| imgproc    | `invertAffineTransform`                     | `cv.invertAffineTransform`                     | Full    | Exact F32/F64 mutable inverse contract     |
+| imgproc    | `isContourConvex`                           | `cv.isContourConvex`                           | Full    | Exact strict-convexity contract            |
+| imgproc    | `pointPolygonTest`                          | `cv.pointPolygonTest`                          | Full    | Exact classification and signed distance   |
+| imgproc    | `resizeNearest`                             | `cv.resize`                                    | Partial | RGBA nearest-neighbor specialization       |
+| imgproc    | `threshold`                                 | `cv.threshold`                                 | Partial | Luma-derived U8 binary specialization      |
+| imgproc    | `gaussianBlur`                              | `cv.GaussianBlur`                              | Planned | Not started                                |
+| imgproc    | `canny`                                     | `cv.Canny`                                     | Planned | Not started                                |
+| imgproc    | `findContours`                              | `cv.findContours`                              | Planned | Not started                                |
+| imgproc    | `warpPerspective`                           | `cv.warpPerspective`                           | Planned | Not started                                |
 
-Current full parity is **88 of 488 (18.03%)**. There are **41 partial families**, for **129 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
+Current full parity is **108 of 488 (22.13%)**. There are **43 partial families**, for **151 supported families** in total. The milestone is **122 of 488**. `bun run parity:check` verifies these numbers against the inventory, TypeScript metadata, Rust exports, README rows, and generated JSON.
 
 The fixture passes the complete pinned browser contract for `determinant`. The function requires exactly one live `Mat` and accepts only nonempty square single-channel F32 or F64 matrices, including non-contiguous regions. It preserves the input, matches the direct 1x1, 2x2, and 3x3 paths with signed-zero and non-finite propagation, and keeps F32 and F64 arithmetic distinct during elimination for larger matrices. The audit locks the absolute pivot cutoffs, exact cutoff acceptance, row-swap signs, singular positive zero, stored-F32 widening in the small formulas, and Hilbert precision. Integer, multichannel, nonsquare, empty, deleted, and non-Mat inputs reject before computation.
 

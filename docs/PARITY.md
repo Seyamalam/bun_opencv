@@ -25,7 +25,7 @@ Desktop modules that the official OpenCV.js build disables are outside this pari
 
 ## Fully implemented families
 
-Eighty-eight families meet the full-family definition. Current full parity is 88 of 488, or 18.03%.
+One hundred eight families meet the full-family definition. Current full parity is 108 of 488, or 22.13%.
 
 | Package methods                                                                                                   | OpenCV.js families                              | Verified contract                                                           |
 | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------- |
@@ -34,6 +34,11 @@ Eighty-eight families meet the full-family definition. Current full parity is 88
 | `GFTTDetector.setBlockSize`, `GFTTDetector.setMaxFeatures`                                                        | Matching `cv.GFTTDetector` integer setters      | Exact i32 coercion, undefined return, argument errors, and lifecycle        |
 | `GFTTDetector.setHarrisDetector`                                                                                  | `cv.GFTTDetector.setHarrisDetector`             | Exact boolean coercion, undefined return, argument errors, and lifecycle    |
 | `GFTTDetector.setK`, `GFTTDetector.setMinDistance`, `GFTTDetector.setQualityLevel`                                | Matching `cv.GFTTDetector` F64 setters          | Exact number coercion, non-finite values, argument errors, and lifecycle    |
+| `MSER.getDefaultName`, `MSER.getDelta`, `MSER.getMinArea`, `MSER.getMaxArea`, `MSER.getPass2Only`                 | Matching `cv.MSER` getters                      | Exact defaults, return values, arity, and lifecycle                         |
+| `MSER.setDelta`, `MSER.setMinArea`, `MSER.setMaxArea`, `MSER.setPass2Only`                                        | Matching `cv.MSER` setters                      | Exact i32 or boolean coercion, return values, errors, and lifecycle         |
+| `ORB.getDefaultName`, `ORB.getFastThreshold`                                                                      | Matching `cv.ORB` getters                       | Exact defaults, return values, arity, and lifecycle                         |
+| `ORB.setEdgeThreshold`, `ORB.setFastThreshold`, `ORB.setFirstLevel`, `ORB.setMaxFeatures`, `ORB.setNLevels`       | Matching integer `cv.ORB` setters               | Exact i32 conversion, validation, return values, errors, and lifecycle      |
+| `ORB.setPatchSize`, `ORB.setWTA_K`, `ORB.setScaleFactor`, `ORB.setScoreType`                                      | Matching remaining `cv.ORB` setters             | Exact i32, number, and structural enum conversion with lifecycle parity     |
 | `AgastFeatureDetector.getDefaultName`, `FastFeatureDetector.getDefaultName`                                       | Matching AGAST and FAST name getters            | Exact arity, return values, argument errors, and lifecycle                  |
 | `AgastFeatureDetector.getNonmaxSuppression`, `FastFeatureDetector.getNonmaxSuppression`                           | Matching AGAST and FAST boolean getters         | Exact arity, boolean state, argument errors, and lifecycle                  |
 | `AgastFeatureDetector.getThreshold`, `FastFeatureDetector.getThreshold`                                           | Matching AGAST and FAST threshold getters       | Exact arity, signed i32 state, argument errors, and lifecycle               |
@@ -79,7 +84,7 @@ Eighty-eight families meet the full-family definition. Current full parity is 88
 
 ## Working partial families
 
-Forty-one families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 129 families in total.
+Forty-three families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 151 families in total.
 
 | Package methods                            | OpenCV.js families                                        | Current limit                                            |
 | ------------------------------------------ | --------------------------------------------------------- | -------------------------------------------------------- |
@@ -104,6 +109,8 @@ Forty-one families have useful original Rust/WASM slices but do not meet the ful
 | `createAgastFeatureDetector`               | `cv.AgastFeatureDetector.create`                          | Static factory is absent from the pinned artifact        |
 | `createFastFeatureDetector`                | `cv.FastFeatureDetector.create`                           | Static factory is absent from the pinned artifact        |
 | `createGFTTDetector`                       | `cv.GFTTDetector.create`                                  | One factory shape; `gradientSize` overload remains       |
+| `createMSER`                               | `cv.MSER.create`                                          | Static factory is absent; `detectRegions` remains        |
+| `createORB`                                | `cv.ORB.create`                                           | Static factory is absent; detection remains              |
 | `grayscale`, `resizeNearest`, `threshold`  | `cv.cvtColor`, `cv.resize`, `cv.threshold`                | One RGBA or luma-derived specialization each             |
 
 The fixture passes the complete pinned contracts for `arcLength`, `contourArea`, and `boundingRect`. It covers `arcLength`'s exact two-argument arity, `contourArea`'s runtime length of zero and one- or two-argument overloads, and `boundingRect`'s exact one-argument arity. It also checks JavaScript truthiness, I32 and F32 contours in `Nx1C2`, `1xNC2`, and `Nx2C1` layouts, deleted inputs, canonical empty bounds, and rejection of F64, U8, and invalid shapes. The package rejects typed empty contours before entering upstream paths that do not return a safe JavaScript error.
@@ -129,6 +136,10 @@ The fixture exposes the direct `KAZE` constructor and all 13 instance methods. I
 The same fixture passes the complete call contract for all seven AGAST and all seven FAST instance methods. It checks exact arity, return values, scalar coercion, enum namespaces and singleton identity, structural type setters, raw unknown wire values, deletion, repeat deletion, and calls after deletion. All 14 instance families count as implemented. The official artifact exposes direct constructors but omits the config-listed static `create` methods, so both package factories remain partial.
 
 The fixture exposes the direct `GFTTDetector` constructor and all 13 instance methods. The complete pinned browser matrix checks exact method arity, defaults, return values, integer, number, and boolean coercion, missing and extra arguments, deletion, repeat deletion, and calls after deletion. All 13 instance methods pass and count as implemented. The artifact omits the config-listed static `GFTTDetector.create` method. The package factory remains partial because it covers one six-argument shape and omits the `gradientSize` overload.
+
+The fixture exposes the direct `MSER` constructor and verifies nine configuration methods. It covers exact defaults, arity, signed i32 and boolean conversion, argument errors, deletion, repeat deletion, and calls after deletion. `detectRegions` remains outside this slice. The artifact omits the config-listed static `MSER.create`, so the package convenience factory remains partial.
+
+The fixture exposes the direct `ORB` constructor and verifies eleven configuration methods. It covers constructor defaults, exact method arity, signed i32 and number conversion, the ORB score enum namespace and structural setter conversion, validation, deletion, repeat deletion, and calls after deletion. Detection and descriptors remain outside this slice. The artifact omits the config-listed static `ORB.create`, so the package convenience factory remains partial.
 
 ## Tracked planned sample
 
