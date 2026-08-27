@@ -4384,6 +4384,142 @@ function auditStructuringElement(reference) {
   return { arity, fixtures, conversions, rejected };
 }
 
+function auditHanningWindow(reference) {
+  const make = (rows, cols, type, values) => makeSeedMat(reference, rows, cols, type, values);
+  const run = (name, destination, size, type) => {
+    const audit = auditTypedMatCall(
+      () => reference.createHanningWindow(destination, size, type),
+      [["destination", destination]],
+    );
+    safeDelete(destination);
+    return { name, audit };
+  };
+
+  const arityDestination = new reference.Mat();
+  const arity = {
+    length: reference.createHanningWindow.length,
+    zero: captureCall(() => reference.createHanningWindow()),
+    one: captureCall(() => reference.createHanningWindow(arityDestination)),
+    two: captureCall(() =>
+      reference.createHanningWindow(arityDestination, { width: 4, height: 3 }),
+    ),
+    three: captureCall(() =>
+      reference.createHanningWindow(arityDestination, { width: 4, height: 3 }, reference.CV_32F),
+    ),
+    four: captureCall(() =>
+      reference.createHanningWindow(arityDestination, { width: 4, height: 3 }, reference.CV_32F, 1),
+    ),
+  };
+  safeDelete(arityDestination);
+
+  let widthReads = 0;
+  let heightReads = 0;
+  const deferredSize = {
+    get width() {
+      widthReads += 1;
+      return 4;
+    },
+    get height() {
+      heightReads += 1;
+      return 3;
+    },
+  };
+  const conversionOrder = {
+    call: captureCall(() => reference.createHanningWindow({}, deferredSize, reference.CV_32F)),
+    widthReads,
+    heightReads,
+  };
+
+  const fixtures = [
+    run("F32 asymmetric 4x3", new reference.Mat(), { width: 4, height: 3 }, reference.CV_32F),
+    run("F64 asymmetric 5x4", new reference.Mat(), { width: 5, height: 4 }, reference.CV_64F),
+  ];
+  const destinations = [
+    run(
+      "compatible F32",
+      make(
+        3,
+        4,
+        reference.CV_32FC1,
+        Array.from({ length: 12 }, () => 99),
+      ),
+      { width: 4, height: 3 },
+      reference.CV_32F,
+    ),
+    run(
+      "wrong shape",
+      make(
+        2,
+        2,
+        reference.CV_32FC1,
+        Array.from({ length: 4 }, () => 99),
+      ),
+      { width: 4, height: 3 },
+      reference.CV_32F,
+    ),
+    run(
+      "wrong depth and channels",
+      make(
+        3,
+        4,
+        reference.CV_8UC2,
+        Array.from({ length: 24 }, () => 99),
+      ),
+      { width: 4, height: 3 },
+      reference.CV_64F,
+    ),
+  ];
+
+  const roiParent = make(
+    5,
+    6,
+    reference.CV_32FC1,
+    Array.from({ length: 30 }, () => 99),
+  );
+  const roi = roiParent.roi(new reference.Rect(1, 1, 4, 3));
+  const compatibleRoi = {
+    name: "compatible F32 ROI",
+    audit: auditTypedMatCall(
+      () => reference.createHanningWindow(roi, { width: 4, height: 3 }, reference.CV_32F),
+      [
+        ["destination", roi],
+        ["parent", roiParent],
+      ],
+    ),
+  };
+  safeDelete(roi);
+  safeDelete(roiParent);
+
+  const conversions = [
+    run("fractional size and type", new reference.Mat(), { width: 4.9, height: 3.9 }, 5.9),
+    run("boolean size", new reference.Mat(), { width: true, height: true }, reference.CV_32F),
+  ];
+  const rejected = [
+    ["width below two", { width: 1, height: 3 }, reference.CV_32F],
+    ["height below two", { width: 4, height: 1 }, reference.CV_32F],
+    ["negative width", { width: -1, height: 3 }, reference.CV_32F],
+    ["unsupported U8 type", { width: 4, height: 3 }, reference.CV_8U],
+    ["multichannel F32 type", { width: 4, height: 3 }, reference.CV_32FC2],
+    ["missing width", { height: 3 }, reference.CV_32F],
+    ["string width", { width: "4", height: 3 }, reference.CV_32F],
+    ["string type", { width: 4, height: 3 }, "5"],
+  ].map(([name, size, type]) =>
+    run(
+      name,
+      make(
+        2,
+        3,
+        reference.CV_64FC1,
+        Array.from({ length: 6 }, () => 99),
+      ),
+      size,
+      type,
+    ),
+  );
+
+  return { arity, conversionOrder, fixtures, destinations, compatibleRoi, conversions, rejected };
+}
+
 function auditSetIdentity(reference) {
   const auditCase = (name, rows, cols, type, values, scalar, useDefault = false) => {
     const matrix = makeSeedMat(reference, rows, cols, type, values);
@@ -5845,6 +5981,12 @@ self.addEventListener("message", async ({ data: input }) => {
       });
       return;
     }
+    if (request === "hanning-window-contracts") {
+      self.postMessage({
+        outputs: { hanningWindowAudit: auditHanningWindow(reference) },
+      });
+      return;
+    }
     const source = reference.matFromArray(2, 3, reference.CV_8UC1, sourceInput);
     const outputs = {};
     const operations = [
@@ -6031,6 +6173,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.affineTransformAudit = auditAffineTransform(reference);
     outputs.invertAffineTransformAudit = auditInvertAffineTransform(reference);
     outputs.structuringElementAudit = auditStructuringElement(reference);
+    outputs.hanningWindowAudit = auditHanningWindow(reference);
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });

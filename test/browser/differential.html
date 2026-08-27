@@ -4343,6 +4343,156 @@
         return { arity, fixtures, conversions, rejected };
       }
 
+      function auditPackageHanningWindow(packageCv) {
+        const make = (rows, columns, depth, channels, values) =>
+          makePackageSeedMat(packageCv, rows, columns, depth, channels, values);
+        const run = (name, destination, size, type) => {
+          const audit = auditPackageTypedMatCall(
+            () => packageCv.createHanningWindow(destination, size, type),
+            [["destination", destination]],
+          );
+          disposePackageMat(destination);
+          return { name, audit };
+        };
+
+        const arityDestination = packageCv.emptyMat();
+        const arity = {
+          length: packageCv.createHanningWindow.length,
+          zero: captureCall(() => packageCv.createHanningWindow()),
+          one: captureCall(() => packageCv.createHanningWindow(arityDestination)),
+          two: captureCall(() =>
+            packageCv.createHanningWindow(arityDestination, { width: 4, height: 3 }),
+          ),
+          three: captureCall(() =>
+            packageCv.createHanningWindow(arityDestination, { width: 4, height: 3 }, 5),
+          ),
+          four: captureCall(() =>
+            packageCv.createHanningWindow(arityDestination, { width: 4, height: 3 }, 5, 1),
+          ),
+        };
+        disposePackageMat(arityDestination);
+
+        let widthReads = 0;
+        let heightReads = 0;
+        const deferredSize = {
+          get width() {
+            widthReads += 1;
+            return 4;
+          },
+          get height() {
+            heightReads += 1;
+            return 3;
+          },
+        };
+        const conversionOrder = {
+          call: captureCall(() => packageCv.createHanningWindow({}, deferredSize, 5)),
+          widthReads,
+          heightReads,
+        };
+
+        const fixtures = [
+          run("F32 asymmetric 4x3", packageCv.emptyMat(), { width: 4, height: 3 }, 5),
+          run("F64 asymmetric 5x4", packageCv.emptyMat(), { width: 5, height: 4 }, 6),
+        ];
+        const destinations = [
+          run(
+            "compatible F32",
+            make(
+              3,
+              4,
+              "f32",
+              1,
+              Array.from({ length: 12 }, () => 99),
+            ),
+            { width: 4, height: 3 },
+            5,
+          ),
+          run(
+            "wrong shape",
+            make(
+              2,
+              2,
+              "f32",
+              1,
+              Array.from({ length: 4 }, () => 99),
+            ),
+            { width: 4, height: 3 },
+            5,
+          ),
+          run(
+            "wrong depth and channels",
+            make(
+              3,
+              4,
+              "u8",
+              2,
+              Array.from({ length: 24 }, () => 99),
+            ),
+            { width: 4, height: 3 },
+            6,
+          ),
+        ];
+
+        const roiParent = make(
+          5,
+          6,
+          "f32",
+          1,
+          Array.from({ length: 30 }, () => 99),
+        );
+        const roi = roiParent.roi(1, 1, 3, 4);
+        const compatibleRoi = {
+          name: "compatible F32 ROI",
+          audit: auditPackageTypedMatCall(
+            () => packageCv.createHanningWindow(roi, { width: 4, height: 3 }, 5),
+            [
+              ["destination", roi],
+              ["parent", roiParent],
+            ],
+          ),
+        };
+        disposePackageMat(roi);
+        disposePackageMat(roiParent);
+
+        const conversions = [
+          run("fractional size and type", packageCv.emptyMat(), { width: 4.9, height: 3.9 }, 5.9),
+          run("boolean size", packageCv.emptyMat(), { width: true, height: true }, 5),
+        ];
+        const rejected = [
+          ["width below two", { width: 1, height: 3 }, 5],
+          ["height below two", { width: 4, height: 1 }, 5],
+          ["negative width", { width: -1, height: 3 }, 5],
+          ["unsupported U8 type", { width: 4, height: 3 }, 0],
+          ["multichannel F32 type", { width: 4, height: 3 }, 13],
+          ["missing width", { height: 3 }, 5],
+          ["string width", { width: "4", height: 3 }, 5],
+          ["string type", { width: 4, height: 3 }, "5"],
+        ].map(([name, size, type]) =>
+          run(
+            name,
+            make(
+              2,
+              3,
+              "f64",
+              1,
+              Array.from({ length: 6 }, () => 99),
+            ),
+            size,
+            type,
+          ),
+        );
+
+        return {
+          arity,
+          conversionOrder,
+          fixtures,
+          destinations,
+          compatibleRoi,
+          conversions,
+          rejected,
+        };
+      }
+
       function auditPackageDeterminant(packageCv) {
         const createMat = (order, depth, values) =>
           makePackageSeedMat(packageCv, order, order, depth, 1, values);
@@ -6248,7 +6398,9 @@
                                 ? "invert-affine-transform-contracts"
                                 : searchParameters.has("reference-structuring-element")
                                   ? "structuring-element-contracts"
-                                  : undefined;
+                                  : searchParameters.has("reference-hanning-window")
+                                    ? "hanning-window-contracts"
+                                    : undefined;
         const referenceOutputs = await runReference(input, referenceRequest);
         if (searchParameters.has("reference-transpose")) {
           packageSource.dispose();
@@ -6340,6 +6492,13 @@
           globalThis.structuringElementReferenceAudit = referenceOutputs.structuringElementAudit;
           result.style.whiteSpace = "pre-wrap";
           result.textContent = JSON.stringify(referenceOutputs.structuringElementAudit, null, 2);
+          break differential;
+        }
+        if (searchParameters.has("reference-hanning-window")) {
+          packageSource.dispose();
+          globalThis.hanningWindowReferenceAudit = referenceOutputs.hanningWindowAudit;
+          result.style.whiteSpace = "pre-wrap";
+          result.textContent = JSON.stringify(referenceOutputs.hanningWindowAudit, null, 2);
           break differential;
         }
         const packageFloatMathAudit = auditPackageFloatMath(packageCv);
@@ -6446,6 +6605,14 @@
         );
         if (structuringElementDifference !== undefined) {
           throw new Error(structuringElementDifference);
+        }
+        const hanningWindowDifference = findDifference(
+          normalizeContourAudit(auditPackageHanningWindow(packageCv)),
+          normalizeContourAudit(referenceOutputs.hanningWindowAudit),
+          "createHanningWindow audit",
+        );
+        if (hanningWindowDifference !== undefined) {
+          throw new Error(hanningWindowDifference);
         }
         const packageRotationMatrixAudit = auditPackageRotationMatrix(packageCv);
         const rotationMatrixDifference = findDifference(
