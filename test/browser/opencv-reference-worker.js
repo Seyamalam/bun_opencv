@@ -4060,6 +4060,136 @@ function auditNumericContracts(reference) {
   return { contracts, dtype, scale, replacement, overlap, empty, mixedDepth, i32Overflow };
 }
 
+function auditSetIdentity(reference) {
+  const auditCase = (name, rows, cols, type, values, scalar, useDefault = false) => {
+    const matrix = makeSeedMat(reference, rows, cols, type, values);
+    const audit = auditTypedMatCall(
+      () => (useDefault ? reference.setIdentity(matrix) : reference.setIdentity(matrix, scalar)),
+      [["matrix", matrix]],
+    );
+    safeDelete(matrix);
+    return { name, audit };
+  };
+  const arityMatrix = makeSeedMat(reference, 1, 1, reference.CV_8UC1, [0]);
+  const arity = {
+    length: reference.setIdentity.length,
+    zero: captureCall(() => reference.setIdentity()),
+    one: captureCall(() => reference.setIdentity(arityMatrix)),
+    two: captureCall(() => reference.setIdentity(arityMatrix, [2, 0, 0, 0])),
+    three: captureCall(() => reference.setIdentity(arityMatrix, [2, 0, 0, 0], 1)),
+  };
+  safeDelete(arityMatrix);
+  let scalarReads = 0;
+  const deferredScalar = {
+    get length() {
+      scalarReads += 1;
+      return 4;
+    },
+    0: 1,
+    1: 2,
+    2: 3,
+    3: 4,
+  };
+  const conversionOrder = {
+    call: captureCall(() => reference.setIdentity({}, deferredScalar)),
+    scalarReads,
+  };
+  const layouts = [
+    auditCase(
+      "default rectangular",
+      2,
+      3,
+      reference.CV_8UC1,
+      Array.from({ length: 6 }, () => 9),
+      undefined,
+      true,
+    ),
+    auditCase(
+      "per-channel rectangular",
+      2,
+      3,
+      reference.CV_16SC3,
+      Array.from({ length: 18 }, () => 9),
+      [11, -12, 13, 99],
+    ),
+    auditCase(
+      "array-like scalar",
+      2,
+      2,
+      reference.CV_32FC4,
+      Array.from({ length: 16 }, () => 9),
+      {
+        0: 1.25,
+        1: -2.5,
+        2: 3.75,
+        3: -4.5,
+        length: 4,
+      },
+    ),
+    auditCase(
+      "boolean scalar",
+      2,
+      2,
+      reference.CV_64FC4,
+      Array.from({ length: 16 }, () => 9),
+      [true, false, true, false],
+    ),
+    auditCase(
+      "nonfinite scalar",
+      2,
+      2,
+      reference.CV_64FC4,
+      Array.from({ length: 16 }, () => 9),
+      [Number.NaN, Infinity, -Infinity, -0],
+    ),
+  ];
+  const integerSentinels = [
+    ["U8", reference.CV_8UC4],
+    ["I8", reference.CV_8SC4],
+    ["U16", reference.CV_16UC4],
+    ["I16", reference.CV_16SC4],
+    ["I32", reference.CV_32SC4],
+  ].map(([name, type]) =>
+    auditCase(
+      name,
+      2,
+      2,
+      type,
+      Array.from({ length: 16 }, () => 7),
+      [Number.NaN, Infinity, 2_147_483_648, -2_147_483_649],
+    ),
+  );
+  const canonicalEmpty = new reference.Mat();
+  const canonicalEmptyAudit = auditTypedMatCall(
+    () => reference.setIdentity(canonicalEmpty),
+    [["matrix", canonicalEmpty]],
+  );
+  safeDelete(canonicalEmpty);
+  const empty = [
+    { name: "canonical", audit: canonicalEmptyAudit },
+    auditCase("zero rows", 0, 3, reference.CV_32FC2, [], [1, 2, 3, 4]),
+    auditCase("zero columns", 3, 0, reference.CV_64FC3, [], [1, 2, 3, 4]),
+  ];
+  const parent = makeSeedMat(
+    reference,
+    3,
+    5,
+    reference.CV_32FC2,
+    Array.from({ length: 30 }, (_, index) => index + 1),
+  );
+  const roi = parent.roi(new reference.Rect(1, 0, 3, 3));
+  const roiAudit = auditTypedMatCall(
+    () => reference.setIdentity(roi, [2.5, -3.5, 0, 0]),
+    [
+      ["parent", parent],
+      ["roi", roi],
+    ],
+  );
+  safeDelete(roi);
+  safeDelete(parent);
+  return { arity, conversionOrder, layouts, integerSentinels, empty, roi: roiAudit };
+}
+
 function determinantDiagonal4(pivot) {
   return [pivot, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 }
@@ -5371,6 +5501,10 @@ self.addEventListener("message", async ({ data: input }) => {
       self.postMessage({ outputs: { determinantAudit: auditDeterminant(reference) } });
       return;
     }
+    if (request === "set-identity-contracts") {
+      self.postMessage({ outputs: { setIdentityAudit: auditSetIdentity(reference) } });
+      return;
+    }
     const source = reference.matFromArray(2, 3, reference.CV_8UC1, sourceInput);
     const outputs = {};
     const operations = [
@@ -5553,6 +5687,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.contourAudit = auditContourContracts(reference);
     outputs.polygonAudit = auditPolygonContracts(reference);
     outputs.determinantAudit = auditDeterminant(reference);
+    outputs.setIdentityAudit = auditSetIdentity(reference);
     self.postMessage({ outputs });
   } catch (error) {
     self.postMessage({ error: String(error) });

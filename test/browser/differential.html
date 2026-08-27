@@ -3890,6 +3890,127 @@
         return { contracts, dtype, scale, replacement, overlap, empty, mixedDepth, i32Overflow };
       }
 
+      function auditPackageSetIdentity(packageCv) {
+        const auditCase = (
+          name,
+          rows,
+          columns,
+          depth,
+          channels,
+          values,
+          scalar,
+          useDefault = false,
+        ) => {
+          const matrix = makePackageSeedMat(packageCv, rows, columns, depth, channels, values);
+          const audit = auditPackageTypedMatCall(
+            () =>
+              useDefault ? packageCv.setIdentity(matrix) : packageCv.setIdentity(matrix, scalar),
+            [["matrix", matrix]],
+          );
+          disposePackageMat(matrix);
+          return { name, audit };
+        };
+        const arityMatrix = makePackageSeedMat(packageCv, 1, 1, "u8", 1, [0]);
+        const arity = {
+          length: packageCv.setIdentity.length,
+          zero: captureCall(() => packageCv.setIdentity()),
+          one: captureCall(() => packageCv.setIdentity(arityMatrix)),
+          two: captureCall(() => packageCv.setIdentity(arityMatrix, [2, 0, 0, 0])),
+          three: captureCall(() => packageCv.setIdentity(arityMatrix, [2, 0, 0, 0], 1)),
+        };
+        disposePackageMat(arityMatrix);
+        let scalarReads = 0;
+        const deferredScalar = {
+          get length() {
+            scalarReads += 1;
+            return 4;
+          },
+          0: 1,
+          1: 2,
+          2: 3,
+          3: 4,
+        };
+        const conversionOrder = {
+          call: captureCall(() => packageCv.setIdentity({}, deferredScalar)),
+          scalarReads,
+        };
+        const layouts = [
+          auditCase("default rectangular", 2, 3, "u8", 1, new Array(6).fill(9), undefined, true),
+          auditCase(
+            "per-channel rectangular",
+            2,
+            3,
+            "i16",
+            3,
+            new Array(18).fill(9),
+            [11, -12, 13, 99],
+          ),
+          auditCase("array-like scalar", 2, 2, "f32", 4, new Array(16).fill(9), {
+            0: 1.25,
+            1: -2.5,
+            2: 3.75,
+            3: -4.5,
+            length: 4,
+          }),
+          auditCase("boolean scalar", 2, 2, "f64", 4, new Array(16).fill(9), [
+            true,
+            false,
+            true,
+            false,
+          ]),
+          auditCase("nonfinite scalar", 2, 2, "f64", 4, new Array(16).fill(9), [
+            Number.NaN,
+            Infinity,
+            -Infinity,
+            -0,
+          ]),
+        ];
+        const integerSentinels = [
+          ["U8", "u8"],
+          ["I8", "i8"],
+          ["U16", "u16"],
+          ["I16", "i16"],
+          ["I32", "i32"],
+        ].map(([name, depth]) =>
+          auditCase(name, 2, 2, depth, 4, new Array(16).fill(7), [
+            Number.NaN,
+            Infinity,
+            2_147_483_648,
+            -2_147_483_649,
+          ]),
+        );
+        const canonicalEmpty = packageCv.emptyMat();
+        const canonicalEmptyAudit = auditPackageTypedMatCall(
+          () => packageCv.setIdentity(canonicalEmpty),
+          [["matrix", canonicalEmpty]],
+        );
+        disposePackageMat(canonicalEmpty);
+        const empty = [
+          { name: "canonical", audit: canonicalEmptyAudit },
+          auditCase("zero rows", 0, 3, "f32", 2, [], [1, 2, 3, 4]),
+          auditCase("zero columns", 3, 0, "f64", 3, [], [1, 2, 3, 4]),
+        ];
+        const parent = makePackageSeedMat(
+          packageCv,
+          3,
+          5,
+          "f32",
+          2,
+          Array.from({ length: 30 }, (_, index) => index + 1),
+        );
+        const roi = parent.roi(0, 1, 3, 3);
+        const roiAudit = auditPackageTypedMatCall(
+          () => packageCv.setIdentity(roi, [2.5, -3.5, 0, 0]),
+          [
+            ["parent", parent],
+            ["roi", roi],
+          ],
+        );
+        disposePackageMat(roi);
+        disposePackageMat(parent);
+        return { arity, conversionOrder, layouts, integerSentinels, empty, roi: roiAudit };
+      }
+
       function auditPackageDeterminant(packageCv) {
         const createMat = (order, depth, values) =>
           makePackageSeedMat(packageCv, order, order, depth, 1, values);
@@ -5787,7 +5908,9 @@
                         ? "rotation-matrix-contracts"
                         : searchParameters.has("reference-determinant")
                           ? "determinant-contracts"
-                          : undefined;
+                          : searchParameters.has("reference-set-identity")
+                            ? "set-identity-contracts"
+                            : undefined;
         const referenceOutputs = await runReference(input, referenceRequest);
         if (searchParameters.has("reference-transpose")) {
           packageSource.dispose();
@@ -5852,6 +5975,13 @@
           result.textContent = JSON.stringify(referenceOutputs.determinantAudit, null, 2);
           break differential;
         }
+        if (searchParameters.has("reference-set-identity")) {
+          packageSource.dispose();
+          globalThis.setIdentityReferenceAudit = referenceOutputs.setIdentityAudit;
+          result.style.whiteSpace = "pre-wrap";
+          result.textContent = JSON.stringify(referenceOutputs.setIdentityAudit, null, 2);
+          break differential;
+        }
         const packageFloatMathAudit = auditPackageFloatMath(packageCv);
         const floatMathDifference = findDifference(
           normalizeFloatMathAudit(packageFloatMathAudit),
@@ -5905,6 +6035,14 @@
         );
         if (determinantDifference !== undefined) {
           throw new Error(determinantDifference);
+        }
+        const setIdentityDifference = findDifference(
+          normalizeContourAudit(auditPackageSetIdentity(packageCv)),
+          normalizeContourAudit(referenceOutputs.setIdentityAudit),
+          "setIdentity audit",
+        );
+        if (setIdentityDifference !== undefined) {
+          throw new Error(setIdentityDifference);
         }
         const packageRotationMatrixAudit = auditPackageRotationMatrix(packageCv);
         const rotationMatrixDifference = findDifference(
