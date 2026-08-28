@@ -2084,14 +2084,16 @@ export const PARITY_MANIFEST = {
       wasmExport: "matCannyInto",
     },
     {
-      implementationOrigin: "not-started",
+      implementationOrigin: "original",
       method: "findContours",
       module: "imgproc",
-      notes: "Contour extraction is not implemented.",
+      notes:
+        "Rust-owned MatVector output, mutable I32 hierarchy, RETR_EXTERNAL/RETR_LIST connected-component boundaries, CHAIN_APPROX_NONE/SIMPLE, and offsets for single-channel U8 masks; hole hierarchy, CCOMP/TREE/FLOODFILL, and Teh-Chin approximation remain.",
       sources: ["https://docs.opencv.org/4.13.0/d3/dc0/group__imgproc__shape.html"],
-      status: "planned",
+      status: "partial",
       upstream: "cv.findContours",
       upstreamId: "imgproc.function.find-contours",
+      wasmExport: "matFindContoursInto",
     },
     {
       implementationOrigin: "not-started",

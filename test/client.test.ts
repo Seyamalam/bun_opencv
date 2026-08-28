@@ -33,8 +33,10 @@ import {
   THRESH_BINARY,
   THRESH_OTSU,
   BORDER_CONSTANT,
+  CHAIN_APPROX_SIMPLE,
   MORPH_DILATE,
   MORPH_ERODE,
+  RETR_EXTERNAL,
 } from "../src/index.js";
 import type {
   Mat,
@@ -52,6 +54,7 @@ import type {
   WasmMSERFactory,
   WasmMSERHandle,
   WasmMatHandle,
+  WasmMatVectorHandle,
   WasmORBFactory,
   WasmORBHandle,
   WasmTonemapDragoFactory,
@@ -149,6 +152,44 @@ class CopyingMatHandle implements WasmMatHandle {
 
   toUint8Array(): Uint8Array {
     return new Uint8Array(this.data);
+  }
+}
+
+class CopyingMatVectorHandle implements WasmMatVectorHandle {
+  #values: WasmMatHandle[] = [];
+
+  clear(): void {
+    this.#values = [];
+  }
+
+  free(): void {
+    this.clear();
+  }
+
+  get(index: number): WasmMatHandle {
+    const value = this.#values[index];
+    if (value === undefined)
+      throw new OpenCvInputError(`MatVector index ${index} is out of bounds`);
+    return new CopyingMatHandle(
+      value.rows,
+      value.columns,
+      value.channels,
+      value.toUint8Array(),
+      value.depth,
+      value.isContinuous,
+    );
+  }
+
+  push_back(value: WasmMatHandle): void {
+    this.#values.push(value);
+  }
+
+  replace(values: WasmMatHandle[]): void {
+    this.#values = values;
+  }
+
+  size(): number {
+    return this.#values.length;
   }
 }
 
@@ -1386,6 +1427,36 @@ class CopyingBackend implements OpenCvBackend {
 
   matFromU8(data: Uint8Array, rows: number, columns: number, channels: number): WasmMatHandle {
     return new CopyingMatHandle(rows, columns, channels, new Uint8Array(data));
+  }
+
+  matVectorNew(): WasmMatVectorHandle {
+    return new CopyingMatVectorHandle();
+  }
+
+  matFindContoursInto(
+    _source: WasmMatHandle,
+    contours: WasmMatVectorHandle,
+    hierarchy: WasmMatHandle,
+    mode: number,
+    method: number,
+    offsetX: number,
+    offsetY: number,
+  ): void {
+    if (mode !== 0 || method !== 2 || !(contours instanceof CopyingMatVectorHandle)) {
+      throw new OpenCvInputError("mock findContours supports external simple contours only");
+    }
+    const points = new Int32Array([
+      1 + offsetX,
+      1 + offsetY,
+      1 + offsetX,
+      3 + offsetY,
+      3 + offsetX,
+      3 + offsetY,
+      3 + offsetX,
+      1 + offsetY,
+    ]);
+    contours.replace([new CopyingMatHandle(4, 1, 2, copyViewBytes(points), 4)]);
+    replaceMockDestination(hierarchy, 1, 1, 4, copyViewBytes(new Int32Array([-1, -1, -1, -1])), 4);
   }
 
   matCvtColorInto(
@@ -3181,6 +3252,30 @@ describe("OpenCv client", () => {
     );
     source.dispose();
     edges.dispose();
+  });
+
+  test("findContours writes simple external contours into a Rust-owned MatVector", () => {
+    const source = client.matFromU8(
+      5,
+      5,
+      1,
+      new Uint8Array([
+        0, 0, 0, 0, 0, 0, 255, 255, 255, 0, 0, 255, 255, 255, 0, 0, 255, 255, 255, 0, 0, 0, 0, 0, 0,
+      ]),
+    );
+    const contours = client.createMatVector();
+    const hierarchy = client.emptyMat();
+
+    client.findContours(source, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+    expect(contours.size()).toBe(1);
+    const contour = contours.get(0);
+    expect(contour.toInt32Array()).toEqual(new Int32Array([1, 1, 1, 3, 3, 3, 3, 1]));
+    expect(hierarchy.toInt32Array()).toEqual(new Int32Array([-1, -1, -1, -1]));
+    contour.dispose();
+    contours.dispose();
+    source.dispose();
+    hierarchy.dispose();
   });
 
   test("returns validated output", () => {

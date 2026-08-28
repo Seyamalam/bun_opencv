@@ -28,6 +28,7 @@ import type {
   WasmFastFeatureDetectorFactory,
 } from "./feature-detectors.js";
 import type { Mat, WasmMatHandle } from "./mat.js";
+import type { MatVector, WasmMatVectorHandle } from "./mat-vector.js";
 import type { ColorConversionCode } from "./color.js";
 import type { Interpolation } from "./interpolation.js";
 
@@ -93,6 +94,16 @@ export interface MinMaxLocation {
 
 /** Low-level contract implemented by the generated WebAssembly module. */
 export interface OpenCvBackend {
+  matVectorNew(): WasmMatVectorHandle;
+  matFindContoursInto(
+    source: WasmMatHandle,
+    contours: WasmMatVectorHandle,
+    hierarchy: WasmMatHandle,
+    mode: number,
+    method: number,
+    offsetX: number,
+    offsetY: number,
+  ): void;
   matCannyInto(
     source: WasmMatHandle,
     destination: WasmMatHandle,
@@ -470,6 +481,15 @@ export interface OpenCvBackend {
 
 /** Initialized image processing client. */
 export interface OpenCv {
+  readonly RETR_EXTERNAL: 0;
+  readonly RETR_LIST: 1;
+  readonly RETR_CCOMP: 2;
+  readonly RETR_TREE: 3;
+  readonly RETR_FLOODFILL: 4;
+  readonly CHAIN_APPROX_NONE: 1;
+  readonly CHAIN_APPROX_SIMPLE: 2;
+  readonly CHAIN_APPROX_TC89_L1: 3;
+  readonly CHAIN_APPROX_TC89_KCOS: 4;
   readonly BORDER_CONSTANT: 0;
   readonly BORDER_REPLICATE: 1;
   readonly BORDER_REFLECT: 2;
@@ -574,6 +594,7 @@ export interface OpenCv {
   createFastFeatureDetector(options?: FastFeatureDetectorOptions): FastFeatureDetector;
   createGFTTDetector(options?: GFTTDetectorOptions): GFTTDetector;
   createMSER(options?: MSEROptions): MSER;
+  createMatVector(): MatVector;
   createTonemapDrago(gamma?: number, saturation?: number, bias?: number): TonemapDrago;
   createTonemapMantiuk(gamma?: number, scale?: number, saturation?: number): TonemapMantiuk;
   createTonemapReinhard(
@@ -616,6 +637,14 @@ export interface OpenCv {
   emptyMat(): Mat;
   flip(source: Mat, destination: Mat, flipCode: number): void;
   flipAlloc(source: Mat, flipCode: number): Mat;
+  findContours(
+    source: Mat,
+    contours: MatVector,
+    hierarchy: Mat,
+    mode: number,
+    method: number,
+    offset?: Point,
+  ): void;
   grayscale(image: RgbaImage): RgbaImage;
   hconcat(
     sources: readonly [Mat, Mat] | readonly [Mat, Mat, Mat] | readonly [Mat, Mat, Mat, Mat],

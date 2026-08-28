@@ -34,6 +34,7 @@ import {
 } from "./image.js";
 import { BindingError, OpenCvInputError } from "./error.js";
 import { Mat, validateMatrixDimension, validateMatrixInput } from "./mat.js";
+import { MatVector } from "./mat-vector.js";
 import {
   COLOR_BGR2BGRA,
   COLOR_BGR2GRAY,
@@ -57,6 +58,17 @@ import {
   COLOR_RGBA2RGB,
 } from "./color.js";
 import type { ColorConversionCode } from "./color.js";
+import {
+  CHAIN_APPROX_NONE,
+  CHAIN_APPROX_SIMPLE,
+  CHAIN_APPROX_TC89_KCOS,
+  CHAIN_APPROX_TC89_L1,
+  RETR_CCOMP,
+  RETR_EXTERNAL,
+  RETR_FLOODFILL,
+  RETR_LIST,
+  RETR_TREE,
+} from "./contours.js";
 import {
   BORDER_CONSTANT,
   BORDER_DEFAULT,
@@ -117,6 +129,15 @@ import type {
 } from "./types.js";
 
 class WasmOpenCv implements OpenCv {
+  readonly RETR_EXTERNAL = RETR_EXTERNAL;
+  readonly RETR_LIST = RETR_LIST;
+  readonly RETR_CCOMP = RETR_CCOMP;
+  readonly RETR_TREE = RETR_TREE;
+  readonly RETR_FLOODFILL = RETR_FLOODFILL;
+  readonly CHAIN_APPROX_NONE = CHAIN_APPROX_NONE;
+  readonly CHAIN_APPROX_SIMPLE = CHAIN_APPROX_SIMPLE;
+  readonly CHAIN_APPROX_TC89_L1 = CHAIN_APPROX_TC89_L1;
+  readonly CHAIN_APPROX_TC89_KCOS = CHAIN_APPROX_TC89_KCOS;
   readonly BORDER_CONSTANT = BORDER_CONSTANT;
   readonly BORDER_REPLICATE = BORDER_REPLICATE;
   readonly BORDER_REFLECT = BORDER_REFLECT;
@@ -430,6 +451,10 @@ class WasmOpenCv implements OpenCv {
     );
   }
 
+  createMatVector(): MatVector {
+    return new MatVector(this.#backend.matVectorNew());
+  }
+
   createTonemapDrago(
     ...arguments_:
       | []
@@ -657,6 +682,27 @@ class WasmOpenCv implements OpenCv {
 
   flipAlloc(source: Mat, flipCode: number): Mat {
     return new Mat(this.#backend.matFlip(source.handleForBackend(), toWasmI32(flipCode)));
+  }
+
+  findContours(
+    source: Mat,
+    contours: MatVector,
+    hierarchy: Mat,
+    mode: number,
+    method: number,
+    offset: Point = { x: 0, y: 0 },
+  ): void {
+    requireArityRange(arguments.length, 5, 6, "findContours");
+    const convertedOffset = point2iForBinding(offset);
+    this.#backend.matFindContoursInto(
+      matHandleForBinding(source),
+      contours.handleForBackend(),
+      matHandleForBinding(hierarchy),
+      toWasmI32(mode),
+      toWasmI32(method),
+      convertedOffset.x,
+      convertedOffset.y,
+    );
   }
 
   rotate(source: Mat, destination: Mat, rotateCode: number): void {

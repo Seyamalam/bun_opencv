@@ -119,6 +119,7 @@ Forty-six families have useful original Rust/WASM slices but do not meet the ful
 | `cvtColor`, `resize`, `threshold`                                     | `cv.cvtColor`, `cv.resize`, `cv.threshold`                | U8 color codes 0-11, nearest/linear/area, five modes/Otsu |
 | `GaussianBlur`, `morphologyEx`, `Sobel`                               | Matching `cv` neighborhood-filter families                | U8 separable blur, morphology, and 3x3 signed gradients   |
 | `Canny`                                                               | `cv.Canny`                                                | U8 3x3 gradients, suppression, and hysteresis             |
+| `findContours`                                                        | `cv.findContours`                                         | External/list U8 contours, simple/none chains, MatVector  |
 | `createTonemapDrago`, `createTonemapMantiuk`, `createTonemapReinhard` | Matching global `cv.createTonemap*` functions             | Global factories absent; pixel processing remains         |
 
 The fixture passes the complete pinned contracts for `arcLength`, `contourArea`, and `boundingRect`. It covers `arcLength`'s exact two-argument arity, `contourArea`'s runtime length of zero and one- or two-argument overloads, and `boundingRect`'s exact one-argument arity. It also checks JavaScript truthiness, I32 and F32 contours in `Nx1C2`, `1xNC2`, and `Nx2C1` layouts, deleted inputs, canonical empty bounds, and rejection of F64, U8, and invalid shapes. The package rejects typed empty contours before entering upstream paths that do not return a safe JavaScript error.
@@ -153,7 +154,7 @@ The fixture exposes the direct `TonemapDrago`, `TonemapMantiuk`, and `TonemapRei
 
 ## Tracked planned sample
 
-The machine-readable implementation ledger tracks `findContours` and `warpPerspective` as planned examples. The upstream inventory already lists all 488 families. An inventory entry is missing until work starts; it does not need a duplicate planned implementation record.
+The machine-readable implementation ledger tracks `warpPerspective` as a planned example. The upstream inventory already lists all 488 families. An inventory entry is missing until work starts; it does not need a duplicate planned implementation record.
 
 ## Definition of done
 

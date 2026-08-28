@@ -7794,6 +7794,42 @@
         return output;
       }
 
+      function auditPackageFindContours(packageCv) {
+        const source = packageCv.matFromU8(
+          5,
+          5,
+          1,
+          new Uint8Array([
+            0, 0, 0, 0, 0, 0, 255, 255, 255, 0, 0, 255, 255, 255, 0, 0, 255, 255, 255, 0, 0, 0, 0,
+            0, 0,
+          ]),
+        );
+        const contours = packageCv.createMatVector();
+        const hierarchy = packageCv.emptyMat();
+        packageCv.findContours(
+          source,
+          contours,
+          hierarchy,
+          packageCv.RETR_EXTERNAL,
+          packageCv.CHAIN_APPROX_SIMPLE,
+        );
+        const values = Array.from({ length: contours.size() }, (_, index) => {
+          const contour = contours.get(index);
+          const summary = summarizePackageTypedMat(contour);
+          contour.dispose();
+          return summary;
+        });
+        const output = {
+          constants: [packageCv.RETR_EXTERNAL, packageCv.CHAIN_APPROX_SIMPLE],
+          contours: values,
+          hierarchy: summarizePackageTypedMat(hierarchy),
+        };
+        source.dispose();
+        contours.dispose();
+        hierarchy.dispose();
+        return output;
+      }
+
       function runReference(input, referenceRequest) {
         return new Promise((resolve, reject) => {
           const worker = new Worker("/test/browser/opencv-reference-worker.js");
@@ -8197,6 +8233,14 @@
         );
         if (neighborhoodFilterDifference !== undefined) {
           throw new Error(neighborhoodFilterDifference);
+        }
+        const findContoursDifference = findDifference(
+          auditPackageFindContours(packageCv),
+          referenceOutputs.findContoursAudit,
+          "findContours audit",
+        );
+        if (findContoursDifference !== undefined) {
+          throw new Error(findContoursDifference);
         }
         const packageOrbAudit = auditOrb(() => packageCv.createORB(), packageCv, {
           constructorLength: null,
@@ -8669,7 +8713,7 @@
 
         packageSource.dispose();
         result.value =
-          "PASS OpenCV.js 4.13.0 color, resize, threshold, neighborhood filter, Canny, coordinate conversion, float math, layout, geometry, transform matrix, helper, DFT, AKAZE, AGAST, FAST, KAZE, GFTT, MSER, ORB, and Tonemap differential";
+          "PASS OpenCV.js 4.13.0 color, resize, threshold, neighborhood filter, Canny, findContours, coordinate conversion, float math, layout, geometry, transform matrix, helper, DFT, AKAZE, AGAST, FAST, KAZE, GFTT, MSER, ORB, and Tonemap differential";
         document.body.dataset.status = "passed";
       } catch (error) {
         result.value = `FAIL ${String(error)}`;

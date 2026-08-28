@@ -79,6 +79,17 @@ export {
 } from "./color.js";
 export type { ColorConversionCode } from "./color.js";
 export {
+  CHAIN_APPROX_NONE,
+  CHAIN_APPROX_SIMPLE,
+  CHAIN_APPROX_TC89_KCOS,
+  CHAIN_APPROX_TC89_L1,
+  RETR_CCOMP,
+  RETR_EXTERNAL,
+  RETR_FLOODFILL,
+  RETR_LIST,
+  RETR_TREE,
+} from "./contours.js";
+export {
   BORDER_CONSTANT,
   BORDER_DEFAULT,
   BORDER_ISOLATED,
@@ -147,6 +158,8 @@ export { OPENCV_OPERATIONS } from "./operations.js";
 export type { OpenCvOperation } from "./operations.js";
 export { Mat } from "./mat.js";
 export type { MatDepth, WasmMatHandle } from "./mat.js";
+export { MatVector } from "./mat-vector.js";
+export type { WasmMatVectorHandle } from "./mat-vector.js";
 export type {
   BorderType,
   DecompositionMethod,

@@ -7311,6 +7311,39 @@ function auditNeighborhoodFilters(reference) {
   return output;
 }
 
+function auditFindContours(reference) {
+  const source = reference.matFromArray(
+    5,
+    5,
+    reference.CV_8UC1,
+    [0, 0, 0, 0, 0, 0, 255, 255, 255, 0, 0, 255, 255, 255, 0, 0, 255, 255, 255, 0, 0, 0, 0, 0, 0],
+  );
+  const contours = new reference.MatVector();
+  const hierarchy = new reference.Mat();
+  reference.findContours(
+    source,
+    contours,
+    hierarchy,
+    reference.RETR_EXTERNAL,
+    reference.CHAIN_APPROX_SIMPLE,
+  );
+  const values = Array.from({ length: contours.size() }, (_, index) => {
+    const contour = contours.get(index);
+    const summary = summarizeTypedMat(contour);
+    contour.delete();
+    return summary;
+  });
+  const output = {
+    constants: [reference.RETR_EXTERNAL, reference.CHAIN_APPROX_SIMPLE],
+    contours: values,
+    hierarchy: summarizeTypedMat(hierarchy),
+  };
+  source.delete();
+  contours.delete();
+  hierarchy.delete();
+  return output;
+}
+
 self.addEventListener("message", async ({ data: input }) => {
   try {
     const reference = await loadOpenCv();
@@ -7641,6 +7674,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.resizeAudit = auditResize(reference);
     outputs.thresholdAudit = auditThreshold(reference);
     outputs.neighborhoodFilterAudit = auditNeighborhoodFilters(reference);
+    outputs.findContoursAudit = auditFindContours(reference);
     outputs.orbAudit = auditOrb(() => new reference.ORB(), reference, {
       constructorLength: reference.ORB.length,
       staticCreatePresent: typeof reference.ORB.create !== "undefined",

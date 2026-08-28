@@ -1,4 +1,5 @@
 import type { WasmMatHandle } from "./mat.js";
+import type { WasmMatVectorHandle } from "./mat-vector.js";
 import type { WasmAKAZEHandle } from "./akaze.js";
 import type { WasmKAZEHandle } from "./kaze.js";
 import type { WasmORBHandle } from "./orb.js";
@@ -240,6 +241,16 @@ declare module "#wasm" {
     threshold2: number,
     apertureSize: number,
     l2Gradient: boolean,
+  ): void;
+  export function matVectorNew(): WasmMatVectorHandle;
+  export function matFindContoursInto(
+    source: WasmMatHandle,
+    contours: WasmMatVectorHandle,
+    hierarchy: WasmMatHandle,
+    mode: number,
+    method: number,
+    offsetX: number,
+    offsetY: number,
   ): void;
   export function matCvtColorInto(
     source: import("./mat.js").WasmMatHandle,

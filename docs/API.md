@@ -74,6 +74,12 @@ Computes first or second 3x3 derivatives from a U8 source. Destinations can reta
 
 Produces a single-channel U8 edge map from a single-channel U8 source. The current Rust pipeline uses 3x3 Sobel gradients, directional non-maximum suppression, ordered double thresholds, and eight-neighbor hysteresis. Set `l2Gradient` for Euclidean gradient magnitude; the default uses the faster L1 magnitude.
 
+### `createMatVector()` and `findContours(source, contours, hierarchy, mode, method, offset?)`
+
+`createMatVector()` allocates a Rust-owned collection with `size()`, `get(index)`, `push_back(mat)`, `clear()`, and explicit `dispose()`/`delete()` lifetime methods. Retrieved matrices retain shared Rust storage independently of the vector wrapper.
+
+`findContours` currently extracts external connected-component boundaries from single-channel U8 masks. It supports `RETR_EXTERNAL` and `RETR_LIST`, `CHAIN_APPROX_NONE` and `CHAIN_APPROX_SIMPLE`, integer offsets, mutable vector replacement, and an I32 four-channel sibling hierarchy. Hole relationships, tree retrieval, flood-fill input, and Teh-Chin approximation remain reserved.
+
 ### `resizeNearest(image, targetWidth, targetHeight)`
 
 Resizes an RGBA image with nearest-neighbor sampling. Both target dimensions must be positive 32-bit integers.

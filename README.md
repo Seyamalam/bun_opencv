@@ -224,7 +224,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `morphologyEx`                              | `cv.morphologyEx`                              | Partial | Seven U8 morphology operations             |
 | imgproc    | `Sobel`                                     | `cv.Sobel`                                     | Partial | 3x3 U8 gradients to signed/float outputs   |
 | imgproc    | `Canny`                                     | `cv.Canny`                                     | Partial | U8 3x3 gradients, suppression, hysteresis  |
-| imgproc    | `findContours`                              | `cv.findContours`                              | Planned | Not started                                |
+| imgproc    | `findContours`                              | `cv.findContours`                              | Partial | External/list U8 contours and MatVector    |
 | imgproc    | `warpPerspective`                           | `cv.warpPerspective`                           | Planned | Not started                                |
 | photo      | `createTonemapDrago`                        | `cv.createTonemapDrago`                        | Partial | Global factory absent; no pixel process    |
 | photo      | `createTonemapMantiuk`                      | `cv.createTonemapMantiuk`                      | Partial | Global factory absent; no pixel process    |
