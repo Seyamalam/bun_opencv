@@ -1705,14 +1705,15 @@ export const PARITY_MANIFEST = {
     },
     {
       implementationOrigin: "original",
-      method: "resizeNearest",
+      method: "resize",
       module: "imgproc",
-      notes: "RGBA nearest-neighbor resizing; other matrix types and interpolation modes remain.",
+      notes:
+        "Mutable Mat resizing with all-depth nearest-neighbor sampling, half-pixel U8 linear interpolation, U8 area shrinking, explicit dimensions or scale-derived dimensions, compact strided sources, destination replacement, and pinned-browser fixtures; all-depth linear/area plus cubic, Lanczos, and exact modes remain.",
       sources: [IMGPROC_TRANSFORM_SOURCE],
       status: "partial",
       upstream: "cv.resize",
       upstreamId: "imgproc.function.resize",
-      wasmExport: "resizeNearestRgba",
+      wasmExport: "matResizeInto",
     },
     {
       implementationOrigin: "original",

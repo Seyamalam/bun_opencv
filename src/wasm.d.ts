@@ -239,6 +239,15 @@ declare module "#wasm" {
     code: number,
     destinationChannels: number,
   ): void;
+  export function matResizeInto(
+    source: import("./mat.js").WasmMatHandle,
+    destination: import("./mat.js").WasmMatHandle,
+    targetWidth: number,
+    targetHeight: number,
+    scaleX: number,
+    scaleY: number,
+    interpolation: number,
+  ): void;
   export function invertRgba(data: Uint8Array, width: number, height: number): Uint8Array;
   export function matEmpty(): WasmMatHandle;
   export function matFromU8(

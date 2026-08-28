@@ -57,6 +57,16 @@ import {
   COLOR_RGBA2RGB,
 } from "./color.js";
 import type { ColorConversionCode } from "./color.js";
+import {
+  INTER_AREA,
+  INTER_CUBIC,
+  INTER_LANCZOS4,
+  INTER_LINEAR,
+  INTER_LINEAR_EXACT,
+  INTER_NEAREST,
+  INTER_NEAREST_EXACT,
+} from "./interpolation.js";
+import type { Interpolation } from "./interpolation.js";
 import type {
   BorderType,
   DecompositionMethod,
@@ -98,6 +108,13 @@ class WasmOpenCv implements OpenCv {
   readonly COLOR_GRAY2RGBA = COLOR_GRAY2RGBA;
   readonly COLOR_BGRA2GRAY = COLOR_BGRA2GRAY;
   readonly COLOR_RGBA2GRAY = COLOR_RGBA2GRAY;
+  readonly INTER_NEAREST = INTER_NEAREST;
+  readonly INTER_LINEAR = INTER_LINEAR;
+  readonly INTER_CUBIC = INTER_CUBIC;
+  readonly INTER_AREA = INTER_AREA;
+  readonly INTER_LANCZOS4 = INTER_LANCZOS4;
+  readonly INTER_LINEAR_EXACT = INTER_LINEAR_EXACT;
+  readonly INTER_NEAREST_EXACT = INTER_NEAREST_EXACT;
   readonly AKAZE_DescriptorType = AKAZE_DescriptorType;
   readonly AgastFeatureDetector_DetectorType = AgastFeatureDetector_DetectorType;
   readonly FastFeatureDetector_DetectorType = FastFeatureDetector_DetectorType;
@@ -1030,6 +1047,33 @@ class WasmOpenCv implements OpenCv {
       targetHeight,
     );
     return createRgbaImage(targetWidth, targetHeight, data);
+  }
+
+  resize(
+    ...arguments_: [
+      source: Mat,
+      destination: Mat,
+      size: Size,
+      scaleX?: number,
+      scaleY?: number,
+      interpolation?: Interpolation,
+    ]
+  ): void {
+    requireArityRange(arguments_.length, 3, 6, "resize");
+    const [source, destination, size] = arguments_;
+    const convertedSize = size2iForBinding(size);
+    const scaleX = arguments_.length >= 4 ? toWasmF64(arguments_[3]) : 0;
+    const scaleY = arguments_.length >= 5 ? toWasmF64(arguments_[4]) : 0;
+    const interpolation = arguments_.length === 6 ? toWasmI32(arguments_[5]) : INTER_LINEAR;
+    this.#backend.matResizeInto(
+      matHandleForBinding(source),
+      matHandleForBinding(destination),
+      convertedSize.width,
+      convertedSize.height,
+      scaleX,
+      scaleY,
+      interpolation,
+    );
   }
 
   repeat(source: Mat, rowRepeats: number, columnRepeats: number, destination: Mat): void {

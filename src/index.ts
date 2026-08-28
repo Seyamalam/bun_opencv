@@ -78,6 +78,16 @@ export {
   COLOR_RGBA2RGB,
 } from "./color.js";
 export type { ColorConversionCode } from "./color.js";
+export {
+  INTER_AREA,
+  INTER_CUBIC,
+  INTER_LANCZOS4,
+  INTER_LINEAR,
+  INTER_LINEAR_EXACT,
+  INTER_NEAREST,
+  INTER_NEAREST_EXACT,
+} from "./interpolation.js";
+export type { Interpolation } from "./interpolation.js";
 export type { EmbindEnumInput, EmbindEnumValue } from "./embind-enum.js";
 export {
   AGAST_FEATURE_DETECTOR_DEFAULTS,

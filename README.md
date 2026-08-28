@@ -56,6 +56,7 @@ Regions share Rust storage without copying pixels. The core arithmetic, bitwise,
 
 - `cv.grayscale(image)` converts RGB channels to fixed-point BT.601 luma and keeps alpha.
 - `cv.cvtColor(source, destination, code, dstCn?)` supports U8 color codes 0 through 11 for grayscale, RGB/BGR channel order, and alpha insertion or removal.
+- `cv.resize(source, destination, size, fx?, fy?, interpolation?)` provides all-depth nearest-neighbor resize plus U8 linear and area modes.
 - `cv.invert(image)` inverts RGB channels and keeps alpha.
 - `cv.threshold(image, value)` emits black or white pixels using an inclusive threshold from 0 through 255.
 - `cv.resizeNearest(image, width, height)` resizes with nearest-neighbor sampling.
@@ -217,7 +218,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `invertAffineTransform`                     | `cv.invertAffineTransform`                     | Full    | Exact F32/F64 mutable inverse contract     |
 | imgproc    | `isContourConvex`                           | `cv.isContourConvex`                           | Full    | Exact strict-convexity contract            |
 | imgproc    | `pointPolygonTest`                          | `cv.pointPolygonTest`                          | Full    | Exact classification and signed distance   |
-| imgproc    | `resizeNearest`                             | `cv.resize`                                    | Partial | RGBA nearest-neighbor specialization       |
+| imgproc    | `resize`                                    | `cv.resize`                                    | Partial | Nearest all-depth; U8 linear/area          |
 | imgproc    | `threshold`                                 | `cv.threshold`                                 | Partial | Luma-derived U8 binary specialization      |
 | imgproc    | `gaussianBlur`                              | `cv.GaussianBlur`                              | Planned | Not started                                |
 | imgproc    | `canny`                                     | `cv.Canny`                                     | Planned | Not started                                |

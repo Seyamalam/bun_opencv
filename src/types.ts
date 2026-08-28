@@ -29,6 +29,7 @@ import type {
 } from "./feature-detectors.js";
 import type { Mat, WasmMatHandle } from "./mat.js";
 import type { ColorConversionCode } from "./color.js";
+import type { Interpolation } from "./interpolation.js";
 
 /** An RGBA image whose data contains four bytes per pixel. */
 export interface RgbaImage {
@@ -153,6 +154,15 @@ export interface OpenCvBackend {
     destination: WasmMatHandle,
     code: number,
     destinationChannels: number,
+  ): void;
+  matResizeInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    targetWidth: number,
+    targetHeight: number,
+    scaleX: number,
+    scaleY: number,
+    interpolation: number,
   ): void;
   matFlip(source: WasmMatHandle, flipCode: number): WasmMatHandle;
   matFlipInto(source: WasmMatHandle, destination: WasmMatHandle, flipCode: number): void;
@@ -433,6 +443,13 @@ export interface OpenCv {
   readonly COLOR_GRAY2RGBA: 9;
   readonly COLOR_BGRA2GRAY: 10;
   readonly COLOR_RGBA2GRAY: 11;
+  readonly INTER_NEAREST: 0;
+  readonly INTER_LINEAR: 1;
+  readonly INTER_CUBIC: 2;
+  readonly INTER_AREA: 3;
+  readonly INTER_LANCZOS4: 4;
+  readonly INTER_LINEAR_EXACT: 5;
+  readonly INTER_NEAREST_EXACT: 6;
   readonly AKAZE_DescriptorType: AKAZE_DescriptorTypeNamespace;
   readonly AgastFeatureDetector_DetectorType: AgastFeatureDetector_DetectorTypeNamespace;
   readonly FastFeatureDetector_DetectorType: FastFeatureDetector_DetectorTypeNamespace;
@@ -581,6 +598,14 @@ export interface OpenCv {
   randn(destination: Mat, mean: Scalar, standardDeviation: Scalar): void;
   randu(destination: Mat, lower: Scalar, upper: Scalar): void;
   resizeNearest(image: RgbaImage, targetWidth: number, targetHeight: number): RgbaImage;
+  resize(
+    source: Mat,
+    destination: Mat,
+    size: Size,
+    scaleX?: number,
+    scaleY?: number,
+    interpolation?: Interpolation,
+  ): void;
   repeat(source: Mat, rowRepeats: number, columnRepeats: number, destination: Mat): void;
   repeatAlloc(source: Mat, rowRepeats: number, columnRepeats: number): Mat;
   rotate(source: Mat, destination: Mat, rotateCode: number): void;

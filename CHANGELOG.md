@@ -59,6 +59,7 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - Nine fully implemented MSER configuration methods and eleven fully implemented ORB configuration methods with exact defaults, arity, scalar and enum coercion, validation, and lifetime behavior. The absent static factories remain partial, bringing the totals to 43 partial, 108 implemented, and 151 supported families.
 - Sixteen fully implemented Drago, Mantiuk, Reinhard, and inherited Tonemap state methods with exact float32 defaults, conversion, arity, return values, and lifetime behavior. Three absent global factories remain partial, bringing the totals to 46 partial, 124 implemented, and 170 supported families.
 - OpenCV.js-compatible `cvtColor` codes 0 through 11 for U8 `Mat` values, including RGB/BGR ordering, alpha insertion and removal, grayscale conversion, `dstCn` selection, strided inputs, mutable destination replacement, exact in-place use, and pinned-browser differential fixtures.
+- OpenCV.js-compatible mutable `resize` with all-depth nearest-neighbor sampling, U8 half-pixel linear interpolation, U8 area shrinking, explicit or scale-derived dimensions, pinned interpolation constants, and browser differential fixtures.
 - Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
 
 ### Planned

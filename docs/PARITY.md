@@ -91,33 +91,33 @@ One hundred twenty-four families meet the full-family definition. Current full p
 
 Forty-six families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 170 families in total.
 
-| Package methods                                                       | OpenCV.js families                                        | Current limit                                            |
-| --------------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------- |
-| `add`, `subtract`, `absdiff`, `min`, `max`                            | `cv.add`, `cv.subtract`, `cv.absdiff`, `cv.min`, `cv.max` | Matching U8 matrix operands                              |
-| `bitwiseAnd`, `bitwiseOr`, `bitwiseXor`                               | `cv.bitwise_and`, `cv.bitwise_or`, `cv.bitwise_xor`       | U8 matrices without scalar or mask forms                 |
-| `compareEqual`, `inRange`                                             | `cv.compare`, `cv.inRange`                                | Selected U8 forms                                        |
-| `split`, `merge`                                                      | `cv.split`, `cv.merge`                                    | All depths; selected array call forms                    |
-| `hconcat`, `vconcat`                                                  | `cv.hconcat`, `cv.vconcat`                                | All depths; two through four inputs                      |
-| `copyMakeBorder`                                                      | `cv.copyMakeBorder`                                       | All depths and five border modes                         |
-| `lut`                                                                 | `cv.LUT`                                                  | Byte sources and every table depth                       |
-| `norm`, `normalize`                                                   | `cv.norm`, `cv.normalize`                                 | All depths, masks, and major norm modes                  |
-| `meanStdDev`, `reduce`                                                | `cv.meanStdDev`, `cv.reduce`                              | All depths and mutable outputs                           |
-| `mixChannels`                                                         | `cv.mixChannels`                                          | One source and destination; MatVector remains            |
-| `randu`, `randn`, `setRNGSeed`                                        | Matching `cv` random families                             | Package RNG sequences differ from OpenCV                 |
-| `getLogLevel`, `setLogLevel`                                          | Matching `cv` logging families                            | Log bindings stay absent from upstream browser artifact. |
-| `transform`, `perspectiveTransform`                                   | `cv.transform`, `cv.perspectiveTransform`                 | Selected channel and coefficient forms                   |
-| `invert`, `solve`                                                     | `cv.invert`, `cv.solve`                                   | Selected dense single-channel methods                    |
-| `ellipse2Poly`, `clipLine`                                            | Matching `cv` integer geometry helpers                    | Selected integer argument and return forms               |
-| `getPerspectiveTransform`                                             | `cv.getPerspectiveTransform`                              | Selected F32/F64 inputs with F64 output                  |
-| `createAKAZE`                                                         | `cv.AKAZE.create`                                         | Static factory is absent from the pinned artifact        |
-| `createKAZE`                                                          | `cv.KAZE.create`                                          | Static factory is absent from the pinned artifact        |
-| `createAgastFeatureDetector`                                          | `cv.AgastFeatureDetector.create`                          | Static factory is absent from the pinned artifact        |
-| `createFastFeatureDetector`                                           | `cv.FastFeatureDetector.create`                           | Static factory is absent from the pinned artifact        |
-| `createGFTTDetector`                                                  | `cv.GFTTDetector.create`                                  | One factory shape; `gradientSize` overload remains       |
-| `createMSER`                                                          | `cv.MSER.create`                                          | Static factory is absent; `detectRegions` remains        |
-| `createORB`                                                           | `cv.ORB.create`                                           | Static factory is absent; detection remains              |
-| `cvtColor`, `resizeNearest`, `threshold`                              | `cv.cvtColor`, `cv.resize`, `cv.threshold`                | U8 color codes 0-11, plus narrow resize/threshold slices |
-| `createTonemapDrago`, `createTonemapMantiuk`, `createTonemapReinhard` | Matching global `cv.createTonemap*` functions             | Global factories absent; pixel processing remains        |
+| Package methods                                                       | OpenCV.js families                                        | Current limit                                              |
+| --------------------------------------------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------- |
+| `add`, `subtract`, `absdiff`, `min`, `max`                            | `cv.add`, `cv.subtract`, `cv.absdiff`, `cv.min`, `cv.max` | Matching U8 matrix operands                                |
+| `bitwiseAnd`, `bitwiseOr`, `bitwiseXor`                               | `cv.bitwise_and`, `cv.bitwise_or`, `cv.bitwise_xor`       | U8 matrices without scalar or mask forms                   |
+| `compareEqual`, `inRange`                                             | `cv.compare`, `cv.inRange`                                | Selected U8 forms                                          |
+| `split`, `merge`                                                      | `cv.split`, `cv.merge`                                    | All depths; selected array call forms                      |
+| `hconcat`, `vconcat`                                                  | `cv.hconcat`, `cv.vconcat`                                | All depths; two through four inputs                        |
+| `copyMakeBorder`                                                      | `cv.copyMakeBorder`                                       | All depths and five border modes                           |
+| `lut`                                                                 | `cv.LUT`                                                  | Byte sources and every table depth                         |
+| `norm`, `normalize`                                                   | `cv.norm`, `cv.normalize`                                 | All depths, masks, and major norm modes                    |
+| `meanStdDev`, `reduce`                                                | `cv.meanStdDev`, `cv.reduce`                              | All depths and mutable outputs                             |
+| `mixChannels`                                                         | `cv.mixChannels`                                          | One source and destination; MatVector remains              |
+| `randu`, `randn`, `setRNGSeed`                                        | Matching `cv` random families                             | Package RNG sequences differ from OpenCV                   |
+| `getLogLevel`, `setLogLevel`                                          | Matching `cv` logging families                            | Log bindings stay absent from upstream browser artifact.   |
+| `transform`, `perspectiveTransform`                                   | `cv.transform`, `cv.perspectiveTransform`                 | Selected channel and coefficient forms                     |
+| `invert`, `solve`                                                     | `cv.invert`, `cv.solve`                                   | Selected dense single-channel methods                      |
+| `ellipse2Poly`, `clipLine`                                            | Matching `cv` integer geometry helpers                    | Selected integer argument and return forms                 |
+| `getPerspectiveTransform`                                             | `cv.getPerspectiveTransform`                              | Selected F32/F64 inputs with F64 output                    |
+| `createAKAZE`                                                         | `cv.AKAZE.create`                                         | Static factory is absent from the pinned artifact          |
+| `createKAZE`                                                          | `cv.KAZE.create`                                          | Static factory is absent from the pinned artifact          |
+| `createAgastFeatureDetector`                                          | `cv.AgastFeatureDetector.create`                          | Static factory is absent from the pinned artifact          |
+| `createFastFeatureDetector`                                           | `cv.FastFeatureDetector.create`                           | Static factory is absent from the pinned artifact          |
+| `createGFTTDetector`                                                  | `cv.GFTTDetector.create`                                  | One factory shape; `gradientSize` overload remains         |
+| `createMSER`                                                          | `cv.MSER.create`                                          | Static factory is absent; `detectRegions` remains          |
+| `createORB`                                                           | `cv.ORB.create`                                           | Static factory is absent; detection remains                |
+| `cvtColor`, `resize`, `threshold`                                     | `cv.cvtColor`, `cv.resize`, `cv.threshold`                | U8 color codes 0-11, nearest/linear/area, narrow threshold |
+| `createTonemapDrago`, `createTonemapMantiuk`, `createTonemapReinhard` | Matching global `cv.createTonemap*` functions             | Global factories absent; pixel processing remains          |
 
 The fixture passes the complete pinned contracts for `arcLength`, `contourArea`, and `boundingRect`. It covers `arcLength`'s exact two-argument arity, `contourArea`'s runtime length of zero and one- or two-argument overloads, and `boundingRect`'s exact one-argument arity. It also checks JavaScript truthiness, I32 and F32 contours in `Nx1C2`, `1xNC2`, and `Nx2C1` layouts, deleted inputs, canonical empty bounds, and rejection of F64, U8, and invalid shapes. The package rejects typed empty contours before entering upstream paths that do not return a safe JavaScript error.
 

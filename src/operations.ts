@@ -154,7 +154,7 @@ export const OPENCV_OPERATIONS = [
   { method: "pow", wasmExport: "matPowInto" },
   { method: "randn", wasmExport: "matRandn" },
   { method: "randu", wasmExport: "matRandu" },
-  { method: "resizeNearest", wasmExport: "resizeNearestRgba" },
+  { method: "resize", wasmExport: "matResizeInto" },
   { method: "repeat", wasmExport: "matRepeat" },
   { method: "reduce", wasmExport: "matReduceInto" },
   { method: "rotate", wasmExport: "matRotate" },

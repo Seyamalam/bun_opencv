@@ -16,6 +16,9 @@ import {
   FAST_FEATURE_DETECTOR_DEFAULTS,
   FastFeatureDetector_DetectorType,
   GFTT_DETECTOR_DEFAULTS,
+  INTER_AREA,
+  INTER_LINEAR,
+  INTER_NEAREST,
   KAZE_DEFAULTS,
   KAZE_DiffusivityType,
   KAZEDiffusivity,
@@ -1408,6 +1411,93 @@ class CopyingBackend implements OpenCvBackend {
     );
   }
 
+  matResizeInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    targetWidth: number,
+    targetHeight: number,
+    scaleX: number,
+    scaleY: number,
+    interpolation: number,
+  ): void {
+    if (interpolation !== 0 && interpolation !== 1 && interpolation !== 3) {
+      throw new OpenCvInputError("mock supports nearest, linear, and area resize only");
+    }
+    const width = targetWidth === 0 ? Math.round(source.columns * scaleX) : targetWidth;
+    const height = targetHeight === 0 ? Math.round(source.rows * scaleY) : targetHeight;
+    const pixelBytes = source.channels * depthByteWidth(source.depth);
+    const input = source.toUint8Array();
+    const output = new Uint8Array(width * height * pixelBytes);
+    for (let row = 0; row < height; row += 1) {
+      for (let column = 0; column < width; column += 1) {
+        const targetOffset = (row * width + column) * pixelBytes;
+        if (interpolation === 0) {
+          const sourceRow = Math.floor((row * source.rows) / height);
+          const sourceColumn = Math.floor((column * source.columns) / width);
+          const sourceOffset = (sourceRow * source.columns + sourceColumn) * pixelBytes;
+          output.set(input.subarray(sourceOffset, sourceOffset + pixelBytes), targetOffset);
+          continue;
+        }
+        if (interpolation === 3) {
+          const sourceTop = (row * source.rows) / height;
+          const sourceBottom = ((row + 1) * source.rows) / height;
+          const sourceLeft = (column * source.columns) / width;
+          const sourceRight = ((column + 1) * source.columns) / width;
+          const area = (sourceBottom - sourceTop) * (sourceRight - sourceLeft);
+          for (let channel = 0; channel < pixelBytes; channel += 1) {
+            let sum = 0;
+            for (
+              let sourceRow = Math.floor(sourceTop);
+              sourceRow < Math.ceil(sourceBottom);
+              sourceRow += 1
+            ) {
+              const vertical =
+                Math.min(sourceBottom, sourceRow + 1) - Math.max(sourceTop, sourceRow);
+              for (
+                let sourceColumn = Math.floor(sourceLeft);
+                sourceColumn < Math.ceil(sourceRight);
+                sourceColumn += 1
+              ) {
+                const horizontal =
+                  Math.min(sourceRight, sourceColumn + 1) - Math.max(sourceLeft, sourceColumn);
+                sum +=
+                  input[(sourceRow * source.columns + sourceColumn) * pixelBytes + channel]! *
+                  vertical *
+                  horizontal;
+              }
+            }
+            output[targetOffset + channel] = roundNearestEven(sum / area);
+          }
+          continue;
+        }
+        const sourceY = ((row + 0.5) * source.rows) / height - 0.5;
+        const top = Math.max(0, Math.min(source.rows - 1, Math.floor(sourceY)));
+        const bottom = Math.max(0, Math.min(source.rows - 1, Math.floor(sourceY) + 1));
+        const vertical = sourceY - Math.floor(sourceY);
+        const sourceX = ((column + 0.5) * source.columns) / width - 0.5;
+        const left = Math.max(0, Math.min(source.columns - 1, Math.floor(sourceX)));
+        const right = Math.max(0, Math.min(source.columns - 1, Math.floor(sourceX) + 1));
+        const horizontal = sourceX - Math.floor(sourceX);
+        for (let channel = 0; channel < pixelBytes; channel += 1) {
+          const at = (sourceRow: number, sourceColumn: number) =>
+            input[(sourceRow * source.columns + sourceColumn) * pixelBytes + channel]!;
+          const topValue = at(top, left) * (1 - horizontal) + at(top, right) * horizontal;
+          const bottomValue = at(bottom, left) * (1 - horizontal) + at(bottom, right) * horizontal;
+          output[targetOffset + channel] = roundNearestEven(
+            topValue * (1 - vertical) + bottomValue * vertical,
+          );
+        }
+      }
+    }
+    if (!(destination instanceof CopyingMatHandle)) {
+      throw new OpenCvInputError("mock destination must use CopyingMatHandle");
+    }
+    destination.replaceFrom(
+      new CopyingMatHandle(height, width, source.channels, output, source.depth),
+      output,
+    );
+  }
+
   matEmpty(): WasmMatHandle {
     return new CopyingMatHandle(0, 0, 1, new Uint8Array(), 0, false);
   }
@@ -2623,6 +2713,11 @@ function unaryU8(source: WasmMatHandle, operation: (value: number) => number): W
   );
 }
 
+function roundNearestEven(value: number): number {
+  const lower = Math.floor(value);
+  return value - lower === 0.5 ? lower + (lower % 2) : Math.round(value);
+}
+
 describe("createRgbaImage", () => {
   test("copies caller-owned data", () => {
     const input = new Uint8Array([1, 2, 3, 4]);
@@ -2676,6 +2771,53 @@ describe("OpenCv client", () => {
     gray.dispose();
     threeChannels.dispose();
     fourChannels.dispose();
+  });
+
+  test("resize applies nearest-neighbor sampling through a mutable Mat destination", () => {
+    const source = client.matFromU8(2, 2, 1, new Uint8Array([1, 2, 3, 4]));
+    const destination = client.emptyMat();
+
+    client.resize(source, destination, { width: 4, height: 2 }, 0, 0, INTER_NEAREST);
+
+    expect(destination.rows).toBe(2);
+    expect(destination.columns).toBe(4);
+    expect(destination.channels).toBe(1);
+    expect(destination.toUint8Array()).toEqual(new Uint8Array([1, 1, 2, 2, 3, 3, 4, 4]));
+
+    source.dispose();
+    destination.dispose();
+  });
+
+  test("resize uses OpenCV half-pixel linear interpolation by default", () => {
+    const source = client.matFromU8(2, 2, 1, new Uint8Array([0, 100, 150, 255]));
+    const destination = client.emptyMat();
+
+    client.resize(source, destination, { width: 3, height: 3 });
+
+    expect(client.INTER_LINEAR).toBe(INTER_LINEAR);
+    expect(destination.toUint8Array()).toEqual(
+      new Uint8Array([0, 50, 100, 75, 126, 178, 150, 202, 255]),
+    );
+
+    source.dispose();
+    destination.dispose();
+  });
+
+  test("resize averages covered U8 pixels when shrinking with INTER_AREA", () => {
+    const source = client.matFromU8(
+      4,
+      4,
+      1,
+      new Uint8Array([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150]),
+    );
+    const destination = client.emptyMat();
+
+    client.resize(source, destination, { width: 2, height: 2 }, 0, 0, INTER_AREA);
+
+    expect(destination.toUint8Array()).toEqual(new Uint8Array([25, 45, 105, 125]));
+
+    source.dispose();
+    destination.dispose();
   });
 
   test("returns validated output", () => {

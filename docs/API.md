@@ -56,6 +56,20 @@ Calculates luma with the grayscale formula. Pixels whose luma is greater than or
 
 Resizes an RGBA image with nearest-neighbor sampling. Both target dimensions must be positive 32-bit integers.
 
+### `resize(source, destination, size, fx?, fy?, interpolation?)`
+
+Resizes a Rust-owned `Mat` into a mutable destination. A positive `size.width` and `size.height` set the output dimensions. Passing `{ width: 0, height: 0 }` derives them from positive finite `fx` and `fy` values.
+
+The current slice implements:
+
+- `INTER_NEAREST` across every matrix depth and channel count
+- `INTER_LINEAR` for U8 matrices using OpenCV half-pixel coordinates and nearest-even output rounding
+- `INTER_AREA` for shrinking U8 matrices using source-pixel coverage weights
+
+Nearest-neighbor mode copies complete scalar bytes without numeric conversion, so signed and floating-point matrices preserve their stored bit patterns. The operation compacts strided sources, replaces incompatible destinations, and snapshots the source before an exact in-place resize.
+
+The package exports all pinned interpolation constants now so TypeScript code can use one stable namespace. Cubic, Lanczos, exact modes, linear interpolation for wider depths, and area enlargement remain unimplemented and reject instead of silently selecting another algorithm.
+
 ### `cvtColor(source, destination, code, dstCn?)`
 
 Converts a Rust-owned U8 `Mat` into a mutable destination. The current slice matches pinned OpenCV.js color codes 0 through 11:

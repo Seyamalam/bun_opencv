@@ -48,6 +48,8 @@ mod imgproc_geometry;
 mod imgproc_geometry_wasm;
 mod imgproc_helpers;
 mod imgproc_helpers_wasm;
+mod imgproc_resize;
+mod imgproc_resize_wasm;
 mod imgproc_transform_matrices;
 mod imgproc_transform_matrices_wasm;
 mod mat;

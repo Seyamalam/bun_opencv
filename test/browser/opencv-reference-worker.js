@@ -7177,6 +7177,46 @@ function auditCvtColor(reference) {
   };
 }
 
+function auditResize(reference) {
+  const cases = [
+    ["nearest", 2, 2, [1, 2, 3, 4], 4, 2, 0, 0, reference.INTER_NEAREST],
+    ["linear-default", 2, 2, [0, 100, 150, 255], 3, 3, 0, 0, reference.INTER_LINEAR],
+    [
+      "area",
+      4,
+      4,
+      [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150],
+      2,
+      2,
+      0,
+      0,
+      reference.INTER_AREA,
+    ],
+    ["scale", 2, 2, [1, 2, 3, 4], 0, 0, 2, 0.5, reference.INTER_NEAREST],
+  ];
+  return {
+    constants: [reference.INTER_NEAREST, reference.INTER_LINEAR, reference.INTER_AREA],
+    cases: cases.map(
+      ([name, sourceWidth, sourceHeight, values, width, height, scaleX, scaleY, interpolation]) => {
+        const source = reference.matFromArray(sourceHeight, sourceWidth, reference.CV_8UC1, values);
+        const destination = new reference.Mat();
+        reference.resize(
+          source,
+          destination,
+          new reference.Size(width, height),
+          scaleX,
+          scaleY,
+          interpolation,
+        );
+        const output = summarizeTypedMat(destination);
+        source.delete();
+        destination.delete();
+        return { name, output };
+      },
+    ),
+  };
+}
+
 self.addEventListener("message", async ({ data: input }) => {
   try {
     const reference = await loadOpenCv();
@@ -7504,6 +7544,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.traceAudit = auditTrace(reference);
     outputs.bitwiseNotAudit = auditBitwiseNot(reference);
     outputs.cvtColorAudit = auditCvtColor(reference);
+    outputs.resizeAudit = auditResize(reference);
     outputs.orbAudit = auditOrb(() => new reference.ORB(), reference, {
       constructorLength: reference.ORB.length,
       staticCreatePresent: typeof reference.ORB.create !== "undefined",
