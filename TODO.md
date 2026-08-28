@@ -2,16 +2,17 @@
 
 The roadmap gives release order. This file lists concrete work that can be picked up now.
 
-## Before the first npm publish
+## Release setup
 
-- [ ] Confirm the npm package name.
+- [x] Publish `wasmosaic@0.1.0` and create the matching GitHub release.
+- [x] Confirm the npm package name.
 - [x] Replace the `OWNER` placeholders in `CHANGELOG.md` after creating the repository.
 - [x] Add repository, homepage, bugs, and author metadata to `package.json`.
 - [ ] Add funding metadata if the project opens a funding channel.
 - [ ] Configure npm trusted publishing for the release workflow.
 - [ ] Run the package in Vite, webpack, and a direct browser import-map fixture.
 - [ ] Record supported browser versions from those results.
-- [ ] Review the package archive produced by `npm pack --dry-run`.
+- [x] Review the package archive produced by `npm pack --dry-run`.
 
 ## Correctness
 
