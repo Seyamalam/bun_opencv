@@ -28,6 +28,7 @@ import type {
   WasmFastFeatureDetectorFactory,
 } from "./feature-detectors.js";
 import type { Mat, WasmMatHandle } from "./mat.js";
+import type { ColorConversionCode } from "./color.js";
 
 /** An RGBA image whose data contains four bytes per pixel. */
 export interface RgbaImage {
@@ -147,6 +148,12 @@ export interface OpenCvBackend {
   matFromI8(data: Int8Array, rows: number, columns: number, channels: number): WasmMatHandle;
   matFromU16(data: Uint16Array, rows: number, columns: number, channels: number): WasmMatHandle;
   matFromU8(data: Uint8Array, rows: number, columns: number, channels: number): WasmMatHandle;
+  matCvtColorInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    code: number,
+    destinationChannels: number,
+  ): void;
   matFlip(source: WasmMatHandle, flipCode: number): WasmMatHandle;
   matFlipInto(source: WasmMatHandle, destination: WasmMatHandle, flipCode: number): void;
   matRotate(source: WasmMatHandle, rotateCode: number): WasmMatHandle;
@@ -406,6 +413,26 @@ export interface OpenCvBackend {
 
 /** Initialized image processing client. */
 export interface OpenCv {
+  readonly COLOR_BGR2BGRA: 0;
+  readonly COLOR_RGB2RGBA: 0;
+  readonly COLOR_BGRA2BGR: 1;
+  readonly COLOR_RGBA2RGB: 1;
+  readonly COLOR_BGR2RGBA: 2;
+  readonly COLOR_RGB2BGRA: 2;
+  readonly COLOR_RGBA2BGR: 3;
+  readonly COLOR_BGRA2RGB: 3;
+  readonly COLOR_BGR2RGB: 4;
+  readonly COLOR_RGB2BGR: 4;
+  readonly COLOR_BGRA2RGBA: 5;
+  readonly COLOR_RGBA2BGRA: 5;
+  readonly COLOR_BGR2GRAY: 6;
+  readonly COLOR_RGB2GRAY: 7;
+  readonly COLOR_GRAY2BGR: 8;
+  readonly COLOR_GRAY2RGB: 8;
+  readonly COLOR_GRAY2BGRA: 9;
+  readonly COLOR_GRAY2RGBA: 9;
+  readonly COLOR_BGRA2GRAY: 10;
+  readonly COLOR_RGBA2GRAY: 11;
   readonly AKAZE_DescriptorType: AKAZE_DescriptorTypeNamespace;
   readonly AgastFeatureDetector_DetectorType: AgastFeatureDetector_DetectorTypeNamespace;
   readonly FastFeatureDetector_DetectorType: FastFeatureDetector_DetectorTypeNamespace;
@@ -470,6 +497,12 @@ export interface OpenCv {
     borderType: BorderType,
     constant?: Scalar,
   ): Mat;
+  cvtColor(
+    source: Mat,
+    destination: Mat,
+    code: ColorConversionCode,
+    destinationChannels?: number,
+  ): void;
   divide(a: Mat, b: Mat, destination: Mat, scale?: number, dtype?: number): void;
   divideAlloc(a: Mat, b: Mat, scale?: number): Mat;
   extractChannel(source: Mat, channel: number): Mat;

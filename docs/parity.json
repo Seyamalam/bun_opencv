@@ -1489,14 +1489,14 @@
     },
     {
       "implementationOrigin": "original",
-      "method": "grayscale",
+      "method": "cvtColor",
       "module": "imgproc",
-      "notes": "One RGBA-to-gray specialization; the cvtColor family has many remaining codes.",
+      "notes": "U8 mutable Mat conversion for pinned codes 0 through 11, covering RGB/BGR/RGBA/BGRA channel order, alpha insertion or removal, grayscale conversion, dstCn 3/4 selection, compact and strided sources, destination replacement, and exact in-place use; U16, F32, HSV/HLS, YUV, packed, Bayer, and other codes remain.",
       "sources": ["https://docs.opencv.org/4.13.0/d8/d01/group__imgproc__color__conversions.html"],
       "status": "partial",
       "upstream": "cv.cvtColor",
       "upstreamId": "imgproc.function.cvt-color",
-      "wasmExport": "grayscaleRgba"
+      "wasmExport": "matCvtColorInto"
     },
     {
       "implementationOrigin": "original",

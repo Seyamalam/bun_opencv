@@ -123,7 +123,7 @@ export const OPENCV_OPERATIONS = [
   { method: "ellipse2Poly", wasmExport: "ellipse2Poly" },
   { method: "exp", wasmExport: "matExpInto" },
   { method: "flip", wasmExport: "matFlip" },
-  { method: "grayscale", wasmExport: "grayscaleRgba" },
+  { method: "cvtColor", wasmExport: "matCvtColorInto" },
   { method: "getAffineTransform", wasmExport: "matGetAffineTransform" },
   { method: "getLogLevel", wasmExport: "getLogLevel" },
   { method: "getOptimalDFTSize", wasmExport: "getOptimalDFTSize" },

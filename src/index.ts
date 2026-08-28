@@ -55,6 +55,29 @@ export type {
   WasmTonemapReinhardHandle,
 } from "./tonemap.js";
 export { BindingError, OpenCvInputError } from "./error.js";
+export {
+  COLOR_BGR2BGRA,
+  COLOR_BGR2GRAY,
+  COLOR_BGR2RGB,
+  COLOR_BGR2RGBA,
+  COLOR_BGRA2BGR,
+  COLOR_BGRA2GRAY,
+  COLOR_BGRA2RGB,
+  COLOR_BGRA2RGBA,
+  COLOR_GRAY2BGR,
+  COLOR_GRAY2BGRA,
+  COLOR_GRAY2RGB,
+  COLOR_GRAY2RGBA,
+  COLOR_RGB2BGR,
+  COLOR_RGB2BGRA,
+  COLOR_RGB2GRAY,
+  COLOR_RGB2RGBA,
+  COLOR_RGBA2BGR,
+  COLOR_RGBA2BGRA,
+  COLOR_RGBA2GRAY,
+  COLOR_RGBA2RGB,
+} from "./color.js";
+export type { ColorConversionCode } from "./color.js";
 export type { EmbindEnumInput, EmbindEnumValue } from "./embind-enum.js";
 export {
   AGAST_FEATURE_DETECTOR_DEFAULTS,

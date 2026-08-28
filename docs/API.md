@@ -1,6 +1,6 @@
 # API reference
 
-The package accepts and returns RGBA buffers. Each pixel occupies four bytes in red, green, blue, alpha order.
+The package has RGBA image helpers and Rust-owned typed matrices. RGBA helper pixels occupy four bytes in red, green, blue, alpha order. Matrix operations declare their own depth and channel requirements.
 
 ## Initialization
 
@@ -55,6 +55,19 @@ Calculates luma with the grayscale formula. Pixels whose luma is greater than or
 ### `resizeNearest(image, targetWidth, targetHeight)`
 
 Resizes an RGBA image with nearest-neighbor sampling. Both target dimensions must be positive 32-bit integers.
+
+### `cvtColor(source, destination, code, dstCn?)`
+
+Converts a Rust-owned U8 `Mat` into a mutable destination. The current slice matches pinned OpenCV.js color codes 0 through 11:
+
+- RGB/BGR and RGBA/BGRA channel-order changes
+- Opaque alpha insertion and alpha removal
+- RGB, BGR, RGBA, or BGRA to one-channel grayscale
+- One-channel grayscale to three or four channels
+
+`dstCn` defaults to the conversion code's channel count. Passing `3` or `4` selects that output count for color and grayscale-expansion codes. Grayscale output remains one channel. The operation replaces an incompatible destination, compacts strided sources, and supports exact in-place conversion.
+
+The `COLOR_*` constants for these codes are available both as named package exports and on the initialized client. This remains a partial family because U16, F32, HSV/HLS, YUV, packed-color, Bayer, and later conversion codes are not implemented yet.
 
 ### U8 matrix operations
 

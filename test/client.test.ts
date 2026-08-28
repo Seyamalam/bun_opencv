@@ -7,6 +7,10 @@ import {
   AKAZE_DescriptorType,
   AKAZEDescriptorType,
   BindingError,
+  COLOR_GRAY2RGBA,
+  COLOR_RGBA2BGRA,
+  COLOR_RGBA2GRAY,
+  COLOR_RGB2RGBA,
   createOpenCv,
   createRgbaImage,
   FAST_FEATURE_DETECTOR_DEFAULTS,
@@ -1353,6 +1357,57 @@ class CopyingBackend implements OpenCvBackend {
     return new CopyingMatHandle(rows, columns, channels, new Uint8Array(data));
   }
 
+  matCvtColorInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    code: number,
+    destinationChannels: number,
+  ): void {
+    const input = source.toUint8Array();
+    let output: Uint8Array;
+    let channels: number;
+    if (code === 11) {
+      channels = 1;
+      output = Uint8Array.from({ length: source.rows * source.columns }, (_, index) => {
+        const offset = index * 4;
+        return Math.round(
+          input[offset]! * 0.299 + input[offset + 1]! * 0.587 + input[offset + 2]! * 0.114,
+        );
+      });
+    } else if (code === 5) {
+      channels = 4;
+      output = new Uint8Array(input.byteLength);
+      for (let offset = 0; offset < input.byteLength; offset += 4) {
+        output.set(
+          [input[offset + 2]!, input[offset + 1]!, input[offset]!, input[offset + 3]!],
+          offset,
+        );
+      }
+    } else if (code === 0) {
+      channels = destinationChannels === 3 ? 3 : 4;
+      output = Uint8Array.from({ length: source.rows * source.columns * channels }, (_, index) => {
+        const channel = index % channels;
+        if (channel === 3) return 255;
+        return input[Math.floor(index / channels) * 3 + channel]!;
+      });
+    } else if (code === 9) {
+      channels = destinationChannels === 3 ? 3 : 4;
+      output = Uint8Array.from({ length: source.rows * source.columns * channels }, (_, index) => {
+        const channel = index % channels;
+        return channel === 3 ? 255 : input[Math.floor(index / channels)]!;
+      });
+    } else {
+      throw new OpenCvInputError(`unsupported mock color code ${code}`);
+    }
+    if (!(destination instanceof CopyingMatHandle)) {
+      throw new OpenCvInputError("mock destination must use CopyingMatHandle");
+    }
+    destination.replaceFrom(
+      new CopyingMatHandle(source.rows, source.columns, channels, output),
+      output,
+    );
+  }
+
   matEmpty(): WasmMatHandle {
     return new CopyingMatHandle(0, 0, 1, new Uint8Array(), 0, false);
   }
@@ -2584,6 +2639,44 @@ describe("createRgbaImage", () => {
 describe("OpenCv client", () => {
   const client = createOpenCv(new CopyingBackend());
   const image = createRgbaImage(1, 1, new Uint8Array([1, 2, 3, 255]));
+
+  test("cvtColor converts browser RGBA pixels through the OpenCV-compatible Mat API", () => {
+    const source = client.matFromU8(1, 2, 4, new Uint8Array([255, 0, 0, 7, 1, 2, 3, 4]));
+    const gray = client.emptyMat();
+    const reordered = client.emptyMat();
+
+    client.cvtColor(source, gray, COLOR_RGBA2GRAY);
+    client.cvtColor(source, reordered, COLOR_RGBA2BGRA);
+
+    expect(gray.rows).toBe(1);
+    expect(gray.columns).toBe(2);
+    expect(gray.channels).toBe(1);
+    expect(gray.toUint8Array()).toEqual(new Uint8Array([76, 2]));
+    expect(reordered.channels).toBe(4);
+    expect(reordered.toUint8Array()).toEqual(new Uint8Array([0, 0, 255, 7, 3, 2, 1, 4]));
+
+    source.dispose();
+    gray.dispose();
+    reordered.dispose();
+  });
+
+  test("cvtColor honors dstCn for RGB alpha insertion and grayscale expansion", () => {
+    const rgb = client.matFromU8(1, 1, 3, new Uint8Array([10, 20, 30]));
+    const gray = client.matFromU8(1, 1, 1, new Uint8Array([9]));
+    const threeChannels = client.emptyMat();
+    const fourChannels = client.emptyMat();
+
+    client.cvtColor(rgb, threeChannels, COLOR_RGB2RGBA, 3);
+    client.cvtColor(gray, fourChannels, COLOR_GRAY2RGBA, 4);
+
+    expect(threeChannels.toUint8Array()).toEqual(new Uint8Array([10, 20, 30]));
+    expect(fourChannels.toUint8Array()).toEqual(new Uint8Array([9, 9, 9, 255]));
+
+    rgb.dispose();
+    gray.dispose();
+    threeChannels.dispose();
+    fourChannels.dispose();
+  });
 
   test("returns validated output", () => {
     expect(client.grayscale(image)).toEqual(image);

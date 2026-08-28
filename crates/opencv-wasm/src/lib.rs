@@ -42,6 +42,8 @@ mod features2d_threshold_detectors;
 mod features2d_threshold_detectors_wasm;
 mod imgproc_border;
 mod imgproc_border_wasm;
+mod imgproc_color;
+mod imgproc_color_wasm;
 mod imgproc_geometry;
 mod imgproc_geometry_wasm;
 mod imgproc_helpers;

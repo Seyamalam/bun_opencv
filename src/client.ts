@@ -34,6 +34,29 @@ import {
 } from "./image.js";
 import { BindingError, OpenCvInputError } from "./error.js";
 import { Mat, validateMatrixDimension, validateMatrixInput } from "./mat.js";
+import {
+  COLOR_BGR2BGRA,
+  COLOR_BGR2GRAY,
+  COLOR_BGR2RGB,
+  COLOR_BGR2RGBA,
+  COLOR_BGRA2BGR,
+  COLOR_BGRA2GRAY,
+  COLOR_BGRA2RGB,
+  COLOR_BGRA2RGBA,
+  COLOR_GRAY2BGR,
+  COLOR_GRAY2BGRA,
+  COLOR_GRAY2RGB,
+  COLOR_GRAY2RGBA,
+  COLOR_RGB2BGR,
+  COLOR_RGB2BGRA,
+  COLOR_RGB2GRAY,
+  COLOR_RGB2RGBA,
+  COLOR_RGBA2BGR,
+  COLOR_RGBA2BGRA,
+  COLOR_RGBA2GRAY,
+  COLOR_RGBA2RGB,
+} from "./color.js";
+import type { ColorConversionCode } from "./color.js";
 import type {
   BorderType,
   DecompositionMethod,
@@ -55,6 +78,26 @@ import type {
 } from "./types.js";
 
 class WasmOpenCv implements OpenCv {
+  readonly COLOR_BGR2BGRA = COLOR_BGR2BGRA;
+  readonly COLOR_RGB2RGBA = COLOR_RGB2RGBA;
+  readonly COLOR_BGRA2BGR = COLOR_BGRA2BGR;
+  readonly COLOR_RGBA2RGB = COLOR_RGBA2RGB;
+  readonly COLOR_BGR2RGBA = COLOR_BGR2RGBA;
+  readonly COLOR_RGB2BGRA = COLOR_RGB2BGRA;
+  readonly COLOR_RGBA2BGR = COLOR_RGBA2BGR;
+  readonly COLOR_BGRA2RGB = COLOR_BGRA2RGB;
+  readonly COLOR_BGR2RGB = COLOR_BGR2RGB;
+  readonly COLOR_RGB2BGR = COLOR_RGB2BGR;
+  readonly COLOR_BGRA2RGBA = COLOR_BGRA2RGBA;
+  readonly COLOR_RGBA2BGRA = COLOR_RGBA2BGRA;
+  readonly COLOR_BGR2GRAY = COLOR_BGR2GRAY;
+  readonly COLOR_RGB2GRAY = COLOR_RGB2GRAY;
+  readonly COLOR_GRAY2BGR = COLOR_GRAY2BGR;
+  readonly COLOR_GRAY2RGB = COLOR_GRAY2RGB;
+  readonly COLOR_GRAY2BGRA = COLOR_GRAY2BGRA;
+  readonly COLOR_GRAY2RGBA = COLOR_GRAY2RGBA;
+  readonly COLOR_BGRA2GRAY = COLOR_BGRA2GRAY;
+  readonly COLOR_RGBA2GRAY = COLOR_RGBA2GRAY;
   readonly AKAZE_DescriptorType = AKAZE_DescriptorType;
   readonly AgastFeatureDetector_DetectorType = AgastFeatureDetector_DetectorType;
   readonly FastFeatureDetector_DetectorType = FastFeatureDetector_DetectorType;
@@ -424,6 +467,25 @@ class WasmOpenCv implements OpenCv {
         borderType,
         Float64Array.from(constant),
       ),
+    );
+  }
+
+  cvtColor(
+    ...arguments_: [
+      source: Mat,
+      destination: Mat,
+      code: ColorConversionCode,
+      destinationChannels?: number,
+    ]
+  ): void {
+    requireArityRange(arguments_.length, 3, 4, "cvtColor");
+    const [source, destination, code] = arguments_;
+    const destinationChannels = arguments_.length === 4 ? toWasmI32(arguments_[3]) : 0;
+    this.#backend.matCvtColorInto(
+      matHandleForBinding(source),
+      matHandleForBinding(destination),
+      toWasmI32(code),
+      destinationChannels,
     );
   }
 

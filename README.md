@@ -2,7 +2,7 @@
 
 `wasmosaic` is an experimental browser image-processing package written in Rust and TypeScript. Rust owns the pixel loops. WebAssembly carries them into the browser. The TypeScript layer validates inputs and provides an API that works with `ImageData`.
 
-Version 0.1.0 implements four RGBA operations: grayscale, invert, binary threshold, and nearest-neighbor resize. The long-term target is full parity with the browser bindings in the pinned OpenCV.js 4.x baseline, followed by typed browser adapters that OpenCV.js does not provide.
+The published 0.1.0 release provides four RGBA operations. Current development also includes Rust-owned typed matrices, core matrix operations, and the first OpenCV.js-compatible `cvtColor` slice. The long-term target is full parity with the pinned OpenCV.js 4.13.0 browser bindings, followed by typed browser adapters that OpenCV.js does not provide.
 
 ## Install
 
@@ -55,6 +55,7 @@ Regions share Rust storage without copying pixels. The core arithmetic, bitwise,
 ## Current API
 
 - `cv.grayscale(image)` converts RGB channels to fixed-point BT.601 luma and keeps alpha.
+- `cv.cvtColor(source, destination, code, dstCn?)` supports U8 color codes 0 through 11 for grayscale, RGB/BGR channel order, and alpha insertion or removal.
 - `cv.invert(image)` inverts RGB channels and keeps alpha.
 - `cv.threshold(image, value)` emits black or white pixels using an inclusive threshold from 0 through 255.
 - `cv.resizeNearest(image, width, height)` resizes with nearest-neighbor sampling.
@@ -212,7 +213,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `getPerspectiveTransform`                   | `cv.getPerspectiveTransform`                   | Partial | Four F32/F64 point pairs to F64            |
 | imgproc    | `getRotationMatrix2D`                       | `cv.getRotationMatrix2D`                       | Full    | Exact Point2f and F64 matrix contract      |
 | imgproc    | `getStructuringElement`                     | `cv.getStructuringElement`                     | Full    | Exact rectangle, cross, ellipse, diamond   |
-| imgproc    | `grayscale`                                 | `cv.cvtColor`                                  | Partial | RGBA-to-gray specialization                |
+| imgproc    | `cvtColor`                                  | `cv.cvtColor`                                  | Partial | U8 RGB/BGR/alpha/gray codes 0 through 11   |
 | imgproc    | `invertAffineTransform`                     | `cv.invertAffineTransform`                     | Full    | Exact F32/F64 mutable inverse contract     |
 | imgproc    | `isContourConvex`                           | `cv.isContourConvex`                           | Full    | Exact strict-convexity contract            |
 | imgproc    | `pointPolygonTest`                          | `cv.pointPolygonTest`                          | Full    | Exact classification and signed distance   |
@@ -286,7 +287,7 @@ Read [the inventory](docs/INVENTORY.md) and [complete parity contract](docs/PARI
 
 The Rust `Mat` owns U8, I8, U16, I16, I32, F32, and F64 storage, plus channels, dimensions, byte strides, zero-copy regions, mutable destinations, WASM allocation, and deterministic disposal. The next foundation broadens arithmetic and image-processing families across every scalar depth while differential fixtures lock behavior to the pinned browser baseline.
 
-After that foundation, the first vertical slice is general color conversion, all resize interpolation modes in the OpenCV.js baseline, convolution, Gaussian blur, Sobel gradients, and Canny. Each operation needs upstream differential fixtures and real-browser benchmarks before its parity status changes to implemented.
+The active image-processing slice finishes the remaining color conversions, then adds the resize interpolation modes in the pinned OpenCV.js baseline, convolution, Gaussian blur, Sobel gradients, and Canny. Each operation needs upstream differential fixtures and real-browser benchmarks before its parity status changes to implemented.
 
 The performance goal is at least 2x the OpenCV.js geometric mean for warmed 1080p hot kernels and at least 4x for fused pipelines. Those are targets, not current results. Reports will include p50 and p95 timing, initialization, allocation counts, package bytes, scalar fallback results, and SIMD results. See [the performance contract](docs/PERFORMANCE.md).
 

@@ -7552,6 +7552,88 @@
         };
       }
 
+      function auditPackageCvtColor(packageCv) {
+        const cases = [
+          ["BGR2BGRA", packageCv.COLOR_BGR2BGRA, 3, [1, 2, 3, 4, 5, 6], 0],
+          ["BGRA2BGR", packageCv.COLOR_BGRA2BGR, 4, [1, 2, 3, 4, 5, 6, 7, 8], 0],
+          ["BGR2RGBA", packageCv.COLOR_BGR2RGBA, 3, [1, 2, 3, 4, 5, 6], 0],
+          ["RGBA2BGR", packageCv.COLOR_RGBA2BGR, 4, [1, 2, 3, 4, 5, 6, 7, 8], 0],
+          ["BGR2RGB", packageCv.COLOR_BGR2RGB, 3, [1, 2, 3, 4, 5, 6], 0],
+          ["BGRA2RGBA", packageCv.COLOR_BGRA2RGBA, 4, [1, 2, 3, 4, 5, 6, 7, 8], 0],
+          ["BGR2GRAY", packageCv.COLOR_BGR2GRAY, 3, [255, 0, 0, 0, 255, 0, 0, 0, 255], 0],
+          ["RGB2GRAY", packageCv.COLOR_RGB2GRAY, 3, [255, 0, 0, 0, 255, 0, 0, 0, 255], 0],
+          ["GRAY2BGR", packageCv.COLOR_GRAY2BGR, 1, [1, 255], 0],
+          ["GRAY2BGRA", packageCv.COLOR_GRAY2BGRA, 1, [1, 255], 0],
+          [
+            "BGRA2GRAY",
+            packageCv.COLOR_BGRA2GRAY,
+            4,
+            [255, 0, 0, 7, 0, 255, 0, 8, 0, 0, 255, 9],
+            0,
+          ],
+          [
+            "RGBA2GRAY",
+            packageCv.COLOR_RGBA2GRAY,
+            4,
+            [255, 0, 0, 7, 0, 255, 0, 8, 0, 0, 255, 9],
+            0,
+          ],
+          ["RGB2RGBA-dcn3", packageCv.COLOR_RGB2RGBA, 3, [1, 2, 3], 3],
+          ["GRAY2BGR-dcn4", packageCv.COLOR_GRAY2BGR, 1, [9], 4],
+        ];
+        const inPlace = packageCv.matFromU8(1, 2, 4, new Uint8Array([255, 0, 0, 7, 1, 2, 3, 4]));
+        packageCv.cvtColor(inPlace, inPlace, packageCv.COLOR_RGBA2GRAY);
+        const inPlaceOutput = summarizePackageTypedMat(inPlace);
+        inPlace.dispose();
+
+        const parent = packageCv.matFromU8(
+          2,
+          3,
+          4,
+          Uint8Array.from({ length: 24 }, (_, index) => index + 1),
+        );
+        const region = parent.roi(0, 1, 2, 2);
+        const regionDestination = packageCv.emptyMat();
+        packageCv.cvtColor(region, regionDestination, packageCv.COLOR_RGBA2BGRA);
+        const regionOutput = summarizePackageTypedMat(regionDestination);
+        regionDestination.dispose();
+        region.dispose();
+        parent.dispose();
+
+        return {
+          constants: [
+            packageCv.COLOR_BGR2BGRA,
+            packageCv.COLOR_BGRA2BGR,
+            packageCv.COLOR_BGR2RGBA,
+            packageCv.COLOR_RGBA2BGR,
+            packageCv.COLOR_BGR2RGB,
+            packageCv.COLOR_BGRA2RGBA,
+            packageCv.COLOR_BGR2GRAY,
+            packageCv.COLOR_RGB2GRAY,
+            packageCv.COLOR_GRAY2BGR,
+            packageCv.COLOR_GRAY2BGRA,
+            packageCv.COLOR_BGRA2GRAY,
+            packageCv.COLOR_RGBA2GRAY,
+          ],
+          cases: cases.map(([name, code, channels, values, destinationChannels]) => {
+            const source = packageCv.matFromU8(
+              1,
+              values.length / channels,
+              channels,
+              new Uint8Array(values),
+            );
+            const destination = packageCv.emptyMat();
+            packageCv.cvtColor(source, destination, code, destinationChannels);
+            const output = summarizePackageTypedMat(destination);
+            source.dispose();
+            destination.dispose();
+            return { name, output };
+          }),
+          inPlaceOutput,
+          regionOutput,
+        };
+      }
+
       function runReference(input, referenceRequest) {
         return new Promise((resolve, reject) => {
           const worker = new Worker("/test/browser/opencv-reference-worker.js");
@@ -7923,6 +8005,14 @@
         );
         if (bitwiseNotDifference !== undefined) {
           throw new Error(bitwiseNotDifference);
+        }
+        const cvtColorDifference = findDifference(
+          auditPackageCvtColor(packageCv),
+          referenceOutputs.cvtColorAudit,
+          "cvtColor audit",
+        );
+        if (cvtColorDifference !== undefined) {
+          throw new Error(cvtColorDifference);
         }
         const packageOrbAudit = auditOrb(() => packageCv.createORB(), packageCv, {
           constructorLength: null,
@@ -8395,7 +8485,7 @@
 
         packageSource.dispose();
         result.value =
-          "PASS OpenCV.js 4.13.0 coordinate conversion, float math, layout, geometry, transform matrix, helper, DFT, AKAZE, AGAST, FAST, KAZE, GFTT, MSER, ORB, and Tonemap differential";
+          "PASS OpenCV.js 4.13.0 color, coordinate conversion, float math, layout, geometry, transform matrix, helper, DFT, AKAZE, AGAST, FAST, KAZE, GFTT, MSER, ORB, and Tonemap differential";
         document.body.dataset.status = "passed";
       } catch (error) {
         result.value = `FAIL ${String(error)}`;

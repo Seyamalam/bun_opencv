@@ -7101,6 +7101,82 @@ async function loadOpenCv() {
   });
 }
 
+function auditCvtColor(reference) {
+  const typeByChannels = [
+    reference.CV_8UC1,
+    reference.CV_8UC2,
+    reference.CV_8UC3,
+    reference.CV_8UC4,
+  ];
+  const cases = [
+    ["BGR2BGRA", reference.COLOR_BGR2BGRA, 3, [1, 2, 3, 4, 5, 6], 0],
+    ["BGRA2BGR", reference.COLOR_BGRA2BGR, 4, [1, 2, 3, 4, 5, 6, 7, 8], 0],
+    ["BGR2RGBA", reference.COLOR_BGR2RGBA, 3, [1, 2, 3, 4, 5, 6], 0],
+    ["RGBA2BGR", reference.COLOR_RGBA2BGR, 4, [1, 2, 3, 4, 5, 6, 7, 8], 0],
+    ["BGR2RGB", reference.COLOR_BGR2RGB, 3, [1, 2, 3, 4, 5, 6], 0],
+    ["BGRA2RGBA", reference.COLOR_BGRA2RGBA, 4, [1, 2, 3, 4, 5, 6, 7, 8], 0],
+    ["BGR2GRAY", reference.COLOR_BGR2GRAY, 3, [255, 0, 0, 0, 255, 0, 0, 0, 255], 0],
+    ["RGB2GRAY", reference.COLOR_RGB2GRAY, 3, [255, 0, 0, 0, 255, 0, 0, 0, 255], 0],
+    ["GRAY2BGR", reference.COLOR_GRAY2BGR, 1, [1, 255], 0],
+    ["GRAY2BGRA", reference.COLOR_GRAY2BGRA, 1, [1, 255], 0],
+    ["BGRA2GRAY", reference.COLOR_BGRA2GRAY, 4, [255, 0, 0, 7, 0, 255, 0, 8, 0, 0, 255, 9], 0],
+    ["RGBA2GRAY", reference.COLOR_RGBA2GRAY, 4, [255, 0, 0, 7, 0, 255, 0, 8, 0, 0, 255, 9], 0],
+    ["RGB2RGBA-dcn3", reference.COLOR_RGB2RGBA, 3, [1, 2, 3], 3],
+    ["GRAY2BGR-dcn4", reference.COLOR_GRAY2BGR, 1, [9], 4],
+  ];
+  const inPlace = reference.matFromArray(1, 2, reference.CV_8UC4, [255, 0, 0, 7, 1, 2, 3, 4]);
+  reference.cvtColor(inPlace, inPlace, reference.COLOR_RGBA2GRAY);
+  const inPlaceOutput = summarizeTypedMat(inPlace);
+  inPlace.delete();
+
+  const parent = reference.matFromArray(
+    2,
+    3,
+    reference.CV_8UC4,
+    Array.from({ length: 24 }, (_, index) => index + 1),
+  );
+  const region = parent.roi(new reference.Rect(1, 0, 2, 2));
+  const regionDestination = new reference.Mat();
+  reference.cvtColor(region, regionDestination, reference.COLOR_RGBA2BGRA);
+  const regionOutput = summarizeTypedMat(regionDestination);
+  regionDestination.delete();
+  region.delete();
+  parent.delete();
+
+  return {
+    constants: [
+      reference.COLOR_BGR2BGRA,
+      reference.COLOR_BGRA2BGR,
+      reference.COLOR_BGR2RGBA,
+      reference.COLOR_RGBA2BGR,
+      reference.COLOR_BGR2RGB,
+      reference.COLOR_BGRA2RGBA,
+      reference.COLOR_BGR2GRAY,
+      reference.COLOR_RGB2GRAY,
+      reference.COLOR_GRAY2BGR,
+      reference.COLOR_GRAY2BGRA,
+      reference.COLOR_BGRA2GRAY,
+      reference.COLOR_RGBA2GRAY,
+    ],
+    cases: cases.map(([name, code, channels, values, destinationChannels]) => {
+      const source = reference.matFromArray(
+        1,
+        values.length / channels,
+        typeByChannels[channels - 1],
+        values,
+      );
+      const destination = new reference.Mat();
+      reference.cvtColor(source, destination, code, destinationChannels);
+      const output = summarizeTypedMat(destination);
+      source.delete();
+      destination.delete();
+      return { name, output };
+    }),
+    inPlaceOutput,
+    regionOutput,
+  };
+}
+
 self.addEventListener("message", async ({ data: input }) => {
   try {
     const reference = await loadOpenCv();
@@ -7427,6 +7503,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.minMaxLocAudit = auditMaskedReducer(reference, "minMaxLoc");
     outputs.traceAudit = auditTrace(reference);
     outputs.bitwiseNotAudit = auditBitwiseNot(reference);
+    outputs.cvtColorAudit = auditCvtColor(reference);
     outputs.orbAudit = auditOrb(() => new reference.ORB(), reference, {
       constructorLength: reference.ORB.length,
       staticCreatePresent: typeof reference.ORB.create !== "undefined",

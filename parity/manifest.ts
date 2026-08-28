@@ -1636,14 +1636,15 @@ export const PARITY_MANIFEST = {
     },
     {
       implementationOrigin: "original",
-      method: "grayscale",
+      method: "cvtColor",
       module: "imgproc",
-      notes: "One RGBA-to-gray specialization; the cvtColor family has many remaining codes.",
+      notes:
+        "U8 mutable Mat conversion for pinned codes 0 through 11, covering RGB/BGR/RGBA/BGRA channel order, alpha insertion or removal, grayscale conversion, dstCn 3/4 selection, compact and strided sources, destination replacement, and exact in-place use; U16, F32, HSV/HLS, YUV, packed, Bayer, and other codes remain.",
       sources: [IMGPROC_COLOR_SOURCE],
       status: "partial",
       upstream: "cv.cvtColor",
       upstreamId: "imgproc.function.cvt-color",
-      wasmExport: "grayscaleRgba",
+      wasmExport: "matCvtColorInto",
     },
     {
       implementationOrigin: "original",
