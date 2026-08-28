@@ -2072,14 +2072,16 @@ export const PARITY_MANIFEST = {
       wasmExport: "matSobelInto",
     },
     {
-      implementationOrigin: "not-started",
-      method: "canny",
+      implementationOrigin: "original",
+      method: "Canny",
       module: "imgproc",
-      notes: "Canny edge detection is not implemented.",
+      notes:
+        "Single-channel U8 images with 3x3 Sobel gradients, L1 or L2 magnitude, directional non-maximum suppression, double thresholds, eight-neighbor hysteresis, and mutable U8 edge destinations; other apertures and derivative-input overloads remain.",
       sources: ["https://docs.opencv.org/4.13.0/dd/d1a/group__imgproc__feature.html"],
-      status: "planned",
+      status: "partial",
       upstream: "cv.Canny",
       upstreamId: "imgproc.function.canny",
+      wasmExport: "matCannyInto",
     },
     {
       implementationOrigin: "not-started",

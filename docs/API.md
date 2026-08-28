@@ -70,6 +70,10 @@ Applies U8 erosion, dilation, opening, closing, gradient, top-hat, or black-hat 
 
 Computes first or second 3x3 derivatives from a U8 source. Destinations can retain U8 or use I16, F32, or F64 so negative gradients are preserved. The package exposes the pinned `BORDER_*` constants used by all three neighborhood APIs.
 
+### `Canny(source, destination, threshold1, threshold2, apertureSize?, l2Gradient?)`
+
+Produces a single-channel U8 edge map from a single-channel U8 source. The current Rust pipeline uses 3x3 Sobel gradients, directional non-maximum suppression, ordered double thresholds, and eight-neighbor hysteresis. Set `l2Gradient` for Euclidean gradient magnitude; the default uses the faster L1 magnitude.
+
 ### `resizeNearest(image, targetWidth, targetHeight)`
 
 Resizes an RGBA image with nearest-neighbor sampling. Both target dimensions must be positive 32-bit integers.

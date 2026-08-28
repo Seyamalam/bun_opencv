@@ -233,6 +233,14 @@ declare module "#wasm" {
   export function initSync(input: { module: BufferSource | WebAssembly.Module }): void;
 
   export function grayscaleRgba(data: Uint8Array, width: number, height: number): Uint8Array;
+  export function matCannyInto(
+    source: import("./mat.js").WasmMatHandle,
+    destination: import("./mat.js").WasmMatHandle,
+    threshold1: number,
+    threshold2: number,
+    apertureSize: number,
+    l2Gradient: boolean,
+  ): void;
   export function matCvtColorInto(
     source: import("./mat.js").WasmMatHandle,
     destination: import("./mat.js").WasmMatHandle,

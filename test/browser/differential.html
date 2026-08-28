@@ -7756,6 +7756,18 @@
         const gradient = packageCv.emptyMat();
         packageCv.Sobel(ramp, gradient, 3, 1, 0, 3, 1, 0, packageCv.BORDER_CONSTANT);
 
+        const step = packageCv.matFromU8(
+          5,
+          5,
+          1,
+          new Uint8Array([
+            0, 0, 255, 255, 255, 0, 0, 255, 255, 255, 0, 0, 255, 255, 255, 0, 0, 255, 255, 255, 0,
+            0, 255, 255, 255,
+          ]),
+        );
+        const edges = packageCv.emptyMat();
+        packageCv.Canny(step, edges, 50, 100, 3, false);
+
         const output = {
           constants: [
             packageCv.BORDER_CONSTANT,
@@ -7767,6 +7779,7 @@
           eroded: summarizePackageTypedMat(eroded),
           dilated: summarizePackageTypedMat(dilated),
           gradient: summarizePackageTypedMat(gradient),
+          edges: summarizePackageTypedMat(edges),
         };
         impulse.dispose();
         blurred.dispose();
@@ -7776,6 +7789,8 @@
         dilated.dispose();
         ramp.dispose();
         gradient.dispose();
+        step.dispose();
+        edges.dispose();
         return output;
       }
 
@@ -8654,7 +8669,7 @@
 
         packageSource.dispose();
         result.value =
-          "PASS OpenCV.js 4.13.0 color, resize, threshold, neighborhood filter, coordinate conversion, float math, layout, geometry, transform matrix, helper, DFT, AKAZE, AGAST, FAST, KAZE, GFTT, MSER, ORB, and Tonemap differential";
+          "PASS OpenCV.js 4.13.0 color, resize, threshold, neighborhood filter, Canny, coordinate conversion, float math, layout, geometry, transform matrix, helper, DFT, AKAZE, AGAST, FAST, KAZE, GFTT, MSER, ORB, and Tonemap differential";
         document.body.dataset.status = "passed";
       } catch (error) {
         result.value = `FAIL ${String(error)}`;

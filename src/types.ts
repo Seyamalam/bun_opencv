@@ -93,6 +93,14 @@ export interface MinMaxLocation {
 
 /** Low-level contract implemented by the generated WebAssembly module. */
 export interface OpenCvBackend {
+  matCannyInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    threshold1: number,
+    threshold2: number,
+    apertureSize: number,
+    l2Gradient: boolean,
+  ): void;
   readonly AgastFeatureDetector: WasmAgastFeatureDetectorFactory;
   readonly AKAZE: WasmAKAZEFactory;
   readonly FastFeatureDetector: WasmFastFeatureDetectorFactory;
@@ -547,6 +555,14 @@ export interface OpenCv {
   clipLine(rectangle: Rect, start: Point, end: Point): readonly [Point, Point] | undefined;
   compareEqual(left: Mat, right: Mat): Mat;
   cartToPolar(x: Mat, y: Mat, magnitude: Mat, angle: Mat, degrees?: boolean): void;
+  Canny(
+    source: Mat,
+    destination: Mat,
+    threshold1: number,
+    threshold2: number,
+    apertureSize?: number,
+    l2Gradient?: boolean,
+  ): void;
   countNonZero(source: Mat): number;
   contourArea(contour: Mat, oriented?: boolean): number;
   createHanningWindow(destination: Mat, size: Size, type: HanningWindowType): void;

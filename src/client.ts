@@ -309,6 +309,25 @@ class WasmOpenCv implements OpenCv {
     );
   }
 
+  Canny(
+    source: Mat,
+    destination: Mat,
+    threshold1: number,
+    threshold2: number,
+    apertureSize = 3,
+    l2Gradient = false,
+  ): void {
+    requireArityRange(arguments.length, 4, 6, "Canny");
+    this.#backend.matCannyInto(
+      matHandleForBinding(source),
+      matHandleForBinding(destination),
+      toWasmF64(threshold1),
+      toWasmF64(threshold2),
+      toWasmI32(apertureSize),
+      coerceBoolean(l2Gradient),
+    );
+  }
+
   countNonZero(source: Mat): number {
     requireExactArity(arguments.length, 1, "countNonZero");
     return this.#backend.matCountNonZero(matHandleForBinding(source));

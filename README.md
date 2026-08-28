@@ -223,7 +223,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `GaussianBlur`                              | `cv.GaussianBlur`                              | Partial | Separable odd U8 kernels and borders       |
 | imgproc    | `morphologyEx`                              | `cv.morphologyEx`                              | Partial | Seven U8 morphology operations             |
 | imgproc    | `Sobel`                                     | `cv.Sobel`                                     | Partial | 3x3 U8 gradients to signed/float outputs   |
-| imgproc    | `canny`                                     | `cv.Canny`                                     | Planned | Not started                                |
+| imgproc    | `Canny`                                     | `cv.Canny`                                     | Partial | U8 3x3 gradients, suppression, hysteresis  |
 | imgproc    | `findContours`                              | `cv.findContours`                              | Planned | Not started                                |
 | imgproc    | `warpPerspective`                           | `cv.warpPerspective`                           | Planned | Not started                                |
 | photo      | `createTonemapDrago`                        | `cv.createTonemapDrago`                        | Partial | Global factory absent; no pixel process    |

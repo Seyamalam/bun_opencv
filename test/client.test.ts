@@ -1341,6 +1341,29 @@ class CopyingBackend implements OpenCvBackend {
     return new CopyingMatHandle(rows, columns, channels, copyViewBytes(data), 5);
   }
 
+  matCannyInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    threshold1: number,
+    threshold2: number,
+    apertureSize: number,
+    _l2Gradient: boolean,
+  ): void {
+    if (source.depth !== 0 || source.channels !== 1 || apertureSize !== 3) {
+      throw new OpenCvInputError("mock Canny supports single-channel U8 aperture 3 only");
+    }
+    const input = source.toUint8Array();
+    const output = new Uint8Array(input.length);
+    const high = Math.max(threshold1, threshold2);
+    for (let row = 0; row < source.rows; row += 1) {
+      for (let column = 0; column + 1 < source.columns; column += 1) {
+        const index = row * source.columns + column;
+        if (Math.abs(input[index + 1]! - input[index]!) * 4 > high) output[index] = 255;
+      }
+    }
+    replaceMockDestination(destination, source.rows, source.columns, 1, output, 0);
+  }
+
   matFromF64(data: Float64Array, rows: number, columns: number, channels: number): WasmMatHandle {
     return new CopyingMatHandle(rows, columns, channels, copyViewBytes(data), 6);
   }
@@ -3135,6 +3158,29 @@ describe("OpenCv client", () => {
     );
     source.dispose();
     destination.dispose();
+  });
+
+  test("Canny traces a one-pixel vertical edge from a U8 image", () => {
+    const source = client.matFromU8(
+      5,
+      5,
+      1,
+      new Uint8Array([
+        0, 0, 255, 255, 255, 0, 0, 255, 255, 255, 0, 0, 255, 255, 255, 0, 0, 255, 255, 255, 0, 0,
+        255, 255, 255,
+      ]),
+    );
+    const edges = client.emptyMat();
+
+    client.Canny(source, edges, 50, 100);
+
+    expect(edges.toUint8Array()).toEqual(
+      new Uint8Array([
+        0, 255, 0, 0, 0, 0, 255, 0, 0, 0, 0, 255, 0, 0, 0, 0, 255, 0, 0, 0, 0, 255, 0, 0, 0,
+      ]),
+    );
+    source.dispose();
+    edges.dispose();
   });
 
   test("returns validated output", () => {

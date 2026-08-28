@@ -7273,6 +7273,18 @@ function auditNeighborhoodFilters(reference) {
   const gradient = new reference.Mat();
   reference.Sobel(ramp, gradient, reference.CV_16S, 1, 0, 3, 1, 0, reference.BORDER_CONSTANT);
 
+  const step = reference.matFromArray(
+    5,
+    5,
+    reference.CV_8UC1,
+    [
+      0, 0, 255, 255, 255, 0, 0, 255, 255, 255, 0, 0, 255, 255, 255, 0, 0, 255, 255, 255, 0, 0, 255,
+      255, 255,
+    ],
+  );
+  const edges = new reference.Mat();
+  reference.Canny(step, edges, 50, 100, 3, false);
+
   const output = {
     constants: [
       reference.BORDER_CONSTANT,
@@ -7284,6 +7296,7 @@ function auditNeighborhoodFilters(reference) {
     eroded: summarizeTypedMat(eroded),
     dilated: summarizeTypedMat(dilated),
     gradient: summarizeTypedMat(gradient),
+    edges: summarizeTypedMat(edges),
   };
   impulse.delete();
   blurred.delete();
@@ -7293,6 +7306,8 @@ function auditNeighborhoodFilters(reference) {
   dilated.delete();
   ramp.delete();
   gradient.delete();
+  step.delete();
+  edges.delete();
   return output;
 }
 
