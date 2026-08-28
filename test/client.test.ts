@@ -30,6 +30,8 @@ import {
   ORB_HARRIS_SCORE,
   ORB_ScoreType,
   ORBScoreType,
+  THRESH_BINARY,
+  THRESH_OTSU,
 } from "../src/index.js";
 import type {
   Mat,
@@ -1498,6 +1500,47 @@ class CopyingBackend implements OpenCvBackend {
     );
   }
 
+  matThresholdInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    threshold: number,
+    maximum: number,
+    thresholdType: number,
+  ): number {
+    if (source.depth !== 0) {
+      throw new OpenCvInputError("mock threshold supports U8 matrices only");
+    }
+    const mode = thresholdType & 7;
+    const input = source.toUint8Array();
+    const usedThreshold = (thresholdType & 8) === 0 ? threshold : mockOtsuThreshold(input);
+    const maximumU8 = roundNearestEven(Math.max(0, Math.min(255, maximum)));
+    const truncatedU8 = Math.max(0, Math.min(255, Math.floor(usedThreshold)));
+    const output = input.map((value) => {
+      switch (mode) {
+        case 0:
+          return value > usedThreshold ? maximumU8 : 0;
+        case 1:
+          return value > usedThreshold ? 0 : maximumU8;
+        case 2:
+          return Math.min(value, truncatedU8);
+        case 3:
+          return value > usedThreshold ? value : 0;
+        case 4:
+          return value > usedThreshold ? 0 : value;
+        default:
+          throw new OpenCvInputError(`unsupported mock threshold mode ${mode}`);
+      }
+    });
+    if (!(destination instanceof CopyingMatHandle)) {
+      throw new OpenCvInputError("mock destination must use CopyingMatHandle");
+    }
+    destination.replaceFrom(
+      new CopyingMatHandle(source.rows, source.columns, source.channels, output),
+      output,
+    );
+    return usedThreshold;
+  }
+
   matEmpty(): WasmMatHandle {
     return new CopyingMatHandle(0, 0, 1, new Uint8Array(), 0, false);
   }
@@ -2640,6 +2683,32 @@ function binaryU8(
   return new CopyingMatHandle(left.rows, left.columns, left.channels, output);
 }
 
+function mockOtsuThreshold(input: Uint8Array): number {
+  const histogram = new Uint32Array(256);
+  for (const value of input) histogram[value] = (histogram[value] ?? 0) + 1;
+  const totalSum = histogram.reduce((sum, count, value) => sum + value * count, 0);
+  let backgroundCount = 0;
+  let backgroundSum = 0;
+  let bestVariance = -1;
+  let bestThreshold = 0;
+  for (let threshold = 0; threshold < histogram.length; threshold += 1) {
+    const count = histogram[threshold] ?? 0;
+    backgroundCount += count;
+    if (backgroundCount === 0) continue;
+    const foregroundCount = input.length - backgroundCount;
+    if (foregroundCount === 0) break;
+    backgroundSum += threshold * count;
+    const difference =
+      backgroundSum / backgroundCount - (totalSum - backgroundSum) / foregroundCount;
+    const variance = backgroundCount * foregroundCount * difference * difference;
+    if (variance > bestVariance) {
+      bestVariance = variance;
+      bestThreshold = threshold;
+    }
+  }
+  return bestThreshold;
+}
+
 function f64Handle(rows: number, columns: number, values: readonly number[]): WasmMatHandle {
   return new CopyingMatHandle(rows, columns, 1, copyViewBytes(new Float64Array(values)), 6);
 }
@@ -2815,6 +2884,32 @@ describe("OpenCv client", () => {
     client.resize(source, destination, { width: 2, height: 2 }, 0, 0, INTER_AREA);
 
     expect(destination.toUint8Array()).toEqual(new Uint8Array([25, 45, 105, 125]));
+
+    source.dispose();
+    destination.dispose();
+  });
+
+  test("threshold writes the strict binary Mat result and returns the used threshold", () => {
+    const source = client.matFromU8(1, 5, 1, new Uint8Array([0, 99, 100, 101, 255]));
+    const destination = client.emptyMat();
+
+    const used = client.threshold(source, destination, 100, 200, THRESH_BINARY);
+
+    expect(used).toBe(100);
+    expect(destination.toUint8Array()).toEqual(new Uint8Array([0, 0, 0, 200, 200]));
+
+    source.dispose();
+    destination.dispose();
+  });
+
+  test("threshold computes an Otsu split for a single-channel U8 Mat", () => {
+    const source = client.matFromU8(1, 6, 1, new Uint8Array([10, 10, 10, 200, 200, 200]));
+    const destination = client.emptyMat();
+
+    const used = client.threshold(source, destination, 0, 255, THRESH_BINARY | THRESH_OTSU);
+
+    expect(used).toBe(10);
+    expect(destination.toUint8Array()).toEqual(new Uint8Array([0, 0, 0, 255, 255, 255]));
 
     source.dispose();
     destination.dispose();

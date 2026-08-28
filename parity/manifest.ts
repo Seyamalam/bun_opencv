@@ -1754,12 +1754,13 @@ export const PARITY_MANIFEST = {
       implementationOrigin: "original",
       method: "threshold",
       module: "imgproc",
-      notes: "One luma-derived U8 binary mode; other threshold types and matrix forms remain.",
+      notes:
+        "Mutable U8 Mat destinations for all five fixed threshold modes and single-channel Otsu selection, with returned threshold values and pinned-browser output fixtures; Triangle selection and wider documented depths remain.",
       sources: [IMGPROC_MISC_SOURCE],
       status: "partial",
       upstream: "cv.threshold",
       upstreamId: "imgproc.function.threshold",
-      wasmExport: "thresholdRgba",
+      wasmExport: "matThresholdInto",
     },
     {
       implementationOrigin: "original",

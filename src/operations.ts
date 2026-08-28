@@ -165,7 +165,7 @@ export const OPENCV_OPERATIONS = [
   { method: "subtract", wasmExport: "matSubtractU8" },
   { method: "split", wasmExport: "matSplit" },
   { method: "sqrt", wasmExport: "matSqrtInto" },
-  { method: "threshold", wasmExport: "thresholdRgba" },
+  { method: "threshold", wasmExport: "matThresholdInto" },
   { method: "transpose", wasmExport: "matTranspose" },
   { method: "trace", wasmExport: "matTrace" },
   { method: "transform", wasmExport: "matTransform" },

@@ -248,6 +248,13 @@ declare module "#wasm" {
     scaleY: number,
     interpolation: number,
   ): void;
+  export function matThresholdInto(
+    source: import("./mat.js").WasmMatHandle,
+    destination: import("./mat.js").WasmMatHandle,
+    threshold: number,
+    maximum: number,
+    thresholdType: number,
+  ): number;
   export function invertRgba(data: Uint8Array, width: number, height: number): Uint8Array;
   export function matEmpty(): WasmMatHandle;
   export function matFromU8(

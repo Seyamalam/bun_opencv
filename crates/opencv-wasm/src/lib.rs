@@ -50,6 +50,8 @@ mod imgproc_helpers;
 mod imgproc_helpers_wasm;
 mod imgproc_resize;
 mod imgproc_resize_wasm;
+mod imgproc_threshold;
+mod imgproc_threshold_wasm;
 mod imgproc_transform_matrices;
 mod imgproc_transform_matrices_wasm;
 mod mat;

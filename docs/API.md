@@ -52,6 +52,12 @@ Replaces each RGB byte `x` with `255 - x`. Alpha is unchanged.
 
 Calculates luma with the grayscale formula. Pixels whose luma is greater than or equal to `threshold` become white. The rest become black. The threshold must be an integer from 0 through 255. Alpha is unchanged.
 
+### `threshold(source, destination, threshold, maximum, type)`
+
+Applies a threshold to a U8 `Mat`, replaces the mutable destination, and returns the threshold used. The five fixed modes are `THRESH_BINARY`, `THRESH_BINARY_INV`, `THRESH_TRUNC`, `THRESH_TOZERO`, and `THRESH_TOZERO_INV`; comparisons use the OpenCV-compatible strict `source > threshold` boundary. Combining a fixed mode with `THRESH_OTSU` selects the threshold from a single-channel U8 histogram.
+
+The package exports the pinned `THRESH_*` constants. `THRESH_TRIANGLE` and wider documented matrix depths are reserved but reject until their kernels and differential fixtures land.
+
 ### `resizeNearest(image, targetWidth, targetHeight)`
 
 Resizes an RGBA image with nearest-neighbor sampling. Both target dimensions must be positive 32-bit integers.

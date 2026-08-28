@@ -7217,6 +7217,39 @@ function auditResize(reference) {
   };
 }
 
+function auditThreshold(reference) {
+  const cases = [
+    ["binary", 100, 200, reference.THRESH_BINARY],
+    ["binary-inverse", 100, 200, reference.THRESH_BINARY_INV],
+    ["truncate", 100, 200, reference.THRESH_TRUNC],
+    ["to-zero", 100, 200, reference.THRESH_TOZERO],
+    ["to-zero-inverse", 100, 200, reference.THRESH_TOZERO_INV],
+    ["otsu", 0, 255, reference.THRESH_BINARY | reference.THRESH_OTSU],
+  ];
+  return {
+    constants: [
+      reference.THRESH_BINARY,
+      reference.THRESH_BINARY_INV,
+      reference.THRESH_TRUNC,
+      reference.THRESH_TOZERO,
+      reference.THRESH_TOZERO_INV,
+      reference.THRESH_MASK,
+      reference.THRESH_OTSU,
+      reference.THRESH_TRIANGLE,
+    ],
+    cases: cases.map(([name, threshold, maximum, type]) => {
+      const values = name === "otsu" ? [10, 10, 10, 200, 200, 200] : [0, 99, 100, 101, 255];
+      const source = reference.matFromArray(1, values.length, reference.CV_8UC1, values);
+      const destination = new reference.Mat();
+      const usedThreshold = reference.threshold(source, destination, threshold, maximum, type);
+      const output = summarizeTypedMat(destination);
+      source.delete();
+      destination.delete();
+      return { name, usedThreshold, output };
+    }),
+  };
+}
+
 self.addEventListener("message", async ({ data: input }) => {
   try {
     const reference = await loadOpenCv();
@@ -7545,6 +7578,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.bitwiseNotAudit = auditBitwiseNot(reference);
     outputs.cvtColorAudit = auditCvtColor(reference);
     outputs.resizeAudit = auditResize(reference);
+    outputs.thresholdAudit = auditThreshold(reference);
     outputs.orbAudit = auditOrb(() => new reference.ORB(), reference, {
       constructorLength: reference.ORB.length,
       staticCreatePresent: typeof reference.ORB.create !== "undefined",

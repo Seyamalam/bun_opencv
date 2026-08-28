@@ -67,6 +67,17 @@ import {
   INTER_NEAREST_EXACT,
 } from "./interpolation.js";
 import type { Interpolation } from "./interpolation.js";
+import {
+  THRESH_BINARY,
+  THRESH_BINARY_INV,
+  THRESH_DRYRUN,
+  THRESH_MASK,
+  THRESH_OTSU,
+  THRESH_TOZERO,
+  THRESH_TOZERO_INV,
+  THRESH_TRIANGLE,
+  THRESH_TRUNC,
+} from "./threshold.js";
 import type {
   BorderType,
   DecompositionMethod,
@@ -115,6 +126,15 @@ class WasmOpenCv implements OpenCv {
   readonly INTER_LANCZOS4 = INTER_LANCZOS4;
   readonly INTER_LINEAR_EXACT = INTER_LINEAR_EXACT;
   readonly INTER_NEAREST_EXACT = INTER_NEAREST_EXACT;
+  readonly THRESH_BINARY = THRESH_BINARY;
+  readonly THRESH_BINARY_INV = THRESH_BINARY_INV;
+  readonly THRESH_TRUNC = THRESH_TRUNC;
+  readonly THRESH_TOZERO = THRESH_TOZERO;
+  readonly THRESH_TOZERO_INV = THRESH_TOZERO_INV;
+  readonly THRESH_MASK = THRESH_MASK;
+  readonly THRESH_OTSU = THRESH_OTSU;
+  readonly THRESH_TRIANGLE = THRESH_TRIANGLE;
+  readonly THRESH_DRYRUN = THRESH_DRYRUN;
   readonly AKAZE_DescriptorType = AKAZE_DescriptorType;
   readonly AgastFeatureDetector_DetectorType = AgastFeatureDetector_DetectorType;
   readonly FastFeatureDetector_DetectorType = FastFeatureDetector_DetectorType;
@@ -1136,11 +1156,35 @@ class WasmOpenCv implements OpenCv {
     );
   }
 
-  threshold(image: RgbaImage, threshold: number): RgbaImage {
-    validateRgbaImage(image);
-    validateThreshold(threshold);
-    const data = this.#backend.thresholdRgba(image.data, image.width, image.height, threshold);
-    return createRgbaImage(image.width, image.height, data);
+  threshold(image: RgbaImage, threshold: number): RgbaImage;
+  threshold(
+    source: Mat,
+    destination: Mat,
+    threshold: number,
+    maximum: number,
+    type: number,
+  ): number;
+  threshold(
+    ...arguments_:
+      | [image: RgbaImage, threshold: number]
+      | [source: Mat, destination: Mat, threshold: number, maximum: number, type: number]
+  ): RgbaImage | number {
+    requireOverloadArity(arguments_.length, 2, 5, "threshold");
+    if (arguments_.length === 2) {
+      const [image, threshold] = arguments_;
+      validateRgbaImage(image);
+      validateThreshold(threshold);
+      const data = this.#backend.thresholdRgba(image.data, image.width, image.height, threshold);
+      return createRgbaImage(image.width, image.height, data);
+    }
+    const [source, destination, threshold, maximum, type] = arguments_;
+    return this.#backend.matThresholdInto(
+      matHandleForBinding(source),
+      matHandleForBinding(destination),
+      toWasmF64(threshold),
+      toWasmF64(maximum),
+      toWasmI32(type),
+    );
   }
 
   subtract(left: Mat, right: Mat): Mat {

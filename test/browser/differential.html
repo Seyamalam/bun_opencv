@@ -7689,6 +7689,45 @@
         };
       }
 
+      function auditPackageThreshold(packageCv) {
+        const cases = [
+          ["binary", 100, 200, packageCv.THRESH_BINARY],
+          ["binary-inverse", 100, 200, packageCv.THRESH_BINARY_INV],
+          ["truncate", 100, 200, packageCv.THRESH_TRUNC],
+          ["to-zero", 100, 200, packageCv.THRESH_TOZERO],
+          ["to-zero-inverse", 100, 200, packageCv.THRESH_TOZERO_INV],
+          ["otsu", 0, 255, packageCv.THRESH_BINARY | packageCv.THRESH_OTSU],
+        ];
+        return {
+          constants: [
+            packageCv.THRESH_BINARY,
+            packageCv.THRESH_BINARY_INV,
+            packageCv.THRESH_TRUNC,
+            packageCv.THRESH_TOZERO,
+            packageCv.THRESH_TOZERO_INV,
+            packageCv.THRESH_MASK,
+            packageCv.THRESH_OTSU,
+            packageCv.THRESH_TRIANGLE,
+          ],
+          cases: cases.map(([name, threshold, maximum, type]) => {
+            const values = name === "otsu" ? [10, 10, 10, 200, 200, 200] : [0, 99, 100, 101, 255];
+            const source = packageCv.matFromU8(1, values.length, 1, new Uint8Array(values));
+            const destination = packageCv.emptyMat();
+            const usedThreshold = packageCv.threshold(
+              source,
+              destination,
+              threshold,
+              maximum,
+              type,
+            );
+            const output = summarizePackageTypedMat(destination);
+            source.dispose();
+            destination.dispose();
+            return { name, usedThreshold, output };
+          }),
+        };
+      }
+
       function runReference(input, referenceRequest) {
         return new Promise((resolve, reject) => {
           const worker = new Worker("/test/browser/opencv-reference-worker.js");
@@ -8076,6 +8115,14 @@
         );
         if (resizeDifference !== undefined) {
           throw new Error(resizeDifference);
+        }
+        const thresholdDifference = findDifference(
+          auditPackageThreshold(packageCv),
+          referenceOutputs.thresholdAudit,
+          "threshold audit",
+        );
+        if (thresholdDifference !== undefined) {
+          throw new Error(thresholdDifference);
         }
         const packageOrbAudit = auditOrb(() => packageCv.createORB(), packageCv, {
           constructorLength: null,
@@ -8548,7 +8595,7 @@
 
         packageSource.dispose();
         result.value =
-          "PASS OpenCV.js 4.13.0 color, resize, coordinate conversion, float math, layout, geometry, transform matrix, helper, DFT, AKAZE, AGAST, FAST, KAZE, GFTT, MSER, ORB, and Tonemap differential";
+          "PASS OpenCV.js 4.13.0 color, resize, threshold, coordinate conversion, float math, layout, geometry, transform matrix, helper, DFT, AKAZE, AGAST, FAST, KAZE, GFTT, MSER, ORB, and Tonemap differential";
         document.body.dataset.status = "passed";
       } catch (error) {
         result.value = `FAIL ${String(error)}`;

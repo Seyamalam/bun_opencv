@@ -164,6 +164,13 @@ export interface OpenCvBackend {
     scaleY: number,
     interpolation: number,
   ): void;
+  matThresholdInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    threshold: number,
+    maximum: number,
+    thresholdType: number,
+  ): number;
   matFlip(source: WasmMatHandle, flipCode: number): WasmMatHandle;
   matFlipInto(source: WasmMatHandle, destination: WasmMatHandle, flipCode: number): void;
   matRotate(source: WasmMatHandle, rotateCode: number): WasmMatHandle;
@@ -450,6 +457,15 @@ export interface OpenCv {
   readonly INTER_LANCZOS4: 4;
   readonly INTER_LINEAR_EXACT: 5;
   readonly INTER_NEAREST_EXACT: 6;
+  readonly THRESH_BINARY: 0;
+  readonly THRESH_BINARY_INV: 1;
+  readonly THRESH_TRUNC: 2;
+  readonly THRESH_TOZERO: 3;
+  readonly THRESH_TOZERO_INV: 4;
+  readonly THRESH_MASK: 7;
+  readonly THRESH_OTSU: 8;
+  readonly THRESH_TRIANGLE: 16;
+  readonly THRESH_DRYRUN: 128;
   readonly AKAZE_DescriptorType: AKAZE_DescriptorTypeNamespace;
   readonly AgastFeatureDetector_DetectorType: AgastFeatureDetector_DetectorTypeNamespace;
   readonly FastFeatureDetector_DetectorType: FastFeatureDetector_DetectorTypeNamespace;
@@ -621,6 +637,13 @@ export interface OpenCv {
   ): boolean;
   reduce(source: Mat, destination: Mat, axis: 0 | 1, kind: ReduceKind): void;
   threshold(image: RgbaImage, threshold: number): RgbaImage;
+  threshold(
+    source: Mat,
+    destination: Mat,
+    threshold: number,
+    maximum: number,
+    type: number,
+  ): number;
   subtract(left: Mat, right: Mat): Mat;
   split(source: Mat): Mat[];
   sqrt(source: Mat, destination: Mat): void;

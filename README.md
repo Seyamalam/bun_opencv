@@ -219,7 +219,7 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `isContourConvex`                           | `cv.isContourConvex`                           | Full    | Exact strict-convexity contract            |
 | imgproc    | `pointPolygonTest`                          | `cv.pointPolygonTest`                          | Full    | Exact classification and signed distance   |
 | imgproc    | `resize`                                    | `cv.resize`                                    | Partial | Nearest all-depth; U8 linear/area          |
-| imgproc    | `threshold`                                 | `cv.threshold`                                 | Partial | Luma-derived U8 binary specialization      |
+| imgproc    | `threshold`                                 | `cv.threshold`                                 | Partial | Five U8 modes plus Otsu selection          |
 | imgproc    | `gaussianBlur`                              | `cv.GaussianBlur`                              | Planned | Not started                                |
 | imgproc    | `canny`                                     | `cv.Canny`                                     | Planned | Not started                                |
 | imgproc    | `findContours`                              | `cv.findContours`                              | Planned | Not started                                |

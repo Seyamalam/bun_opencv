@@ -88,6 +88,18 @@ export {
   INTER_NEAREST_EXACT,
 } from "./interpolation.js";
 export type { Interpolation } from "./interpolation.js";
+export {
+  THRESH_BINARY,
+  THRESH_BINARY_INV,
+  THRESH_DRYRUN,
+  THRESH_MASK,
+  THRESH_OTSU,
+  THRESH_TOZERO,
+  THRESH_TOZERO_INV,
+  THRESH_TRIANGLE,
+  THRESH_TRUNC,
+} from "./threshold.js";
+export type { ThresholdMode } from "./threshold.js";
 export type { EmbindEnumInput, EmbindEnumValue } from "./embind-enum.js";
 export {
   AGAST_FEATURE_DETECTOR_DEFAULTS,
