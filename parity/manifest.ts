@@ -2132,6 +2132,6 @@ export const PARITY_MANIFEST = {
     },
   ],
   inventoryPolicy: "Independently authored from public documentation and runtime behavior",
-  packageVersion: "0.1.0",
+  packageVersion: "0.2.0",
   schemaVersion: 2,
 } as const satisfies ParityManifest;

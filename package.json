@@ -1,6 +1,6 @@
 {
   "name": "wasmosaic",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Browser image processing primitives written in Rust and exposed through WebAssembly and TypeScript.",
   "author": "Touhidul Alam Seyam (https://github.com/Seyamalam)",
   "repository": {

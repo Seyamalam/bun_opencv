@@ -4,6 +4,8 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-28
+
 ### Changed
 
 - Renamed the public project and npm package to WASMosaic (`wasmosaic`) so OpenCV remains only the stated compatibility target, not part of the product identity.
@@ -89,5 +91,6 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - Generated JSON and human-readable OpenCV parity ledgers.
 - CI, npm provenance release automation, documentation checks, and version consistency checks.
 
-[Unreleased]: https://github.com/Seyamalam/wasmosaic/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Seyamalam/wasmosaic/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Seyamalam/wasmosaic/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Seyamalam/wasmosaic/releases/tag/v0.1.0
