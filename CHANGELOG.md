@@ -64,6 +64,8 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - Original Rust neighborhood kernels for U8 `GaussianBlur`, seven `morphologyEx` operations, and 3x3 `Sobel` derivatives with mutable destinations, shared border handling, strict TypeScript constants, and pinned-browser fixtures.
 - Original Rust `Canny` edge detection for U8 images with 3x3 gradients, L1/L2 magnitude, non-maximum suppression, double thresholds, hysteresis, and pinned-browser output evidence.
 - Rust-owned `MatVector` support and `findContours` for U8 external/list component boundaries, simple or full chains, integer offsets, mutable I32 hierarchy output, and pinned-browser point-order evidence.
+- Original Rust `warpAffine` sampling for U8 matrices with F32/F64 transforms, nearest and linear interpolation, constant and replicate borders, inverse-map support, and pinned-browser differential evidence.
+- Original Rust single-channel U8 `equalizeHist` with cumulative-histogram lookup tables, constant-image preservation, mutable destinations, and pinned-browser differential evidence.
 - Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
 
 ### Planned

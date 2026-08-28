@@ -80,6 +80,14 @@ Produces a single-channel U8 edge map from a single-channel U8 source. The curre
 
 `findContours` currently extracts external connected-component boundaries from single-channel U8 masks. It supports `RETR_EXTERNAL` and `RETR_LIST`, `CHAIN_APPROX_NONE` and `CHAIN_APPROX_SIMPLE`, integer offsets, mutable vector replacement, and an I32 four-channel sibling hierarchy. Hole relationships, tree retrieval, flood-fill input, and Teh-Chin approximation remain reserved.
 
+### `warpAffine(source, destination, transform, size, flags?, borderType?, borderValue?)`
+
+Warps an interleaved U8 matrix through a 2×3 F32 or F64 affine transform into a mutable destination. The current Rust sampler supports `INTER_NEAREST` and `INTER_LINEAR`, `BORDER_CONSTANT` and `BORDER_REPLICATE`, per-channel scalar border values, and `WARP_INVERSE_MAP`. Without the inverse flag, the forward transform is inverted before sampling. Wider source depths, additional border modes, and exact interpolation variants remain reserved.
+
+### `equalizeHist(source, destination)`
+
+Equalizes a single-channel U8 matrix with a Rust-owned 256-bin histogram, cumulative distribution, and lookup table. Constant images are preserved and the mutable destination is replaced when its layout is incompatible. CLAHE remains a separate, unimplemented family.
+
 ### `resizeNearest(image, targetWidth, targetHeight)`
 
 Resizes an RGBA image with nearest-neighbor sampling. Both target dimensions must be positive 32-bit integers.

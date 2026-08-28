@@ -7344,6 +7344,36 @@ function auditFindContours(reference) {
   return output;
 }
 
+function auditWarpAndEqualize(reference) {
+  const source = reference.matFromArray(2, 3, reference.CV_8UC1, [1, 2, 3, 4, 5, 6]);
+  const transform = reference.matFromArray(2, 3, reference.CV_64FC1, [1, 0, 1, 0, 1, 0]);
+  const warped = new reference.Mat();
+  reference.warpAffine(
+    source,
+    warped,
+    transform,
+    new reference.Size(3, 2),
+    reference.INTER_NEAREST,
+    reference.BORDER_CONSTANT,
+    new reference.Scalar(9, 0, 0, 0),
+  );
+
+  const histogramSource = reference.matFromArray(1, 8, reference.CV_8UC1, [0, 0, 1, 1, 2, 3, 3, 3]);
+  const equalized = new reference.Mat();
+  reference.equalizeHist(histogramSource, equalized);
+  const output = {
+    constants: [reference.WARP_INVERSE_MAP, reference.WARP_FILL_OUTLIERS],
+    warped: summarizeTypedMat(warped),
+    equalized: summarizeTypedMat(equalized),
+  };
+  source.delete();
+  transform.delete();
+  warped.delete();
+  histogramSource.delete();
+  equalized.delete();
+  return output;
+}
+
 self.addEventListener("message", async ({ data: input }) => {
   try {
     const reference = await loadOpenCv();
@@ -7675,6 +7705,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.thresholdAudit = auditThreshold(reference);
     outputs.neighborhoodFilterAudit = auditNeighborhoodFilters(reference);
     outputs.findContoursAudit = auditFindContours(reference);
+    outputs.warpAndEqualizeAudit = auditWarpAndEqualize(reference);
     outputs.orbAudit = auditOrb(() => new reference.ORB(), reference, {
       constructorLength: reference.ORB.length,
       staticCreatePresent: typeof reference.ORB.create !== "undefined",

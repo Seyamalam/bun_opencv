@@ -94,6 +94,17 @@ export interface MinMaxLocation {
 
 /** Low-level contract implemented by the generated WebAssembly module. */
 export interface OpenCvBackend {
+  matEqualizeHistInto(source: WasmMatHandle, destination: WasmMatHandle): void;
+  matWarpAffineInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    transform: WasmMatHandle,
+    width: number,
+    height: number,
+    flags: number,
+    borderType: number,
+    borderValue: Float64Array,
+  ): void;
   matVectorNew(): WasmMatVectorHandle;
   matFindContoursInto(
     source: WasmMatHandle,
@@ -490,6 +501,9 @@ export interface OpenCv {
   readonly CHAIN_APPROX_SIMPLE: 2;
   readonly CHAIN_APPROX_TC89_L1: 3;
   readonly CHAIN_APPROX_TC89_KCOS: 4;
+  readonly WARP_FILL_OUTLIERS: 8;
+  readonly WARP_INVERSE_MAP: 16;
+  readonly WARP_RELATIVE_MAP: 32;
   readonly BORDER_CONSTANT: 0;
   readonly BORDER_REPLICATE: 1;
   readonly BORDER_REFLECT: 2;
@@ -635,6 +649,7 @@ export interface OpenCv {
   exp(source: Mat, destination: Mat): void;
   expAlloc(source: Mat): Mat;
   emptyMat(): Mat;
+  equalizeHist(source: Mat, destination: Mat): void;
   flip(source: Mat, destination: Mat, flipCode: number): void;
   flipAlloc(source: Mat, flipCode: number): Mat;
   findContours(
@@ -779,6 +794,15 @@ export interface OpenCv {
   vconcat(
     sources: readonly [Mat, Mat] | readonly [Mat, Mat, Mat] | readonly [Mat, Mat, Mat, Mat],
   ): Mat;
+  warpAffine(
+    source: Mat,
+    destination: Mat,
+    transform: Mat,
+    size: Size,
+    flags?: number,
+    borderType?: BorderType,
+    borderValue?: Scalar,
+  ): void;
   zerosF32(rows: number, columns: number, channels: number): Mat;
   zerosF64(rows: number, columns: number, channels: number): Mat;
   zerosI16(rows: number, columns: number, channels: number): Mat;

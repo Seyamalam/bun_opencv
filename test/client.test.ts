@@ -1510,6 +1510,66 @@ class CopyingBackend implements OpenCvBackend {
     );
   }
 
+  matEqualizeHistInto(source: WasmMatHandle, destination: WasmMatHandle): void {
+    const input = source.toUint8Array();
+    const histogram = new Uint32Array(256);
+    for (const value of input) histogram[value] = (histogram[value] ?? 0) + 1;
+    const first = histogram.findIndex((count) => count !== 0);
+    const firstCount = histogram[first] ?? 0;
+    let cumulative = 0;
+    const lookup = new Uint8Array(256);
+    for (let value = 0; value < histogram.length; value += 1) {
+      cumulative += histogram[value] ?? 0;
+      if (value > first) {
+        lookup[value] = roundNearestEven(
+          ((cumulative - firstCount) * 255) / (input.length - firstCount),
+        );
+      }
+    }
+    replaceMockDestination(
+      destination,
+      source.rows,
+      source.columns,
+      1,
+      input.map((value) => lookup[value]!),
+      0,
+    );
+  }
+
+  matWarpAffineInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    transform: WasmMatHandle,
+    width: number,
+    height: number,
+    flags: number,
+    borderType: number,
+    borderValue: Float64Array,
+  ): void {
+    if (flags !== 0 || borderType !== 0 || transform.depth !== 6) {
+      throw new OpenCvInputError("mock warpAffine supports tested nearest constant F64 transforms");
+    }
+    const matrix = transform.toFloat64Array();
+    const translateX = matrix[2] ?? 0;
+    const translateY = matrix[5] ?? 0;
+    const input = source.toUint8Array();
+    const output = new Uint8Array(width * height * source.channels);
+    for (let row = 0; row < height; row += 1) {
+      for (let column = 0; column < width; column += 1) {
+        const sourceX = column - translateX;
+        const sourceY = row - translateY;
+        for (let channel = 0; channel < source.channels; channel += 1) {
+          const outputIndex = (row * width + column) * source.channels + channel;
+          output[outputIndex] =
+            sourceX >= 0 && sourceX < source.columns && sourceY >= 0 && sourceY < source.rows
+              ? input[(sourceY * source.columns + sourceX) * source.channels + channel]!
+              : roundNearestEven(borderValue[channel] ?? 0);
+        }
+      }
+    }
+    replaceMockDestination(destination, height, width, source.channels, output, 0);
+  }
+
   matResizeInto(
     source: WasmMatHandle,
     destination: WasmMatHandle,
@@ -3276,6 +3336,38 @@ describe("OpenCv client", () => {
     contours.dispose();
     source.dispose();
     hierarchy.dispose();
+  });
+
+  test("warpAffine inverse-maps a U8 translation with a constant border", () => {
+    const source = client.matFromU8(2, 3, 1, new Uint8Array([1, 2, 3, 4, 5, 6]));
+    const transform = client.matFromF64(2, 3, 1, new Float64Array([1, 0, 1, 0, 1, 0]));
+    const destination = client.emptyMat();
+
+    client.warpAffine(
+      source,
+      destination,
+      transform,
+      { width: 3, height: 2 },
+      INTER_NEAREST,
+      BORDER_CONSTANT,
+      [9, 0, 0, 0],
+    );
+
+    expect(destination.toUint8Array()).toEqual(new Uint8Array([9, 1, 2, 9, 4, 5]));
+    source.dispose();
+    transform.dispose();
+    destination.dispose();
+  });
+
+  test("equalizeHist applies a cumulative U8 histogram transform", () => {
+    const source = client.matFromU8(1, 8, 1, new Uint8Array([0, 0, 1, 1, 2, 3, 3, 3]));
+    const destination = client.emptyMat();
+
+    client.equalizeHist(source, destination);
+
+    expect(destination.toUint8Array()).toEqual(new Uint8Array([0, 0, 85, 85, 128, 255, 255, 255]));
+    source.dispose();
+    destination.dispose();
   });
 
   test("returns validated output", () => {

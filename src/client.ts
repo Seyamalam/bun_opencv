@@ -86,6 +86,9 @@ import {
   MORPH_HITMISS,
   MORPH_OPEN,
   MORPH_TOPHAT,
+  WARP_FILL_OUTLIERS,
+  WARP_INVERSE_MAP,
+  WARP_RELATIVE_MAP,
 } from "./filtering.js";
 import {
   INTER_AREA,
@@ -154,6 +157,9 @@ class WasmOpenCv implements OpenCv {
   readonly MORPH_TOPHAT = MORPH_TOPHAT;
   readonly MORPH_BLACKHAT = MORPH_BLACKHAT;
   readonly MORPH_HITMISS = MORPH_HITMISS;
+  readonly WARP_FILL_OUTLIERS = WARP_FILL_OUTLIERS;
+  readonly WARP_INVERSE_MAP = WARP_INVERSE_MAP;
+  readonly WARP_RELATIVE_MAP = WARP_RELATIVE_MAP;
   readonly COLOR_BGR2BGRA = COLOR_BGR2BGRA;
   readonly COLOR_RGB2RGBA = COLOR_RGB2RGBA;
   readonly COLOR_BGRA2BGR = COLOR_BGRA2BGR;
@@ -669,6 +675,14 @@ class WasmOpenCv implements OpenCv {
 
   emptyMat(): Mat {
     return new Mat(this.#backend.matEmpty());
+  }
+
+  equalizeHist(source: Mat, destination: Mat): void {
+    requireExactArity(arguments.length, 2, "equalizeHist");
+    this.#backend.matEqualizeHistInto(
+      matHandleForBinding(source),
+      matHandleForBinding(destination),
+    );
   }
 
   flip(source: Mat, destination: Mat, flipCode: number): void {
@@ -1413,6 +1427,29 @@ class WasmOpenCv implements OpenCv {
     sources: readonly [Mat, Mat] | readonly [Mat, Mat, Mat] | readonly [Mat, Mat, Mat, Mat],
   ): Mat {
     return this.#concat(sources, "vertical");
+  }
+
+  warpAffine(
+    source: Mat,
+    destination: Mat,
+    transform: Mat,
+    size: Size,
+    flags: number = INTER_LINEAR,
+    borderType: BorderType = BORDER_CONSTANT,
+    borderValue: Scalar = [0, 0, 0, 0],
+  ): void {
+    requireArityRange(arguments.length, 4, 7, "warpAffine");
+    const convertedSize = size2iForBinding(size);
+    this.#backend.matWarpAffineInto(
+      matHandleForBinding(source),
+      matHandleForBinding(destination),
+      matHandleForBinding(transform),
+      convertedSize.width,
+      convertedSize.height,
+      toWasmI32(flags),
+      toWasmI32(borderType),
+      scalarForBinding(borderValue),
+    );
   }
 
   #concat(

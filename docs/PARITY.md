@@ -89,7 +89,7 @@ One hundred twenty-four families meet the full-family definition. Current full p
 
 ## Working partial families
 
-Forty-six families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 170 families in total.
+Fifty-three families have useful original Rust/WASM slices but do not meet the full-family definition. The project supports 177 families in total.
 
 | Package methods                                                       | OpenCV.js families                                        | Current limit                                             |
 | --------------------------------------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------- |
@@ -120,6 +120,8 @@ Forty-six families have useful original Rust/WASM slices but do not meet the ful
 | `GaussianBlur`, `morphologyEx`, `Sobel`                               | Matching `cv` neighborhood-filter families                | U8 separable blur, morphology, and 3x3 signed gradients   |
 | `Canny`                                                               | `cv.Canny`                                                | U8 3x3 gradients, suppression, and hysteresis             |
 | `findContours`                                                        | `cv.findContours`                                         | External/list U8 contours, simple/none chains, MatVector  |
+| `warpAffine`                                                          | `cv.warpAffine`                                           | U8 nearest/linear warps and constant/replicate borders    |
+| `equalizeHist`                                                        | `cv.equalizeHist`                                         | Exact single-channel U8 histogram equalization            |
 | `createTonemapDrago`, `createTonemapMantiuk`, `createTonemapReinhard` | Matching global `cv.createTonemap*` functions             | Global factories absent; pixel processing remains         |
 
 The fixture passes the complete pinned contracts for `arcLength`, `contourArea`, and `boundingRect`. It covers `arcLength`'s exact two-argument arity, `contourArea`'s runtime length of zero and one- or two-argument overloads, and `boundingRect`'s exact one-argument arity. It also checks JavaScript truthiness, I32 and F32 contours in `Nx1C2`, `1xNC2`, and `Nx2C1` layouts, deleted inputs, canonical empty bounds, and rejection of F64, U8, and invalid shapes. The package rejects typed empty contours before entering upstream paths that do not return a safe JavaScript error.

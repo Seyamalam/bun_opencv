@@ -106,6 +106,9 @@ export {
   MORPH_HITMISS,
   MORPH_OPEN,
   MORPH_TOPHAT,
+  WARP_FILL_OUTLIERS,
+  WARP_INVERSE_MAP,
+  WARP_RELATIVE_MAP,
 } from "./filtering.js";
 export type { MorphologyOperation } from "./filtering.js";
 export {

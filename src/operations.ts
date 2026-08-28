@@ -124,6 +124,7 @@ export const OPENCV_OPERATIONS = [
   { method: "determinant", wasmExport: "matDeterminant" },
   { method: "divide", wasmExport: "matDivide" },
   { method: "ellipse2Poly", wasmExport: "ellipse2Poly" },
+  { method: "equalizeHist", wasmExport: "matEqualizeHistInto" },
   { method: "exp", wasmExport: "matExpInto" },
   { method: "flip", wasmExport: "matFlip" },
   { method: "findContours", wasmExport: "matFindContoursInto" },
@@ -175,6 +176,7 @@ export const OPENCV_OPERATIONS = [
   { method: "trace", wasmExport: "matTrace" },
   { method: "transform", wasmExport: "matTransform" },
   { method: "vconcat", wasmExport: "matVconcat2" },
+  { method: "warpAffine", wasmExport: "matWarpAffineInto" },
 ] as const;
 
 /** Name of a public operation tracked by the compatibility ledger. */

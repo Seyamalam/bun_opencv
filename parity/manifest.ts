@@ -31,6 +31,7 @@ const IMGPROC_COLOR_SOURCE =
 const IMGPROC_TRANSFORM_SOURCE =
   "https://docs.opencv.org/4.13.0/da/d54/group__imgproc__transform.html";
 const IMGPROC_MISC_SOURCE = "https://docs.opencv.org/4.13.0/d7/d1b/group__imgproc__misc.html";
+const IMGPROC_HISTOGRAM_SOURCE = "https://docs.opencv.org/4.13.0/d6/dc7/group__imgproc__hist.html";
 const IMGPROC_SOURCE = "https://docs.opencv.org/4.13.0/d7/dbd/group__imgproc.html";
 const PHOTO_SOURCE = "https://docs.opencv.org/4.13.0/d1/d0d/group__photo.html";
 
@@ -2094,6 +2095,30 @@ export const PARITY_MANIFEST = {
       upstream: "cv.findContours",
       upstreamId: "imgproc.function.find-contours",
       wasmExport: "matFindContoursInto",
+    },
+    {
+      implementationOrigin: "original",
+      method: "warpAffine",
+      module: "imgproc",
+      notes:
+        "U8 sources with F32 or F64 2x3 transforms, mutable destinations, nearest or linear sampling, constant or replicate borders, scalar border values, and forward or inverse-map flags; wider source depths, additional borders, and bit-exact interpolation modes remain.",
+      sources: [IMGPROC_TRANSFORM_SOURCE],
+      status: "partial",
+      upstream: "cv.warpAffine",
+      upstreamId: "imgproc.function.warp-affine",
+      wasmExport: "matWarpAffineInto",
+    },
+    {
+      implementationOrigin: "original",
+      method: "equalizeHist",
+      module: "imgproc",
+      notes:
+        "Single-channel U8 histogram equalization with a Rust-owned cumulative histogram and lookup table, mutable destinations, constant-image preservation, and pinned-browser differential evidence; CLAHE is a separate unimplemented family.",
+      sources: [IMGPROC_HISTOGRAM_SOURCE],
+      status: "partial",
+      upstream: "cv.equalizeHist",
+      upstreamId: "imgproc.function.equalize-hist",
+      wasmExport: "matEqualizeHistInto",
     },
     {
       implementationOrigin: "not-started",

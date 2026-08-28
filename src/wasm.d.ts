@@ -242,6 +242,17 @@ declare module "#wasm" {
     apertureSize: number,
     l2Gradient: boolean,
   ): void;
+  export function matEqualizeHistInto(source: WasmMatHandle, destination: WasmMatHandle): void;
+  export function matWarpAffineInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    transform: WasmMatHandle,
+    width: number,
+    height: number,
+    flags: number,
+    borderType: number,
+    borderValue: Float64Array,
+  ): void;
   export function matVectorNew(): WasmMatVectorHandle;
   export function matFindContoursInto(
     source: WasmMatHandle,

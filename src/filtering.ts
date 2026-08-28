@@ -8,6 +8,11 @@ export const BORDER_TRANSPARENT = 5 as const;
 export const BORDER_DEFAULT = BORDER_REFLECT_101;
 export const BORDER_ISOLATED = 16 as const;
 
+/** Geometric-warp flag bits. */
+export const WARP_FILL_OUTLIERS = 8 as const;
+export const WARP_INVERSE_MAP = 16 as const;
+export const WARP_RELATIVE_MAP = 32 as const;
+
 /** Morphological operation codes. */
 export const MORPH_ERODE = 0 as const;
 export const MORPH_DILATE = 1 as const;

@@ -1928,6 +1928,28 @@
       "wasmExport": "matFindContoursInto"
     },
     {
+      "implementationOrigin": "original",
+      "method": "warpAffine",
+      "module": "imgproc",
+      "notes": "U8 sources with F32 or F64 2x3 transforms, mutable destinations, nearest or linear sampling, constant or replicate borders, scalar border values, and forward or inverse-map flags; wider source depths, additional borders, and bit-exact interpolation modes remain.",
+      "sources": ["https://docs.opencv.org/4.13.0/da/d54/group__imgproc__transform.html"],
+      "status": "partial",
+      "upstream": "cv.warpAffine",
+      "upstreamId": "imgproc.function.warp-affine",
+      "wasmExport": "matWarpAffineInto"
+    },
+    {
+      "implementationOrigin": "original",
+      "method": "equalizeHist",
+      "module": "imgproc",
+      "notes": "Single-channel U8 histogram equalization with a Rust-owned cumulative histogram and lookup table, mutable destinations, constant-image preservation, and pinned-browser differential evidence; CLAHE is a separate unimplemented family.",
+      "sources": ["https://docs.opencv.org/4.13.0/d6/dc7/group__imgproc__hist.html"],
+      "status": "partial",
+      "upstream": "cv.equalizeHist",
+      "upstreamId": "imgproc.function.equalize-hist",
+      "wasmExport": "matEqualizeHistInto"
+    },
+    {
       "implementationOrigin": "not-started",
       "method": "warpPerspective",
       "module": "imgproc",
