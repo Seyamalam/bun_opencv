@@ -7250,6 +7250,52 @@ function auditThreshold(reference) {
   };
 }
 
+function auditNeighborhoodFilters(reference) {
+  const impulse = reference.matFromArray(1, 5, reference.CV_8UC1, [0, 0, 255, 0, 0]);
+  const blurred = new reference.Mat();
+  reference.GaussianBlur(
+    impulse,
+    blurred,
+    new reference.Size(3, 1),
+    0,
+    0,
+    reference.BORDER_CONSTANT,
+  );
+
+  const mask = reference.matFromArray(1, 5, reference.CV_8UC1, [0, 255, 255, 255, 0]);
+  const kernel = reference.matFromArray(1, 3, reference.CV_8UC1, [1, 1, 1]);
+  const eroded = new reference.Mat();
+  const dilated = new reference.Mat();
+  reference.morphologyEx(mask, eroded, reference.MORPH_ERODE, kernel);
+  reference.morphologyEx(mask, dilated, reference.MORPH_DILATE, kernel);
+
+  const ramp = reference.matFromArray(3, 3, reference.CV_8UC1, [0, 10, 20, 0, 10, 20, 0, 10, 20]);
+  const gradient = new reference.Mat();
+  reference.Sobel(ramp, gradient, reference.CV_16S, 1, 0, 3, 1, 0, reference.BORDER_CONSTANT);
+
+  const output = {
+    constants: [
+      reference.BORDER_CONSTANT,
+      reference.BORDER_DEFAULT,
+      reference.MORPH_ERODE,
+      reference.MORPH_DILATE,
+    ],
+    blurred: summarizeTypedMat(blurred),
+    eroded: summarizeTypedMat(eroded),
+    dilated: summarizeTypedMat(dilated),
+    gradient: summarizeTypedMat(gradient),
+  };
+  impulse.delete();
+  blurred.delete();
+  mask.delete();
+  kernel.delete();
+  eroded.delete();
+  dilated.delete();
+  ramp.delete();
+  gradient.delete();
+  return output;
+}
+
 self.addEventListener("message", async ({ data: input }) => {
   try {
     const reference = await loadOpenCv();
@@ -7579,6 +7625,7 @@ self.addEventListener("message", async ({ data: input }) => {
     outputs.cvtColorAudit = auditCvtColor(reference);
     outputs.resizeAudit = auditResize(reference);
     outputs.thresholdAudit = auditThreshold(reference);
+    outputs.neighborhoodFilterAudit = auditNeighborhoodFilters(reference);
     outputs.orbAudit = auditOrb(() => new reference.ORB(), reference, {
       constructorLength: reference.ORB.length,
       staticCreatePresent: typeof reference.ORB.create !== "undefined",

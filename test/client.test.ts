@@ -32,6 +32,9 @@ import {
   ORBScoreType,
   THRESH_BINARY,
   THRESH_OTSU,
+  BORDER_CONSTANT,
+  MORPH_DILATE,
+  MORPH_ERODE,
 } from "../src/index.js";
 import type {
   Mat,
@@ -1541,6 +1544,151 @@ class CopyingBackend implements OpenCvBackend {
     return usedThreshold;
   }
 
+  matGaussianBlurInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    width: number,
+    height: number,
+    _sigmaX: number,
+    _sigmaY: number,
+    borderType: number,
+  ): void {
+    if (width !== 3 || height !== 1 || source.depth !== 0) {
+      throw new OpenCvInputError("mock GaussianBlur supports a 3x1 U8 kernel only");
+    }
+    const input = source.toUint8Array();
+    const output = new Uint8Array(input.length);
+    for (let row = 0; row < source.rows; row += 1) {
+      for (let column = 0; column < source.columns; column += 1) {
+        for (let channel = 0; channel < source.channels; channel += 1) {
+          let sum = 0;
+          for (let offset = -1; offset <= 1; offset += 1) {
+            const mapped = mockBorderIndex(column + offset, source.columns, borderType);
+            if (mapped !== undefined) {
+              const weight = offset === 0 ? 0.5 : 0.25;
+              sum += input[(row * source.columns + mapped) * source.channels + channel]! * weight;
+            }
+          }
+          output[(row * source.columns + column) * source.channels + channel] =
+            roundNearestEven(sum);
+        }
+      }
+    }
+    replaceMockDestination(destination, source.rows, source.columns, source.channels, output, 0);
+  }
+
+  matMorphologyExInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    operation: number,
+    kernel: WasmMatHandle,
+    anchorX: number,
+    anchorY: number,
+    _iterations: number,
+    borderType: number,
+    _borderValue: Float64Array,
+    _defaultBorderValue: boolean,
+  ): void {
+    if (source.depth !== 0 || kernel.depth !== 0 || kernel.channels !== 1) {
+      throw new OpenCvInputError("mock morphology supports U8 matrices only");
+    }
+    const input = source.toUint8Array();
+    const mask = kernel.toUint8Array();
+    const resolvedX = anchorX < 0 ? Math.floor(kernel.columns / 2) : anchorX;
+    const resolvedY = anchorY < 0 ? Math.floor(kernel.rows / 2) : anchorY;
+    const primitive = (erode: boolean) => {
+      const output = new Uint8Array(input.length);
+      for (let row = 0; row < source.rows; row += 1) {
+        for (let column = 0; column < source.columns; column += 1) {
+          for (let channel = 0; channel < source.channels; channel += 1) {
+            let selected = erode ? 255 : 0;
+            for (let kernelY = 0; kernelY < kernel.rows; kernelY += 1) {
+              for (let kernelX = 0; kernelX < kernel.columns; kernelX += 1) {
+                if (mask[kernelY * kernel.columns + kernelX] === 0) continue;
+                const mappedY = mockBorderIndex(row + kernelY - resolvedY, source.rows, borderType);
+                const mappedX = mockBorderIndex(
+                  column + kernelX - resolvedX,
+                  source.columns,
+                  borderType,
+                );
+                const value =
+                  mappedY === undefined || mappedX === undefined
+                    ? erode
+                      ? 255
+                      : 0
+                    : input[(mappedY * source.columns + mappedX) * source.channels + channel]!;
+                selected = erode ? Math.min(selected, value) : Math.max(selected, value);
+              }
+            }
+            output[(row * source.columns + column) * source.channels + channel] = selected;
+          }
+        }
+      }
+      return output;
+    };
+    if (operation !== 0 && operation !== 1) {
+      throw new OpenCvInputError("mock morphology supports erode and dilate only");
+    }
+    replaceMockDestination(
+      destination,
+      source.rows,
+      source.columns,
+      source.channels,
+      primitive(operation === 0),
+      0,
+    );
+  }
+
+  matSobelInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    destinationDepth: number,
+    dx: number,
+    dy: number,
+    kernelSize: number,
+    scale: number,
+    delta: number,
+    borderType: number,
+  ): void {
+    if (source.depth !== 0 || destinationDepth !== 3 || dx !== 1 || dy !== 0 || kernelSize !== 3) {
+      throw new OpenCvInputError("mock Sobel supports the tested U8-to-I16 X derivative only");
+    }
+    const input = source.toUint8Array();
+    const horizontal = [-1, 0, 1];
+    const vertical = [1, 2, 1];
+    const output = new Int16Array(input.length);
+    for (let row = 0; row < source.rows; row += 1) {
+      for (let column = 0; column < source.columns; column += 1) {
+        for (let channel = 0; channel < source.channels; channel += 1) {
+          let sum = 0;
+          for (let kernelY = 0; kernelY < 3; kernelY += 1) {
+            const mappedY = mockBorderIndex(row + kernelY - 1, source.rows, borderType);
+            for (let kernelX = 0; kernelX < 3; kernelX += 1) {
+              const mappedX = mockBorderIndex(column + kernelX - 1, source.columns, borderType);
+              if (mappedY !== undefined && mappedX !== undefined) {
+                sum +=
+                  input[(mappedY * source.columns + mappedX) * source.channels + channel]! *
+                  vertical[kernelY]! *
+                  horizontal[kernelX]!;
+              }
+            }
+          }
+          output[(row * source.columns + column) * source.channels + channel] = roundNearestEven(
+            sum * scale + delta,
+          );
+        }
+      }
+    }
+    replaceMockDestination(
+      destination,
+      source.rows,
+      source.columns,
+      source.channels,
+      copyViewBytes(output),
+      3,
+    );
+  }
+
   matEmpty(): WasmMatHandle {
     return new CopyingMatHandle(0, 0, 1, new Uint8Array(), 0, false);
   }
@@ -2709,6 +2857,38 @@ function mockOtsuThreshold(input: Uint8Array): number {
   return bestThreshold;
 }
 
+function mockBorderIndex(index: number, length: number, borderType: number): number | undefined {
+  if (index >= 0 && index < length) return index;
+  switch (borderType & ~16) {
+    case 0:
+      return undefined;
+    case 1:
+      return Math.max(0, Math.min(length - 1, index));
+    case 4: {
+      if (length === 1) return 0;
+      const period = 2 * length - 2;
+      const position = ((index % period) + period) % period;
+      return position < length ? position : period - position;
+    }
+    default:
+      throw new OpenCvInputError(`unsupported mock border type ${borderType}`);
+  }
+}
+
+function replaceMockDestination(
+  destination: WasmMatHandle,
+  rows: number,
+  columns: number,
+  channels: number,
+  output: Uint8Array,
+  depth: number,
+): void {
+  if (!(destination instanceof CopyingMatHandle)) {
+    throw new OpenCvInputError("mock destination must use CopyingMatHandle");
+  }
+  destination.replaceFrom(new CopyingMatHandle(rows, columns, channels, output, depth), output);
+}
+
 function f64Handle(rows: number, columns: number, values: readonly number[]): WasmMatHandle {
   return new CopyingMatHandle(rows, columns, 1, copyViewBytes(new Float64Array(values)), 6);
 }
@@ -2911,6 +3091,48 @@ describe("OpenCv client", () => {
     expect(used).toBe(10);
     expect(destination.toUint8Array()).toEqual(new Uint8Array([0, 0, 0, 255, 255, 255]));
 
+    source.dispose();
+    destination.dispose();
+  });
+
+  test("GaussianBlur applies a separable U8 kernel into a mutable destination", () => {
+    const source = client.matFromU8(1, 5, 1, new Uint8Array([0, 0, 255, 0, 0]));
+    const destination = client.emptyMat();
+
+    client.GaussianBlur(source, destination, { width: 3, height: 1 }, 0, 0, BORDER_CONSTANT);
+
+    expect(destination.toUint8Array()).toEqual(new Uint8Array([0, 64, 128, 64, 0]));
+    source.dispose();
+    destination.dispose();
+  });
+
+  test("morphologyEx shares erosion and dilation primitives", () => {
+    const source = client.matFromU8(1, 5, 1, new Uint8Array([0, 255, 255, 255, 0]));
+    const kernel = client.matFromU8(1, 3, 1, new Uint8Array([1, 1, 1]));
+    const eroded = client.emptyMat();
+    const dilated = client.emptyMat();
+
+    client.morphologyEx(source, eroded, MORPH_ERODE, kernel);
+    client.morphologyEx(source, dilated, MORPH_DILATE, kernel);
+
+    expect(eroded.toUint8Array()).toEqual(new Uint8Array([0, 0, 255, 0, 0]));
+    expect(dilated.toUint8Array()).toEqual(new Uint8Array([255, 255, 255, 255, 255]));
+    source.dispose();
+    kernel.dispose();
+    eroded.dispose();
+    dilated.dispose();
+  });
+
+  test("Sobel emits signed U8 gradients into an I16 destination", () => {
+    const source = client.matFromU8(3, 3, 1, new Uint8Array([0, 10, 20, 0, 10, 20, 0, 10, 20]));
+    const destination = client.emptyMat();
+
+    client.Sobel(source, destination, 3, 1, 0, 3, 1, 0, BORDER_CONSTANT);
+
+    expect(destination.depth).toBe("i16");
+    expect(destination.toInt16Array()).toEqual(
+      new Int16Array([30, 60, -30, 40, 80, -40, 30, 60, -30]),
+    );
     source.dispose();
     destination.dispose();
   });

@@ -1873,14 +1873,37 @@
       "wasmExport": "setLightAdaptation"
     },
     {
-      "implementationOrigin": "not-started",
-      "method": "gaussianBlur",
+      "implementationOrigin": "original",
+      "method": "GaussianBlur",
       "module": "imgproc",
-      "notes": "Kernel-based Gaussian blur is not implemented.",
+      "notes": "Mutable U8 destinations with odd separable kernels, derived or explicit sigmas, interleaved channels, and supported border modes; wider depths and exact small-kernel coverage remain.",
       "sources": ["https://docs.opencv.org/4.13.0/d4/d86/group__imgproc__filter.html"],
-      "status": "planned",
+      "status": "partial",
       "upstream": "cv.GaussianBlur",
-      "upstreamId": "imgproc.function.gaussian-blur"
+      "upstreamId": "imgproc.function.gaussian-blur",
+      "wasmExport": "matGaussianBlurInto"
+    },
+    {
+      "implementationOrigin": "original",
+      "method": "morphologyEx",
+      "module": "imgproc",
+      "notes": "U8 erosion, dilation, opening, closing, gradient, top-hat, and black-hat over explicit kernels, anchors, iterations, border modes, and mutable destinations; HITMISS and wider depths remain.",
+      "sources": ["https://docs.opencv.org/4.13.0/d4/d86/group__imgproc__filter.html"],
+      "status": "partial",
+      "upstream": "cv.morphologyEx",
+      "upstreamId": "imgproc.function.morphology-ex",
+      "wasmExport": "matMorphologyExInto"
+    },
+    {
+      "implementationOrigin": "original",
+      "method": "Sobel",
+      "module": "imgproc",
+      "notes": "U8 sources with first and second 3x3 derivatives, scaling, delta, supported border modes, and U8/I16/F32/F64 destinations; other source depths and kernel sizes remain.",
+      "sources": ["https://docs.opencv.org/4.13.0/d4/d86/group__imgproc__filter.html"],
+      "status": "partial",
+      "upstream": "cv.Sobel",
+      "upstreamId": "imgproc.function.sobel",
+      "wasmExport": "matSobelInto"
     },
     {
       "implementationOrigin": "not-started",

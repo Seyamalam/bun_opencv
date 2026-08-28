@@ -58,6 +58,18 @@ Applies a threshold to a U8 `Mat`, replaces the mutable destination, and returns
 
 The package exports the pinned `THRESH_*` constants. `THRESH_TRIANGLE` and wider documented matrix depths are reserved but reject until their kernels and differential fixtures land.
 
+### `GaussianBlur(source, destination, size, sigmaX, sigmaY?, borderType?)`
+
+Applies an original separable Gaussian kernel to an interleaved U8 `Mat`. Kernel dimensions must be positive odd values. A non-positive sigma uses the documented size-derived default; 3-tap zero-sigma kernels use exact binomial weights. The default border is `BORDER_REFLECT_101`.
+
+### `morphologyEx(source, destination, operation, kernel, anchor?, iterations?, borderType?, borderValue?)`
+
+Applies U8 erosion, dilation, opening, closing, gradient, top-hat, or black-hat using nonzero kernel lanes. The default centered anchor, one iteration, constant border, and morphology-neutral border values match the common OpenCV.js call shape. `MORPH_HITMISS` and wider depths remain reserved.
+
+### `Sobel(source, destination, ddepth, dx, dy, ksize?, scale?, delta?, borderType?)`
+
+Computes first or second 3x3 derivatives from a U8 source. Destinations can retain U8 or use I16, F32, or F64 so negative gradients are preserved. The package exposes the pinned `BORDER_*` constants used by all three neighborhood APIs.
+
 ### `resizeNearest(image, targetWidth, targetHeight)`
 
 Resizes an RGBA image with nearest-neighbor sampling. Both target dimensions must be positive 32-bit integers.

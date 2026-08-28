@@ -163,7 +163,7 @@ pub(crate) fn copy_make_border(
     })
 }
 
-fn border_index(index: i64, length: u32, border_type: i32) -> Option<u32> {
+pub(crate) fn border_index(index: i64, length: u32, border_type: i32) -> Option<u32> {
     let length = i64::from(length);
     if (0..length).contains(&index) {
         return u32::try_from(index).ok();

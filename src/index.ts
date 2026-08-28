@@ -79,6 +79,25 @@ export {
 } from "./color.js";
 export type { ColorConversionCode } from "./color.js";
 export {
+  BORDER_CONSTANT,
+  BORDER_DEFAULT,
+  BORDER_ISOLATED,
+  BORDER_REFLECT,
+  BORDER_REFLECT_101,
+  BORDER_REPLICATE,
+  BORDER_TRANSPARENT,
+  BORDER_WRAP,
+  MORPH_BLACKHAT,
+  MORPH_CLOSE,
+  MORPH_DILATE,
+  MORPH_ERODE,
+  MORPH_GRADIENT,
+  MORPH_HITMISS,
+  MORPH_OPEN,
+  MORPH_TOPHAT,
+} from "./filtering.js";
+export type { MorphologyOperation } from "./filtering.js";
+export {
   INTER_AREA,
   INTER_CUBIC,
   INTER_LANCZOS4,

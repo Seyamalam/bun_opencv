@@ -44,6 +44,8 @@ mod imgproc_border;
 mod imgproc_border_wasm;
 mod imgproc_color;
 mod imgproc_color_wasm;
+mod imgproc_filter;
+mod imgproc_filter_wasm;
 mod imgproc_geometry;
 mod imgproc_geometry_wasm;
 mod imgproc_helpers;

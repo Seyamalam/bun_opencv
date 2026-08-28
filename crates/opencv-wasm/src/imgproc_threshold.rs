@@ -210,8 +210,8 @@ mod tests {
     fn binary_threshold_uses_strict_greater_than() {
         let source = mat_from_u8(&[0, 99, 100, 101, 255], 1, 5, 1).expect("source");
         let destination = mat_empty();
-        let used = threshold_into(&source, &destination, 100.0, 200.0, THRESH_BINARY)
-            .expect("threshold");
+        let used =
+            threshold_into(&source, &destination, 100.0, 200.0, THRESH_BINARY).expect("threshold");
         assert_eq!(used, 100.0);
         assert_eq!(destination.compact_bytes(), [0, 0, 0, 200, 200]);
     }

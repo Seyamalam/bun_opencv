@@ -255,6 +255,38 @@ declare module "#wasm" {
     maximum: number,
     thresholdType: number,
   ): number;
+  export function matGaussianBlurInto(
+    source: import("./mat.js").WasmMatHandle,
+    destination: import("./mat.js").WasmMatHandle,
+    width: number,
+    height: number,
+    sigmaX: number,
+    sigmaY: number,
+    borderType: number,
+  ): void;
+  export function matMorphologyExInto(
+    source: import("./mat.js").WasmMatHandle,
+    destination: import("./mat.js").WasmMatHandle,
+    operation: number,
+    kernel: import("./mat.js").WasmMatHandle,
+    anchorX: number,
+    anchorY: number,
+    iterations: number,
+    borderType: number,
+    borderValue: Float64Array,
+    defaultBorderValue: boolean,
+  ): void;
+  export function matSobelInto(
+    source: import("./mat.js").WasmMatHandle,
+    destination: import("./mat.js").WasmMatHandle,
+    destinationDepth: number,
+    dx: number,
+    dy: number,
+    kernelSize: number,
+    scale: number,
+    delta: number,
+    borderType: number,
+  ): void;
   export function invertRgba(data: Uint8Array, width: number, height: number): Uint8Array;
   export function matEmpty(): WasmMatHandle;
   export function matFromU8(

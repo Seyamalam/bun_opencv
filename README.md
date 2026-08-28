@@ -220,7 +220,9 @@ The independent browser inventory contains 488 callable families, so the 25% mil
 | imgproc    | `pointPolygonTest`                          | `cv.pointPolygonTest`                          | Full    | Exact classification and signed distance   |
 | imgproc    | `resize`                                    | `cv.resize`                                    | Partial | Nearest all-depth; U8 linear/area          |
 | imgproc    | `threshold`                                 | `cv.threshold`                                 | Partial | Five U8 modes plus Otsu selection          |
-| imgproc    | `gaussianBlur`                              | `cv.GaussianBlur`                              | Planned | Not started                                |
+| imgproc    | `GaussianBlur`                              | `cv.GaussianBlur`                              | Partial | Separable odd U8 kernels and borders       |
+| imgproc    | `morphologyEx`                              | `cv.morphologyEx`                              | Partial | Seven U8 morphology operations             |
+| imgproc    | `Sobel`                                     | `cv.Sobel`                                     | Partial | 3x3 U8 gradients to signed/float outputs   |
 | imgproc    | `canny`                                     | `cv.Canny`                                     | Planned | Not started                                |
 | imgproc    | `findContours`                              | `cv.findContours`                              | Planned | Not started                                |
 | imgproc    | `warpPerspective`                           | `cv.warpPerspective`                           | Planned | Not started                                |

@@ -58,6 +58,24 @@ import {
 } from "./color.js";
 import type { ColorConversionCode } from "./color.js";
 import {
+  BORDER_CONSTANT,
+  BORDER_DEFAULT,
+  BORDER_ISOLATED,
+  BORDER_REFLECT,
+  BORDER_REFLECT_101,
+  BORDER_REPLICATE,
+  BORDER_TRANSPARENT,
+  BORDER_WRAP,
+  MORPH_BLACKHAT,
+  MORPH_CLOSE,
+  MORPH_DILATE,
+  MORPH_ERODE,
+  MORPH_GRADIENT,
+  MORPH_HITMISS,
+  MORPH_OPEN,
+  MORPH_TOPHAT,
+} from "./filtering.js";
+import {
   INTER_AREA,
   INTER_CUBIC,
   INTER_LANCZOS4,
@@ -99,6 +117,22 @@ import type {
 } from "./types.js";
 
 class WasmOpenCv implements OpenCv {
+  readonly BORDER_CONSTANT = BORDER_CONSTANT;
+  readonly BORDER_REPLICATE = BORDER_REPLICATE;
+  readonly BORDER_REFLECT = BORDER_REFLECT;
+  readonly BORDER_WRAP = BORDER_WRAP;
+  readonly BORDER_REFLECT_101 = BORDER_REFLECT_101;
+  readonly BORDER_TRANSPARENT = BORDER_TRANSPARENT;
+  readonly BORDER_DEFAULT = BORDER_DEFAULT;
+  readonly BORDER_ISOLATED = BORDER_ISOLATED;
+  readonly MORPH_ERODE = MORPH_ERODE;
+  readonly MORPH_DILATE = MORPH_DILATE;
+  readonly MORPH_OPEN = MORPH_OPEN;
+  readonly MORPH_CLOSE = MORPH_CLOSE;
+  readonly MORPH_GRADIENT = MORPH_GRADIENT;
+  readonly MORPH_TOPHAT = MORPH_TOPHAT;
+  readonly MORPH_BLACKHAT = MORPH_BLACKHAT;
+  readonly MORPH_HITMISS = MORPH_HITMISS;
   readonly COLOR_BGR2BGRA = COLOR_BGR2BGRA;
   readonly COLOR_RGB2RGBA = COLOR_RGB2RGBA;
   readonly COLOR_BGRA2BGR = COLOR_BGRA2BGR;
@@ -625,6 +659,27 @@ class WasmOpenCv implements OpenCv {
     return createRgbaImage(image.width, image.height, data);
   }
 
+  GaussianBlur(
+    source: Mat,
+    destination: Mat,
+    size: Size,
+    sigmaX: number,
+    sigmaY = 0,
+    borderType: BorderType = BORDER_DEFAULT,
+  ): void {
+    requireArityRange(arguments.length, 4, 6, "GaussianBlur");
+    const convertedSize = size2iForBinding(size);
+    this.#backend.matGaussianBlurInto(
+      matHandleForBinding(source),
+      matHandleForBinding(destination),
+      convertedSize.width,
+      convertedSize.height,
+      toWasmF64(sigmaX),
+      toWasmF64(sigmaY),
+      toWasmI32(borderType),
+    );
+  }
+
   hconcat(
     sources: readonly [Mat, Mat] | readonly [Mat, Mat, Mat] | readonly [Mat, Mat, Mat, Mat],
   ): Mat {
@@ -909,6 +964,32 @@ class WasmOpenCv implements OpenCv {
     );
   }
 
+  morphologyEx(
+    source: Mat,
+    destination: Mat,
+    operation: number,
+    kernel: Mat,
+    anchor: Point = { x: -1, y: -1 },
+    iterations = 1,
+    borderType: BorderType = BORDER_CONSTANT,
+    borderValue?: Scalar,
+  ): void {
+    requireArityRange(arguments.length, 4, 8, "morphologyEx");
+    const convertedAnchor = point2iForBinding(anchor);
+    this.#backend.matMorphologyExInto(
+      matHandleForBinding(source),
+      matHandleForBinding(destination),
+      toWasmI32(operation),
+      matHandleForBinding(kernel),
+      convertedAnchor.x,
+      convertedAnchor.y,
+      toWasmI32(iterations),
+      toWasmI32(borderType),
+      borderValue === undefined ? new Float64Array() : scalarForBinding(borderValue),
+      borderValue === undefined,
+    );
+  }
+
   norm(source: Mat, normType?: NormType, mask?: Mat): number;
   norm(first: Mat, second: Mat, normType?: NormType, mask?: Mat): number;
   norm(
@@ -1153,6 +1234,31 @@ class WasmOpenCv implements OpenCv {
       rightHandSides.handleForBackend(),
       destination.handleForBackend(),
       method,
+    );
+  }
+
+  Sobel(
+    source: Mat,
+    destination: Mat,
+    destinationDepth: number,
+    dx: number,
+    dy: number,
+    kernelSize = 3,
+    scale = 1,
+    delta = 0,
+    borderType: BorderType = BORDER_DEFAULT,
+  ): void {
+    requireArityRange(arguments.length, 5, 9, "Sobel");
+    this.#backend.matSobelInto(
+      matHandleForBinding(source),
+      matHandleForBinding(destination),
+      toWasmI32(destinationDepth),
+      toWasmI32(dx),
+      toWasmI32(dy),
+      toWasmI32(kernelSize),
+      toWasmF64(scale),
+      toWasmF64(delta),
+      toWasmI32(borderType),
     );
   }
 

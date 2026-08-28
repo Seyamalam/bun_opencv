@@ -7728,6 +7728,57 @@
         };
       }
 
+      function auditPackageNeighborhoodFilters(packageCv) {
+        const impulse = packageCv.matFromU8(1, 5, 1, new Uint8Array([0, 0, 255, 0, 0]));
+        const blurred = packageCv.emptyMat();
+        packageCv.GaussianBlur(
+          impulse,
+          blurred,
+          { width: 3, height: 1 },
+          0,
+          0,
+          packageCv.BORDER_CONSTANT,
+        );
+
+        const mask = packageCv.matFromU8(1, 5, 1, new Uint8Array([0, 255, 255, 255, 0]));
+        const kernel = packageCv.matFromU8(1, 3, 1, new Uint8Array([1, 1, 1]));
+        const eroded = packageCv.emptyMat();
+        const dilated = packageCv.emptyMat();
+        packageCv.morphologyEx(mask, eroded, packageCv.MORPH_ERODE, kernel);
+        packageCv.morphologyEx(mask, dilated, packageCv.MORPH_DILATE, kernel);
+
+        const ramp = packageCv.matFromU8(
+          3,
+          3,
+          1,
+          new Uint8Array([0, 10, 20, 0, 10, 20, 0, 10, 20]),
+        );
+        const gradient = packageCv.emptyMat();
+        packageCv.Sobel(ramp, gradient, 3, 1, 0, 3, 1, 0, packageCv.BORDER_CONSTANT);
+
+        const output = {
+          constants: [
+            packageCv.BORDER_CONSTANT,
+            packageCv.BORDER_DEFAULT,
+            packageCv.MORPH_ERODE,
+            packageCv.MORPH_DILATE,
+          ],
+          blurred: summarizePackageTypedMat(blurred),
+          eroded: summarizePackageTypedMat(eroded),
+          dilated: summarizePackageTypedMat(dilated),
+          gradient: summarizePackageTypedMat(gradient),
+        };
+        impulse.dispose();
+        blurred.dispose();
+        mask.dispose();
+        kernel.dispose();
+        eroded.dispose();
+        dilated.dispose();
+        ramp.dispose();
+        gradient.dispose();
+        return output;
+      }
+
       function runReference(input, referenceRequest) {
         return new Promise((resolve, reject) => {
           const worker = new Worker("/test/browser/opencv-reference-worker.js");
@@ -8123,6 +8174,14 @@
         );
         if (thresholdDifference !== undefined) {
           throw new Error(thresholdDifference);
+        }
+        const neighborhoodFilterDifference = findDifference(
+          auditPackageNeighborhoodFilters(packageCv),
+          referenceOutputs.neighborhoodFilterAudit,
+          "neighborhood filter audit",
+        );
+        if (neighborhoodFilterDifference !== undefined) {
+          throw new Error(neighborhoodFilterDifference);
         }
         const packageOrbAudit = auditOrb(() => packageCv.createORB(), packageCv, {
           constructorLength: null,
@@ -8595,7 +8654,7 @@
 
         packageSource.dispose();
         result.value =
-          "PASS OpenCV.js 4.13.0 color, resize, threshold, coordinate conversion, float math, layout, geometry, transform matrix, helper, DFT, AKAZE, AGAST, FAST, KAZE, GFTT, MSER, ORB, and Tonemap differential";
+          "PASS OpenCV.js 4.13.0 color, resize, threshold, neighborhood filter, coordinate conversion, float math, layout, geometry, transform matrix, helper, DFT, AKAZE, AGAST, FAST, KAZE, GFTT, MSER, ORB, and Tonemap differential";
         document.body.dataset.status = "passed";
       } catch (error) {
         result.value = `FAIL ${String(error)}`;

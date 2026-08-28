@@ -61,6 +61,7 @@ This file records user-visible changes. The format follows Keep a Changelog, and
 - OpenCV.js-compatible `cvtColor` codes 0 through 11 for U8 `Mat` values, including RGB/BGR ordering, alpha insertion and removal, grayscale conversion, `dstCn` selection, strided inputs, mutable destination replacement, exact in-place use, and pinned-browser differential fixtures.
 - OpenCV.js-compatible mutable `resize` with all-depth nearest-neighbor sampling, U8 half-pixel linear interpolation, U8 area shrinking, explicit or scale-derived dimensions, pinned interpolation constants, and browser differential fixtures.
 - OpenCV.js-compatible mutable U8 `threshold` with five fixed modes, single-channel Otsu selection, returned threshold values, strict comparison boundaries, and browser differential fixtures.
+- Original Rust neighborhood kernels for U8 `GaussianBlur`, seven `morphologyEx` operations, and 3x3 `Sobel` derivatives with mutable destinations, shared border handling, strict TypeScript constants, and pinned-browser fixtures.
 - Strict TypeScript matrix APIs and WASM adapters for the new depths and operations.
 
 ### Planned

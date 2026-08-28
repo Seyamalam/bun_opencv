@@ -1,5 +1,7 @@
 /** Public operation entry points backed by Rust and mapped to the parity ledger. */
 export const OPENCV_OPERATIONS = [
+  { method: "GaussianBlur", wasmExport: "matGaussianBlurInto" },
+  { method: "Sobel", wasmExport: "matSobelInto" },
   { method: "AgastFeatureDetector.getDefaultName", wasmExport: "getDefaultName" },
   { method: "AgastFeatureDetector.getNonmaxSuppression", wasmExport: "getNonmaxSuppression" },
   { method: "AgastFeatureDetector.getThreshold", wasmExport: "getThreshold" },
@@ -146,6 +148,7 @@ export const OPENCV_OPERATIONS = [
   { method: "mixChannels", wasmExport: "matMixChannels" },
   { method: "minMaxLoc", wasmExport: "matMinMaxLoc" },
   { method: "multiply", wasmExport: "matMultiply" },
+  { method: "morphologyEx", wasmExport: "matMorphologyExInto" },
   { method: "norm", wasmExport: "matNorm" },
   { method: "normalize", wasmExport: "matNormalizeInto" },
   { method: "polarToCart", wasmExport: "matPolarToCart" },

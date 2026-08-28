@@ -164,6 +164,38 @@ export interface OpenCvBackend {
     scaleY: number,
     interpolation: number,
   ): void;
+  matGaussianBlurInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    width: number,
+    height: number,
+    sigmaX: number,
+    sigmaY: number,
+    borderType: number,
+  ): void;
+  matMorphologyExInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    operation: number,
+    kernel: WasmMatHandle,
+    anchorX: number,
+    anchorY: number,
+    iterations: number,
+    borderType: number,
+    borderValue: Float64Array,
+    defaultBorderValue: boolean,
+  ): void;
+  matSobelInto(
+    source: WasmMatHandle,
+    destination: WasmMatHandle,
+    destinationDepth: number,
+    dx: number,
+    dy: number,
+    kernelSize: number,
+    scale: number,
+    delta: number,
+    borderType: number,
+  ): void;
   matThresholdInto(
     source: WasmMatHandle,
     destination: WasmMatHandle,
@@ -430,6 +462,22 @@ export interface OpenCvBackend {
 
 /** Initialized image processing client. */
 export interface OpenCv {
+  readonly BORDER_CONSTANT: 0;
+  readonly BORDER_REPLICATE: 1;
+  readonly BORDER_REFLECT: 2;
+  readonly BORDER_WRAP: 3;
+  readonly BORDER_REFLECT_101: 4;
+  readonly BORDER_TRANSPARENT: 5;
+  readonly BORDER_DEFAULT: 4;
+  readonly BORDER_ISOLATED: 16;
+  readonly MORPH_ERODE: 0;
+  readonly MORPH_DILATE: 1;
+  readonly MORPH_OPEN: 2;
+  readonly MORPH_CLOSE: 3;
+  readonly MORPH_GRADIENT: 4;
+  readonly MORPH_TOPHAT: 5;
+  readonly MORPH_BLACKHAT: 6;
+  readonly MORPH_HITMISS: 7;
   readonly COLOR_BGR2BGRA: 0;
   readonly COLOR_RGB2RGBA: 0;
   readonly COLOR_BGRA2BGR: 1;
@@ -559,6 +607,14 @@ export interface OpenCv {
   getAffineTransform(source: Mat, destination: Mat): Mat;
   getLogLevel(): LogLevel;
   getOptimalDFTSize(size: number): number;
+  GaussianBlur(
+    source: Mat,
+    destination: Mat,
+    size: Size,
+    sigmaX: number,
+    sigmaY?: number,
+    borderType?: BorderType,
+  ): void;
   getPerspectiveTransform(source: Mat, destination: Mat): Mat;
   getRotationMatrix2D(center: Point, angleDegrees: number, scale: number): Mat;
   getStructuringElement(kind: StructuringElementKind, size: Size, anchor?: Point): Mat;
@@ -595,6 +651,16 @@ export interface OpenCv {
   mixChannels(source: Mat, destination: Mat, fromTo: Uint16Array): void;
   multiply(a: Mat, b: Mat, destination: Mat, scale?: number, dtype?: number): void;
   multiplyAlloc(a: Mat, b: Mat, scale?: number): Mat;
+  morphologyEx(
+    source: Mat,
+    destination: Mat,
+    operation: number,
+    kernel: Mat,
+    anchor?: Point,
+    iterations?: number,
+    borderType?: BorderType,
+    borderValue?: Scalar,
+  ): void;
   norm(source: Mat, normType?: NormType, mask?: Mat): number;
   norm(first: Mat, second: Mat, normType?: NormType, mask?: Mat): number;
   normalize(
@@ -635,6 +701,17 @@ export interface OpenCv {
     destination: Mat,
     method?: DecompositionMethod,
   ): boolean;
+  Sobel(
+    source: Mat,
+    destination: Mat,
+    destinationDepth: number,
+    dx: number,
+    dy: number,
+    kernelSize?: number,
+    scale?: number,
+    delta?: number,
+    borderType?: BorderType,
+  ): void;
   reduce(source: Mat, destination: Mat, axis: 0 | 1, kind: ReduceKind): void;
   threshold(image: RgbaImage, threshold: number): RgbaImage;
   threshold(
